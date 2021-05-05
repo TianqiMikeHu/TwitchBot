@@ -16,6 +16,7 @@ quiz_state[0] = 0;  // 0: Halt
                     // 4: Answer 2 ruled incorrect
                     // 5: Awaiting answer 3
                     // 6: Answer 3 ruled incorrect
+quiz_state[1] = 0;
 var parts = [];
 for(var i = 0; i < SIZE; i++){
     parts[i] = [];
@@ -83,7 +84,7 @@ client.on('message', message => {
     var args = message.content.split(' ');
     var len = args.length;
     var command = args.shift().toLowerCase();
-    const user = message.author.username;
+    const user = message.author.tag;
 
     con.query('SELECT * FROM bot.chatters WHERE username = ?', user, (err,rows) => {
         if(err) throw err;
@@ -118,7 +119,7 @@ client.on('message', message => {
             }
             return;
         }
-        const taggedUser = message.mentions.users.first().username;
+        const taggedUser = message.mentions.users.first().tag;
         con.query('SELECT * FROM bot.chatters WHERE username = ?', taggedUser, (err,rows) => {
             if(err) throw err;
             if(rows.length == 0){
@@ -370,7 +371,7 @@ function grader(input, answer){
     var lev;
     for(const arg of args){
         lev = ed.levenshtein(input, arg, insert, remove, update);
-        if(lev.distance<3){
+        if(lev.distance<2){
             return true;
         }
     }

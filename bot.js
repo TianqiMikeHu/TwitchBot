@@ -1,13 +1,14 @@
 const tmi = require('tmi.js');
 const mysql = require('mysql');
 const ed = require('edit-distance');
+require('dotenv').config();
 
 
 // Define configuration options
 const opts = {
   identity: {
     username: 'a_poorly_written_bot',
-    password: 'oauth:fj2j7k9pnzpk1ik778alfo008uheep',
+    password: process.env.TWITCH_OAUTH_TOKEN,
   },
   channels: [
     'mike_hu_0_0'
@@ -73,7 +74,7 @@ function onMessageHandler (channel, context, message, self) {
       eb = true;
   }
   if(message.includes('Wanna become famous?')){
-      client.say(channel, `/ban ${user}`);
+      client.say(channel, `\/ban ${user}`);
       client.say(channel, `BOP BOP BOP`);
       return;
   }
