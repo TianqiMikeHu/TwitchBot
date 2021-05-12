@@ -3,6 +3,7 @@ const ed = require('edit-distance');
 require('dotenv').config();
 
 const Discord = require('discord.js');
+const util = require('util');
 const client = new Discord.Client();
 
 const SIZE = 2;
@@ -45,20 +46,29 @@ var insert, remove, update;
 insert = remove = function(node) { return 1; };
 update = function(stringA, stringB) { return stringA !== stringB ? 1 : 0; };
 
-var con = mysql.createConnection({
+var con = mysql.createPool({
+  connectionLimit: 10,
   host: 'localhost',
   user: 'root',
   password: 'password',
   database: 'quizdb'
 });
 
-con.connect(function(err) {
-  if (err){
-      console.log(err);
-      return;
-  }
-  console.log("Connected to MySQL!");
-});
+
+var q = util.promisify(con.query).bind(con);
+
+var TOtext = '';
+var TOdone = true;
+var TOpause = false;
+var TOid;
+var TOanswer = '';
+var players = new Set();
+var notAnswered = new Set();
+var currentAnswerer;
+var words;
+var lines;
+var TOtext = '';
+const rate = 1200;
 
 client.once('ready', () => {
 	console.log('Ready to connect to Discord');
@@ -68,7 +78,7 @@ client.once('ready', () => {
 client.login(process.env.DISCORD_TOKEN);
 
 
-client.on('message', message => {
+client.on('message', async message => {
 	if (message.author.bot) return;
 
     switch (message.guild.name) {
@@ -359,6 +369,234 @@ client.on('message', message => {
         }
         return;
     }
+
+    if(command === '!tossup'){
+        if(!TOdone){
+            message.channel.send(`A quiz is currently running.`);
+            return;
+        }
+        if(len<3){
+            message.channel.send(`Incorrect number of arguments.`);
+            return;
+        }
+        var category = args[0].toLowerCase();
+        var catNum = 0;
+        var difficulty = parseInt(args[1]);
+        if(isNaN(difficulty)){
+            message.channel.send(`Invalid difficulty.`);
+            return;
+        }
+        if(!players.has(user)){
+            message.channel.send(`${user} has joined tossup mode.`);
+            players.add(user);
+        }
+        if(category == "random"){
+            var query = 'select text, answer from tossups join (select * from tournaments where difficulty = ?) as b on tossups.tournament_id=b.id order by rand() limit 1';
+            // con.query(query, difficulty, (err,rows) => {
+            //     if(err) throw err;
+            //     TOtext = rows[0].text;
+            //     TOanswer = rows[0].answer;
+            // });
+            var rows = await q(query, difficulty);
+            TOtext = rows[0].text;
+            TOanswer = rows[0].answer;
+            TOdone = false;
+            TOpause = false;
+            notAnswered.clear();
+            for(var person of players){
+                notAnswered.add(person);
+            }
+            words = TOtext.split(/\s/);
+            lines = 'TOSSUP:\n';
+            text = await message.channel.send(lines);
+            while(words.length!=0){
+                if(!TOdone && !TOpause){
+                    lines = lines + words.shift()+' ';
+                    if(words.length!=0){
+                        lines = lines + words.shift()+' ';
+                    }
+                    if(words.length!=0){
+                        lines = lines + words.shift()+' ';
+                    }
+                    if(words.length!=0){
+                        lines = lines + words.shift()+' ';
+                    }
+                    await text.edit(lines);
+                    await timeout(rate);
+                }
+                else{
+                    return;
+                }
+            }
+            return;
+        }
+        switch (category) {
+          case 'mythology':
+              catNum = 14;
+              break;
+          case 'literature':
+              catNum = 15;
+              break;
+          case 'trash':
+              catNum = 16;
+              break;
+          case 'science':
+              catNum = 17;
+              break;
+          case 'history':
+              catNum = 18;
+              break;
+          case 'religion':
+              catNum = 19;
+              break;
+          case 'geography':
+              catNum = 20;
+              break;
+          case 'fine_arts':
+              catNum = 21;
+              break;
+          case 'social_science':
+              catNum = 22;
+              break;
+          case 'philosophy':
+              catNum = 25;
+              break;
+          case 'current_events':
+              catNum = 26;
+              break;
+          default:
+              message.channel.send(`Invalid category.`);
+              return;
+        }
+        var query = 'select text, answer from tossups join (select * from tournaments where difficulty = ?) as b on tossups.tournament_id=b.id where category_id = ? order by rand() limit 1';
+        // con.query(query, [difficulty, catNum], (err,rows) => {
+        //     if(err) throw err;
+        //     TOtext = rows[0].text;
+        //     TOanswer = rows[0].answer;
+        // });
+        var rows = await q(query,[difficulty, catNum]);
+        TOtext = rows[0].text;
+        TOanswer = rows[0].answer;
+        TOdone = false;
+        TOpause = false;
+        notAnswered.clear();
+        for(var person of players){
+            notAnswered.add(person);
+        }
+        words = TOtext.split(/\s/);
+        lines = 'TOSSUP:\n';
+        text = await message.channel.send(lines);
+        while(words.length!=0){
+            if(!TOdone && !TOpause){
+                lines = lines + words.shift()+' ';
+                if(words.length!=0){
+                    lines = lines + words.shift()+' ';
+                }
+                if(words.length!=0){
+                    lines = lines + words.shift()+' ';
+                }
+                if(words.length!=0){
+                    lines = lines + words.shift()+' ';
+                }
+                await text.edit(lines);
+                await timeout(rate);
+            }
+            else{
+                return;
+            }
+        }
+    }
+
+    if(command === 'buzz' && !TOdone && !TOpause){
+        if(!notAnswered.has(user)){
+            message.channel.send(`${user}, you can\'t answer anymore!`);
+            return;
+        }
+        currentAnswerer = user;
+        message.reply(` Waiting for your answer:`);
+        TOpause = true;
+        //TOid = await timeout(10000);
+        // if(TOpause){
+        //     message.channel.send(`time!`);
+        //     notAnswered.delete(user);
+        //     TOpause = false;
+        // }
+        return;
+    }
+
+    if(TOpause && currentAnswerer === user){
+        currentAnswerer = '';
+        var input = message.content.toLowerCase().replace(/\s/g, "");
+        var correct = grader(input, TOanswer.toLowerCase());
+        if(correct){
+            con.query('UPDATE bot.chatters SET points = points+10 WHERE username = ?', user, (err,rows2) => {
+                if(err) throw err;
+            });
+            message.channel.send(`:white_check_mark: CORRECT! +10 points. The answerline is: \n${TOanswer}`);
+            await text.edit("**"+lines+" $** "+words.join(" "));
+            TOdone = true;
+            return;
+        }
+        else{
+            message.channel.send(`:x: Sorry, it was ruled incorrect.`);
+            notAnswered.delete(user);
+        }
+        if(notAnswered.size==0){
+            TOdone = true;
+            message.channel.send(`No more eligible players remain. Tossup is dead. The answerline is: \n${TOanswer}.`);
+            await text.edit(TOtext);
+            return;
+        }
+        TOpause = false;
+        while(words.length!=0){
+            if(!TOdone && !TOpause){
+                lines = lines + words.shift()+' ';
+                if(words.length!=0){
+                    lines = lines + words.shift()+' ';
+                }
+                if(words.length!=0){
+                    lines = lines + words.shift()+' ';
+                }
+                if(words.length!=0){
+                    lines = lines + words.shift()+' ';
+                }
+                await text.edit(lines);
+                await timeout(rate);
+            }
+            else{
+                return;
+            }
+        }
+        //clearTimeout(TOid);
+        return;
+    }
+
+    if(command === '!joingame'){
+        message.channel.send(`${user} has joined tossup mode.`);
+        players.add(user);
+        return;
+    }
+
+    if(command === '!leavegame'){
+        if(players.delete(user)){
+            message.channel.send(`${user} has left tossup mode.`);
+        }
+        else{
+            message.channel.send(`You do not appear to be in tossup mode`);
+        }
+        return;
+    }
+
+    if(command === '!clear'){
+        message.channel.send(`Tossup mode player list cleared.`);
+        players.clear();
+        return;
+    }
+
+    if(command === '!kill'){
+        message.channel.send(`Current tossup killed. The answerline was: \n${TOanswer}`);
+        TOdone = true;
+    }
 });
 
 
@@ -375,10 +613,15 @@ function grader(input, answer){
             return true;
         }
     }
-    lev = ed.levenshtein(input, noWhiteSpace, insert, remove, update);
+    var args2 = noWhiteSpace.split(/\[/);
+    lev = ed.levenshtein(input, args2[0], insert, remove, update);
     if(lev.distance<5){
         return true;
     }
     return false;
 
+}
+
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }

@@ -15,20 +15,21 @@ const opts = {
   ]
 };
 
-var con = mysql.createConnection({
+var con = mysql.createPool({
+  connectionLimit: 10,
   host: 'localhost',
   user: 'root',
   password: 'password',
   database: 'quizdb'
 });
 
-con.connect(function(err) {
-  if (err){
-      console.log(err);
-      return;
-  }
-  console.log("Connected to MySQL!");
-});
+// con.connect(function(err) {
+//   if (err){
+//       console.log(err);
+//       return;
+//   }
+//   console.log("Connected to MySQL!");
+// });
 
 const me = 'mike_hu_0_0';
 var quiz_state = 0; // 0: Halt
@@ -95,7 +96,7 @@ function onMessageHandler (channel, context, message, self) {
       }
   });
 
-  if(message.includes('nooo')  || message.includes('D:')){
+  if(message.toLowerCase().includes('nooo')  || message.includes('D:')){
       client.say(channel, `D:`);
       return;
   }
@@ -451,11 +452,12 @@ function grader(input, answer){
     var lev;
     for(const arg of args){
         lev = ed.levenshtein(input, arg, insert, remove, update);
-        if(lev.distance<3){
+        if(lev.distance<2){
             return true;
         }
     }
-    lev = ed.levenshtein(input, noWhiteSpace, insert, remove, update);
+    var args2 = noWhiteSpace.split(/\[/);
+    lev = ed.levenshtein(input, args2[0], insert, remove, update);
     if(lev.distance<5){
         return true;
     }
