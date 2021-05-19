@@ -48,7 +48,6 @@ var insert, remove, update;
 insert = remove = function(node) { return 1; };
 update = function(stringA, stringB) { return stringA !== stringB ? 1 : 0; };
 
-var eb = false;
 
 // Create a client with our options
 const client = new tmi.client(opts);
@@ -60,6 +59,12 @@ client.on('connected', onConnectedHandler);
 // Connect to Twitch:
 client.connect();
 
+con.query('UPDATE bot.viewers SET seen = 0', (err,rows) => {
+    if(err){
+        console.log(err);
+    }
+});
+
 // Called every time a message comes in
 function onMessageHandler (channel, context, message, self) {
   if (self) { return; } // Ignore messages from the bot
@@ -70,10 +75,6 @@ function onMessageHandler (channel, context, message, self) {
   const user = context.username;
 
 
-  if(!eb &&  user === 'ebhb1210'){
-      client.say(channel, 'BOVRIL');
-      eb = true;
-  }
   if(message.includes('Wanna become famous?')){
       client.say(channel, `\/ban ${user}`);
       client.say(channel, `BOP BOP BOP`);
@@ -84,7 +85,7 @@ function onMessageHandler (channel, context, message, self) {
       if(err) throw err;
 
       if(rows.length == 0){
-          con.query('INSERT INTO bot.viewers(username, messages, points) VALUES(?, 1, 0)', user, (err,rows1) => {
+          con.query('INSERT INTO bot.viewers(username, messages, points, greeting, seen) VALUES(?, 1, 0, \'NONE\', 1)', user, (err,rows1) => {
               if(err) throw err;
               console.log("Inserted a record");
           });
@@ -93,6 +94,14 @@ function onMessageHandler (channel, context, message, self) {
           con.query('UPDATE bot.viewers SET messages = messages+1 WHERE username = ?', user, (err,rows2) => {
               if(err) throw err;
           });
+          if(rows[0].seen == 0 && rows[0].greeting != 'NONE'){
+              client.say(channel, `${rows[0].greeting}`);
+              con.query('UPDATE bot.viewers SET seen = 1 WHERE username = ?', user, (err,rows) => {
+                  if(err){
+                      console.log(err);
+                  }
+              });
+          }
       }
   });
 
@@ -101,9 +110,14 @@ function onMessageHandler (channel, context, message, self) {
       return;
   }
 
+  if(message.toLowerCase().includes('good bot')){
+      client.say(channel, `:D`);
+      return;
+  }
+
   if(command === '!sql'){
      if(user === me){
-         var query = message.slice(5).toLowerCase();
+         var query = message.slice(5);
          con.query(query, (err,rows) => {
              if(err){
                  client.say(channel, `An error occured.`);
@@ -111,10 +125,15 @@ function onMessageHandler (channel, context, message, self) {
              }
              else{
                  client.say(channel, `Executed query.`);
-                 var str = '';
-                 for(const row of rows){
-                     str = JSON.stringify(row);
-                     client.say(channel, `${str}`);
+                 try {
+                     var str = '';
+                     for(const row of rows){
+                         str = JSON.stringify(row);
+                         client.say(channel, `${str}`);
+                     }
+                 }
+                 catch (e) {
+                     return;
                  }
              }
          });
@@ -443,9 +462,10 @@ function onConnectedHandler (addr, port) {
 }
 
 
-function grader(input, answer){
-    var args = answer.split(" ");
-    noWhiteSpace = answer.replace(/\s/g, "");
+function grader(input, answer){ // input has white space removed and changed to lower case, answer is only changed to lower case
+    var accept = answer.split('do not');
+    var args = accept[0].split(" ");
+    noWhiteSpace = accept[0].replace(/\s/g, "");
     if(input.length>1 && noWhiteSpace.includes(input)){
         return true;
     }
@@ -456,9 +476,10 @@ function grader(input, answer){
             return true;
         }
     }
-    var args2 = noWhiteSpace.split(/\[/);
+    var args2 = noWhiteSpace.split(/[\[<]/);
+    var length = args2[0].length;
     lev = ed.levenshtein(input, args2[0], insert, remove, update);
-    if(lev.distance<5){
+    if(lev.distance<(length/2)){
         return true;
     }
     return false;

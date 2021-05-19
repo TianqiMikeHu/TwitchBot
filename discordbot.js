@@ -600,9 +600,10 @@ client.on('message', async message => {
 });
 
 
-function grader(input, answer){
-    var args = answer.split(" ");
-    noWhiteSpace = answer.replace(/\s/g, "");
+function grader(input, answer){ // input has white space removed and changed to lower case, answer is only changed to lower case
+    var accept = answer.split('do not');
+    var args = accept[0].split(" ");
+    noWhiteSpace = accept[0].replace(/\s/g, "");
     if(input.length>1 && noWhiteSpace.includes(input)){
         return true;
     }
@@ -613,9 +614,10 @@ function grader(input, answer){
             return true;
         }
     }
-    var args2 = noWhiteSpace.split(/\[/);
+    var args2 = noWhiteSpace.split(/[\[<]/);
+    var length = args2[0].length;
     lev = ed.levenshtein(input, args2[0], insert, remove, update);
-    if(lev.distance<5){
+    if(lev.distance<(length/2)){
         return true;
     }
     return false;
