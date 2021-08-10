@@ -33,7 +33,7 @@ var con = mysql.createPool({
 
 const me = 'mike_hu_0_0';
 const breaking = 'breakingpointes';
-const mods = [me, breaking, 'thelastofchuck', 'ebhb1210'];
+const mods = [me, 'a a_poorly_written_bot', breaking, 'thelastofchuck', 'ebhb1210'];
 var quiz_state = 0; // 0: Halt
                     // 1: Awaiting answer 1
                     // 2: Answer 1 ruled incorrect
