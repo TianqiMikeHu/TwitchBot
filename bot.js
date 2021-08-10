@@ -32,6 +32,8 @@ var con = mysql.createPool({
 // });
 
 const me = 'mike_hu_0_0';
+const breaking = 'breakingpointes';
+const mods = [me, breaking, 'thelastofchuck', 'ebhb1210'];
 var quiz_state = 0; // 0: Halt
                     // 1: Awaiting answer 1
                     // 2: Answer 1 ruled incorrect
@@ -116,7 +118,7 @@ function onMessageHandler (channel, context, message, self) {
   }
 
   if(command === '!sql'){
-     if(user === me){
+     if(user === me || user === breaking){
          var query = message.slice(5);
          con.query(query, (err,rows) => {
              if(err){
@@ -194,6 +196,24 @@ function onMessageHandler (channel, context, message, self) {
       return;
   }
 
+  if(command === '!so' && mods.includes(user)){
+      if(len > 1){
+          var target = args[0];
+          var text = 'Check out ' + target + ' at https://www.twitch.tv/';
+          target = target.toLowerCase();
+          text += target + ' !'
+          con.query('SELECT * FROM bot.shoutout WHERE username = ?', target, (err,rows) => {
+              if(rows.length == 0){
+                  client.say(channel, `${text}`);
+              }
+              else{
+                  client.say(channel, `${text} ${rows[0].response}`);
+              }
+          });
+      }
+      return;
+  }
+
   if(command === '!end' && user === me){
       quiz_state = 0;
       player = '';
@@ -241,6 +261,7 @@ function onMessageHandler (channel, context, message, self) {
           });
           return;
       }
+      var query = '';
       switch (category) {
         case 'mythology':
             catNum = 14;
@@ -275,11 +296,53 @@ function onMessageHandler (channel, context, message, self) {
         case 'current_events':
             catNum = 26;
             break;
+        case 'math':
+            query = 'select leadin, text, answer from bonus_parts join (select bonus.id, leadin from bonus where subcategory_id = 26 order by rand() limit 1) as a on bonus_parts.bonus_id=a.id';
+            con.query(query, (err,rows) => {
+                if(err) throw err;
+                if(rows.length<3){
+                    client.say(channel, `Sorry, something went wrong. Try again.`);
+                    return;
+                }
+                parts[0] = rows[0].leadin;
+                parts[1] = rows[0].text;
+                parts[2] = rows[1].text;
+                parts[3] = rows[2].text;
+                answers[0] = rows[0].answer;
+                answers[1] = rows[1].answer;
+                answers[2] = rows[2].answer;
+                client.say(channel, `${parts[0]}`);
+                client.say(channel, `${parts[1]}`);
+                quiz_state = 1;
+                player = user;
+            });
+            return;
+        case 'cs':
+            query = 'select leadin, text, answer from bonus_parts join (select bonus.id, leadin from bonus where subcategory_id = 23 order by rand() limit 1) as a on bonus_parts.bonus_id=a.id';
+            con.query(query, (err,rows) => {
+                if(err) throw err;
+                if(rows.length<3){
+                    client.say(channel, `Sorry, something went wrong. Try again.`);
+                    return;
+                }
+                parts[0] = rows[0].leadin;
+                parts[1] = rows[0].text;
+                parts[2] = rows[1].text;
+                parts[3] = rows[2].text;
+                answers[0] = rows[0].answer;
+                answers[1] = rows[1].answer;
+                answers[2] = rows[2].answer;
+                client.say(channel, `${parts[0]}`);
+                client.say(channel, `${parts[1]}`);
+                quiz_state = 1;
+                player = user;
+            });
+            return;
         default:
             client.say(channel, `Invalid category.`);
             return;
       }
-      var query = 'select leadin, text, answer from bonus_parts join (select bonus.id, leadin from (bonus join (select * from tournaments where difficulty = ?) as b on bonus.tournament_id=b.id) where category_id = ? order by rand() limit 1) as a on bonus_parts.bonus_id=a.id';
+      query = 'select leadin, text, answer from bonus_parts join (select bonus.id, leadin from (bonus join (select * from tournaments where difficulty = ?) as b on bonus.tournament_id=b.id) where category_id = ? order by rand() limit 1) as a on bonus_parts.bonus_id=a.id';
       con.query(query, [difficulty, catNum], (err,rows) => {
           if(err) throw err;
           if(rows.length<3){
@@ -314,7 +377,7 @@ function onMessageHandler (channel, context, message, self) {
                 correct = grader(input, answer);
             }
             if(correct){
-                client.say(channel, `VoteYea CORRECT! The answerline is:`);
+                client.say(channel, `BlobYes CORRECT! The answerline is:`);
                 client.say(channel, `${answers[0]}`);
                 client.say(channel, `Part 2:`);
                 client.say(channel, `${parts[2]}`);
@@ -322,7 +385,7 @@ function onMessageHandler (channel, context, message, self) {
                 quiz_state = 3;
             }
             else{
-                client.say(channel, `VoteNay Incorrect. The answerline is:`);
+                client.say(channel, `BlobNo Incorrect. The answerline is:`);
                 client.say(channel, `${answers[0]}`);
                 client.say(channel, `Were you correct? [y/n]`);
                 quiz_state = 2;
@@ -339,7 +402,7 @@ function onMessageHandler (channel, context, message, self) {
                 correct = grader(input, answer);
             }
             if(correct){
-                client.say(channel, `VoteYea CORRECT! The answerline is:`);
+                client.say(channel, `BlobYes CORRECT! The answerline is:`);
                 client.say(channel, `${answers[1]}`);
                 client.say(channel, `Part 3:`);
                 client.say(channel, `${parts[3]}`);
@@ -347,7 +410,7 @@ function onMessageHandler (channel, context, message, self) {
                 quiz_state = 5;
             }
             else{
-                client.say(channel, `VoteNay Incorrect. The answerline is:`);
+                client.say(channel, `BlobNo Incorrect. The answerline is:`);
                 client.say(channel, `${answers[1]}`);
                 client.say(channel, `Were you correct? [y/n]`);
                 quiz_state = 4;
@@ -364,7 +427,7 @@ function onMessageHandler (channel, context, message, self) {
                 correct = grader(input, answer);
             }
             if(correct){
-                client.say(channel, `VoteYea CORRECT! The answerline is:`);
+                client.say(channel, `BlobYes CORRECT! The answerline is:`);
                 client.say(channel, `${answers[2]}`);
                 score += 10;
                 client.say(channel, `You have scored ${score} \/ 30 points.`);
@@ -376,7 +439,7 @@ function onMessageHandler (channel, context, message, self) {
                 quiz_state = 0;
             }
             else{
-                client.say(channel, `VoteNay Incorrect. The answerline is:`);
+                client.say(channel, `BlobNo Incorrect. The answerline is:`);
                 client.say(channel, `${answers[2]}`);
                 client.say(channel, `Were you correct? [y/n]`);
                 quiz_state = 6;
