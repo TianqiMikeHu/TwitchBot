@@ -199,6 +199,9 @@ function onMessageHandler (channel, context, message, self) {
   if(command === '!so' && mods.includes(user)){
       if(len > 1){
           var target = args[0];
+          if(target[0] === '@'){
+              target = target.slice(1);
+          }
           var text = 'Check out ' + target + ' at https://www.twitch.tv/';
           target = target.toLowerCase();
           text += target + ' !'
@@ -494,8 +497,9 @@ function onMessageHandler (channel, context, message, self) {
       return;
   }
 
-  var regex = /^[a-z0-9]+$/i;
-  if(message[0]!='!' && regex.test(message) == false){
+  // var regex = /^[a-z0-9\s]+$/i;
+  var regex = /^[a-zA-Z0-9\t\n\s,.~/<>?;:"'`!@#$%^&*()\[\]{}_+=|\\-]+$/i;
+  if(regex.test(message) == false){
       return;
   }
 
@@ -508,8 +512,13 @@ function onMessageHandler (channel, context, message, self) {
       rows.forEach( (row) => {
           var parse = row.response.split('PARSE');
           if(parse.length == 3){
-              var answer = parse[0] + eval(parse[1]) + parse[2];
-              client.say(channel, `${answer}`);
+              try {
+                  var answer = parse[0] + eval(parse[1]) + parse[2];
+                  client.say(channel, `${answer}`);
+              }
+              catch (e) {
+                  return;
+              }
           }
           else{
               client.say(channel, `${row.response}`);
