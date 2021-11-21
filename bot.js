@@ -33,7 +33,7 @@ var con = mysql.createPool({
 
 const me = 'mike_hu_0_0';
 const breaking = 'breakingpointes';
-const mods = [me, 'a a_poorly_written_bot', breaking, 'thelastofchuck', 'ebhb1210'];
+const mods = [me, 'a_poorly_written_bot', breaking, 'thelastofchuck', 'ebhb1210'];
 var quiz_state = 0; // 0: Halt
                     // 1: Awaiting answer 1
                     // 2: Answer 1 ruled incorrect
@@ -75,9 +75,10 @@ function onMessageHandler (channel, context, message, self) {
   var len = args.length;
   var command = args.shift().toLowerCase();
   const user = context.username;
+  var trimmed = message.replace(/\s+/g, " ");
 
 
-  if(message.includes('Wanna become famous?')){
+  if(trimmed.includes('Wanna become famous?') || trimmed.includes('Want to become famous?')){
       client.say(channel, `\/ban ${user}`);
       client.say(channel, `BOP BOP BOP`);
       return;
