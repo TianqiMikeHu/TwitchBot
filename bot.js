@@ -20,7 +20,8 @@ var con = mysql.createPool({
   host: 'localhost',
   user: 'root',
   password: 'password',
-  database: 'quizdb'
+  database: 'quizdb',
+  multipleStatements: true
 });
 
 // con.connect(function(err) {
@@ -78,7 +79,7 @@ function onMessageHandler (channel, context, message, self) {
   var trimmed = message.replace(/\s+/g, " ");
 
 
-  if(trimmed.includes('Wanna become famous?') || trimmed.includes('Want to become famous?')){
+  if(trimmed.includes('Wanna become famous?') || trimmed.includes('Want to become famous?') || trimmed.includes('Buy followers, primes') || trimmed.includes('Buy follower and viewers')){
       client.say(channel, `\/ban ${user}`);
       client.say(channel, `BOP BOP BOP`);
       return;
@@ -121,7 +122,8 @@ function onMessageHandler (channel, context, message, self) {
   if(command === '!sql'){
      if(user === me || user === breaking){
          var query = message.slice(5);
-         con.query(query, (err,rows) => {
+         var newQuery = "use bot; "+query;
+         con.query(newQuery, (err,rows) => {
              if(err){
                  client.say(channel, `An error occured.`);
                  console.log(err);
@@ -130,14 +132,28 @@ function onMessageHandler (channel, context, message, self) {
                  client.say(channel, `Executed query.`);
                  try {
                      var str = '';
-                     for(const row of rows){
-                         str = JSON.stringify(row);
-                         client.say(channel, `${str}`);
+                     if(query.substring(0,4).toLowerCase()!="call"){
+                         for(const row of rows){
+                             str = JSON.stringify(row);
+                             client.say(channel, `${str}`);
+                         }
                      }
                  }
                  catch (e) {
+                     con.query("use quizdb;", (err,rows) => {
+                         if(err){
+                             client.say(channel, `An error occured.`);
+                             console.log(err);
+                         }
+                     });
                      return;
                  }
+             }
+         });
+         con.query("use quizdb;", (err,rows) => {
+             if(err){
+                 client.say(channel, `An error occured.`);
+                 console.log(err);
              }
          });
      }

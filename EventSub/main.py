@@ -2,15 +2,16 @@ from flask import Flask, request
 import socket
 import hmac
 import hashlib
+import logging
 
 app = Flask(__name__)
 
 HOST = 'irc.twitch.tv'
 NICK = 'a_poorly_written_bot'
 PORT = 6667
-PASS = ''
+PASS = 'REDACTED'
 CHAN = 'mike_hu_0_0'
-SECRET = ''
+SECRET = 'REDACTED'
 
 
 def say(message):
@@ -101,7 +102,7 @@ def home():
             except:
                 message = "Whoa, "+user_name+" just subscribed! Thank you so much!"
             say(message)
-            
+
     elif event_type == 'channel.subscription.message':
         user_name = data.get('event', {}).get('user_name')
         tier = data.get('event', {}).get('tier')
@@ -109,8 +110,9 @@ def home():
         if user_name is not None and tier is not None:
             try:
                 tier = int(tier) // 1000
-                cumulative_months = str(cumulative_months)
-                message = "Whoa, "+user_name+" just resubscribed at tier "+str(tier)+" for "+cumulative_months+" months! Thank you so much!"
+                if cumulative_months>1:
+                    cumulative_months = str(cumulative_months)
+                    message = "Whoa, "+user_name+" just resubscribed at tier "+str(tier)+" for "+cumulative_months+" months! Thank you so much!"
             except:
                 message = "Whoa, "+user_name+" just resubscribed! Thank you so much!"
             say(message)
