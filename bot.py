@@ -16,9 +16,14 @@ SEPARATE = '*SEP*'
 
 EXCLUDE = ['@', '\'', '\'m', 'is', 'was', 'are', 'were', 'am', 'been', '\'s', 'does', 'do', 'i']
 FILTER = ['famous', 'follower', 'prime', 'viewer', 'buy']
+
 ME = "mike_hu_0_0"
 BREAKING = "breakingpointes"
+ADMIN = [ME, BREAKING]
 MODS = [ME, "a_poorly_written_bot", BREAKING, "thelastofchuck", "ebhb1210"]
+# Access Control: E - Everyone
+#                 M - Mods
+
 dbconfig = {
     "host":"localhost",
     "port":"3306",
@@ -283,6 +288,10 @@ class Bot(commands.Bot):
     def createcmd(self):
         if len(self.args)<3:
             return "Usage: !createcmd [name] [response]"
+        myquery = 'select * from bot.commands where command_name=%s'
+        result = self.query(myquery, False, (self.args[1],))
+        if len(result)>0:
+            return "This command already exists."
         myquery = 'call bot.createcmd(%s, %s)'
         self.query(myquery, True, (self.args[1], ' '.join(self.args[2:])))
         return "Done"
@@ -290,6 +299,10 @@ class Bot(commands.Bot):
     def editcmd(self):
         if len(self.args)<3:
             return "Usage: !editcmd [name] [response]"
+        myquery = 'select * from bot.commands where command_name=%s'
+        result = self.query(myquery, False, (self.args[1],))
+        if len(result)==0:
+            return "This command does not exist."
         myquery = 'call bot.editcmd(%s, %s)'
         self.query(myquery, True, (self.args[1], ' '.join(self.args[2:])))
         return "Done"
@@ -297,8 +310,25 @@ class Bot(commands.Bot):
     def deletecmd(self):
         if len(self.args)<3:
             return "Usage: !deletecmd [name] [response]"
+        myquery = 'select * from bot.commands where command_name=%s'
+        result = self.query(myquery, False, (self.args[1],))
+        if len(result)==0:
+            return "This command does not exist."
         myquery = 'call bot.deletecmd(%s)'
         self.query(myquery, True, (self.args[1],))
+        return "Done"
+
+    def editaccess(self):
+        if len(self.args)<3:
+            return "Usage: !editaccess [name] [access]"
+        if self.args[2] not in ['E', 'M']:
+            return "Not a valid access level"
+        myquery = 'select * from bot.commands where command_name=%s'
+        result = self.query(myquery, False, (self.args[1],))
+        if len(result)==0:
+            return "This command does not exist."
+        myquery = 'call bot.editaccess(%s, %s)'
+        self.query(myquery, True, (self.args[1], self.args[2]))
         return "Done"
         
 
@@ -363,7 +393,7 @@ class Bot(commands.Bot):
 
         # Manual SQL Operation
         if command=='!sql':
-            if user==ME or user==BREAKING:
+            if user in ADMIN:
                 try:
                     myquery = msg.content[5:]   # slicing off "!sql "
 
@@ -392,11 +422,14 @@ class Bot(commands.Bot):
 
 
         # Now retrieve commands
-        myquery = 'SELECT response FROM bot.commands WHERE command_name = %s'
+        myquery = 'SELECT response, access FROM bot.commands WHERE command_name = %s'
         try:
             result = self.query(myquery, False, (command,))
             if len(result)>0:
                 response = result[0][0]
+                access = result[0][1]
+                if access=='M' and user not in MODS:
+                    return "This action is restricted to mods only."
                 
                 # EVAL special case
                 index = 0
