@@ -6,8 +6,9 @@ from dotenv import load_dotenv
 import re
 import pos
 import mysql.connector.pooling
-import shlex
+import requests
 import quizstruct
+import difflib
 
 # Delimiters:
 EVAL = '@#'
@@ -68,6 +69,10 @@ class Bot(commands.Bot):
         self.args = []
         self.channel = None
         self.quiz = quizstruct.Quiz()
+        self.header = {"Client-ID": os.getenv('CLIENTID'), 
+                "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN')), 
+                "Content-Type":"application/json"}
+
 
     async def event_ready(self):
         print("bot is ready")
@@ -330,6 +335,71 @@ class Bot(commands.Bot):
         myquery = 'call bot.editaccess(%s, %s)'
         self.query(myquery, True, (self.args[1], self.args[2]))
         return "Done"
+
+    def getclip(self):
+        if len(self.args)<3:
+            return "Usage: !getclip [user] [key words]"
+
+        # Get user ID from name
+        r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(self.args[1]), headers=self.header)
+        if r.status_code!=200:
+            print(r.status_code)
+            return "Status code is not 200"
+        data = r.json()
+        if len(data.get('data'))==0:
+            return "User not found"
+        id = data.get('data')[0].get('id')
+
+
+        key = ' '.join(self.args[2:])
+        keyL = key.lower().split()
+        limit = 20      # We're only gonna search 20*50 = 1000 clips
+
+        # Get top clips
+        r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50".format(id), headers=self.header)
+        while 1:
+            if r.status_code!=200:
+                print(r.status_code)
+                return "Status code is not 200"
+            data = r.json()
+            pagination = data.get('pagination').get('cursor')
+            if pagination is None or pagination=='':
+                return "No result (end of pages)"
+
+            # Put into a dictionary
+            clips = {}
+            for item in data.get('data'):
+                title = item.get('title')
+                link = item.get('url')
+                if title is None or link is None:
+                    continue
+                clips[title] = link
+
+
+            # Check if the key words are all present
+            for title in list(clips.keys()):
+                titleL = title.lower()
+                passed = True
+                for k in keyL:
+                    if k not in titleL:
+                        passed = False
+                        break
+                if passed:
+                    return "Best match: {0}".format(clips.get(title))
+
+            
+            # Use difflib if still inconclusive
+            result = difflib.get_close_matches(key, list(clips.keys()))
+
+            if len(result)!=0:
+                 return "Best match: {0}".format(clips.get(result[0]))
+
+            limit-=1
+            if limit==0:
+                return "No result (limit reached)"
+
+            # Continue from pagination index
+            r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50&after={1}".format(id, pagination), headers=self.header)
         
 
 
@@ -489,7 +559,7 @@ class Bot(commands.Bot):
         return
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     print("Do you wish to enable POS tagging function? [y/n]")
     answer = input()
     if answer.lower() is not "y":
