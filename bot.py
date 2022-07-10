@@ -16,7 +16,8 @@ SUBQUERY = '$%'
 SEPARATE = '*SEP*'
 
 EXCLUDE = ['@', '\'', '\'m', 'is', 'was', 'are', 'were', 'am', 'been', '\'s', 'does', 'do', 'i']
-FILTER = ['famous', 'follower', 'prime', 'viewer', 'buy']
+FILTER = ['famous', 'follower', 'prime', 'viewer', 'buy', 'subscriber']
+DENY = ['sudo', 'import']
 
 ME = "mike_hu_0_0"
 BREAKING = "breakingpointes"
@@ -110,9 +111,9 @@ class Bot(commands.Bot):
     # Determine if a user wants to implicitly target themselves
     def my_name(self):
         if len(self.args)>1:
-            if self.args[1][0]=='@':
+            if self.args[1][0]=='@':    # Slice off @
                 self.args[1] = self.args[1][1:]
-            return self.args[1]
+            return self.args[1]     # The first argument is the name
         else:
             return self.author
 
@@ -294,33 +295,33 @@ class Bot(commands.Bot):
         if len(self.args)<3:
             return "Usage: !createcmd [name] [response]"
         myquery = 'select * from bot.commands where command_name=%s'
-        result = self.query(myquery, False, (self.args[1],))
+        result = self.query(myquery, False, (self.args[1].lower(),))
         if len(result)>0:
             return "This command already exists."
         myquery = 'call bot.createcmd(%s, %s)'
-        self.query(myquery, True, (self.args[1], ' '.join(self.args[2:])))
+        self.query(myquery, True, (self.args[1].lower(), ' '.join(self.args[2:])))
         return "Done"
 
     def editcmd(self):
         if len(self.args)<3:
             return "Usage: !editcmd [name] [response]"
         myquery = 'select * from bot.commands where command_name=%s'
-        result = self.query(myquery, False, (self.args[1],))
+        result = self.query(myquery, False, (self.args[1].lower(),))
         if len(result)==0:
             return "This command does not exist."
         myquery = 'call bot.editcmd(%s, %s)'
-        self.query(myquery, True, (self.args[1], ' '.join(self.args[2:])))
+        self.query(myquery, True, (self.args[1].lower(), ' '.join(self.args[2:])))
         return "Done"
 
     def deletecmd(self):
-        if len(self.args)<3:
-            return "Usage: !deletecmd [name] [response]"
+        if len(self.args)<2:
+            return "Usage: !deletecmd [name]"
         myquery = 'select * from bot.commands where command_name=%s'
-        result = self.query(myquery, False, (self.args[1],))
+        result = self.query(myquery, False, (self.args[1].lower(),))
         if len(result)==0:
             return "This command does not exist."
         myquery = 'call bot.deletecmd(%s)'
-        self.query(myquery, True, (self.args[1],))
+        self.query(myquery, True, (self.args[1].lower(),))
         return "Done"
 
     def editaccess(self):
@@ -329,11 +330,11 @@ class Bot(commands.Bot):
         if self.args[2] not in ['E', 'M']:
             return "Not a valid access level"
         myquery = 'select * from bot.commands where command_name=%s'
-        result = self.query(myquery, False, (self.args[1],))
+        result = self.query(myquery, False, (self.args[1].lower(),))
         if len(result)==0:
             return "This command does not exist."
         myquery = 'call bot.editaccess(%s, %s)'
-        self.query(myquery, True, (self.args[1], self.args[2]))
+        self.query(myquery, True, (self.args[1].lower(), self.args[2]))
         return "Done"
 
     def getclip(self):
@@ -344,10 +345,10 @@ class Bot(commands.Bot):
         r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(self.args[1]), headers=self.header)
         if r.status_code!=200:
             print(r.status_code)
-            return "Status code is not 200"
+            return "Error: status code is not 200"
         data = r.json()
         if len(data.get('data'))==0:
-            return "User not found"
+            return "Error: ser not found"
         id = data.get('data')[0].get('id')
 
 
@@ -360,7 +361,7 @@ class Bot(commands.Bot):
         while 1:
             if r.status_code!=200:
                 print(r.status_code)
-                return "Status code is not 200"
+                return "Error: status code is not 200"
             data = r.json()
             pagination = data.get('pagination').get('cursor')
             if pagination is None or pagination=='':
@@ -389,7 +390,7 @@ class Bot(commands.Bot):
 
             
             # Use difflib if still inconclusive
-            result = difflib.get_close_matches(key, list(clips.keys()))
+            result = difflib.get_close_matches(key, list(clips.keys()), cutoff=0.7)
 
             if len(result)!=0:
                  return "Best match: {0}".format(clips.get(result[0]))
@@ -400,7 +401,50 @@ class Bot(commands.Bot):
 
             # Continue from pagination index
             r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50&after={1}".format(id, pagination), headers=self.header)
+
+
+    # Check out @#self.my_name()@# at https://www.twitch.tv/@#self.my_name().lower()@# ! $%select shoutout from bot.viewers where username=%s$%
+    def so(self):
+        if len(self.args)<2:
+            return "Usage: !so [user]"
+
+        # Get user ID from name
+        r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(self.args[1]), headers=self.header)
+        if r.status_code!=200:
+            print(r.status_code)
+            return "Error: status code is not 200"
+        data = r.json()
+        if len(data.get('data'))==0:
+            return "Error: User not found"
+        id = data.get('data')[0].get('id')
+
+        # Get game name
+        r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=self.header)
+        if r.status_code!=200:
+            print(r.status_code)
+            return "Error: status code is not 200"
+        data = r.json()
+        if len(data.get('data'))==0:
+            return "Error: User not found"
+        broadcaster_name = data.get('data')[0].get('broadcaster_name')
+        game_name = data.get('data')[0].get('game_name')
+        if len(game_name)<1:
+            game_name = '[no game]'
+
+        response = "Check out {0} at https://www.twitch.tv/{1} ! They were playing {2}. ".format(broadcaster_name, self.args[1].lower(), game_name)
         
+        # Get shoutout message if there is any
+        myquery = "select shoutout from bot.viewers where username=%s"
+        result = self.query(myquery, False, (self.args[1].lower(),))
+        if len(result)==0:
+            result = ''
+        else:
+            result = result[0][0]
+
+        response+=result
+
+        return response
+
 
 
     ###########################################################################3
@@ -434,7 +478,7 @@ class Bot(commands.Bot):
                 # Check bot filter
                 ban = self.filter(lowered)
                 if ban:
-                    await self.channel.send("\/ban {0}".format(user))
+                    await self.channel.send("/ban {0}".format(user))
                     await self.channel.send("BOP BOP BOP")
                     return
                 # Okay not a follower bot
@@ -490,6 +534,11 @@ class Bot(commands.Bot):
         else:
             return
 
+        # Some extra precautions
+        for word in DENY:
+            if word in lowered:
+                return
+
 
         # Now retrieve commands
         myquery = 'SELECT response, access FROM bot.commands WHERE command_name = %s'
@@ -499,7 +548,8 @@ class Bot(commands.Bot):
                 response = result[0][0]
                 access = result[0][1]
                 if access=='M' and user not in MODS:
-                    return "This action is restricted to mods only."
+                    await self.channel.send("This action is restricted to mods only.")
+                    return 
                 
                 # EVAL special case
                 index = 0
