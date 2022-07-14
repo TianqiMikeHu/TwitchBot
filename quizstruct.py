@@ -147,7 +147,7 @@ class Quiz():
             return None, None
 
 
-    def no(self):
+    def no_helper(self):
         if self.quiz_state==2:
             self.quiz_state = 3
             return "Part 2:"+SEPARATE+self.parts[2], False
@@ -161,7 +161,7 @@ class Quiz():
             return None, None
 
 
-    def yes(self):
+    def yes_helper(self):
         if self.quiz_state==2:
             self.score+=10
             self.quiz_state = 3
