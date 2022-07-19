@@ -3,6 +3,9 @@ EVAL = '@#'
 SUBQUERY = '$%'
 SEPARATE = '*SEP*'
 
+BRACKET_L = '${'
+BRACKET_R = '}'
+
 EXCLUDE = ['@', '\'', '\'m', 'is', 'was', 'are', 'were', 'am', 'been', '\'s', 'does', 'do', 'i']
 DENY = ['sudo', 'import']
 

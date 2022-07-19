@@ -17,3 +17,13 @@ def updatepb(attributes):
 
 def manifest(attributes):
     return ' '.join(attributes['args'][1:])
+
+def se(attributes):
+    if len(attributes['args'])<3:
+        return "Usage: !se [streamer] ![command]"
+    return attributes['scrapper'].se_handler(attributes['args'][1], attributes['args'][2], attributes['author'], attributes['args'][2:])
+
+def se_clear(attributes):
+    if len(attributes['args'])<2:
+        return "Usage: !se_clear [streamer]"
+    return attributes['scrapper'].se_clear(attributes['args'][1])

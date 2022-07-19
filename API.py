@@ -3,19 +3,27 @@ import requests
 import difflib
 
 
+# return values: message, status code
+def broadcaster_ID(name, header):
+    r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=header)
+    if r.status_code!=200:
+        print(r.status_code)
+        return "Error: status code is not 200", 2
+    data = r.json()
+    if len(data.get('data'))==0:
+        return "Error: User not found", 1
+    id = data.get('data')[0].get('id')
+    return id, 0
+
+
 def getclip(attributes):
     if len(attributes['args'])<3:
         return "Usage: !getclip [user] [key words]"
 
     # Get user ID from name
-    r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(attributes['args'][1]), headers=attributes['header'])
-    if r.status_code!=200:
-        print(r.status_code)
-        return "Error: status code is not 200"
-    data = r.json()
-    if len(data.get('data'))==0:
-        return "Error: ser not found"
-    id = data.get('data')[0].get('id')
+    id, status = broadcaster_ID(attributes['args'][1], attributes['header'])
+    if status:      # It's an error message
+        return id
 
 
     key = ' '.join(attributes['args'][2:])
@@ -74,14 +82,9 @@ def so(attributes):
         return "Usage: !so [user]"
 
     # Get user ID from name
-    r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(attributes['args'][1]), headers=attributes['header'])
-    if r.status_code!=200:
-        print(r.status_code)
-        return "Error: status code is not 200"
-    data = r.json()
-    if len(data.get('data'))==0:
-        return "Error: User not found"
-    id = data.get('data')[0].get('id')
+    id, status = broadcaster_ID(attributes['args'][1], attributes['header'])
+    if status:      # It's an error message
+        return id
 
     # Get game name
     r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=attributes['header'])
@@ -118,14 +121,9 @@ def title(attributes):
         user = attributes['args'][1]
 
     # Get user ID from name
-    r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(user), headers=attributes['header'])
-    if r.status_code!=200:
-        print(r.status_code)
-        return "Error: status code is not 200"
-    data = r.json()
-    if len(data.get('data'))==0:
-        return "Error: User not found"
-    id = data.get('data')[0].get('id')
+    id, status = broadcaster_ID(user, attributes['header'])
+    if status:      # It's an error message
+        return id
 
     # Get title
     r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=attributes['header'])

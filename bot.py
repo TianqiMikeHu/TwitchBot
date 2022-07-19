@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import re
 import pos
 import quizstruct
+import web_scrapper
 
 from admin import *
 from quiz_functions import *
@@ -54,6 +55,7 @@ class Bot(commands.Bot):
         self.header = {"Client-ID": os.getenv('CLIENTID'), 
                 "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN')), 
                 "Content-Type":"application/json"}
+        self.scrapper = web_scrapper.Web_Scrapper()
 
 
     async def event_ready(self):
@@ -204,14 +206,13 @@ class Bot(commands.Bot):
                 index = 0
                 index2 = 0
                 while 1:
-                    index = response.find(EVAL, index2)
+                    index = response.find(EVAL)
                     if index!=-1:
                         index2 = response.find(EVAL, index+1)
                         eval1 = self.redirect(response[index+len(EVAL):index2])
                         if eval1 is None:   # We have nothing to say
                             return
                         response = response[0:index]+eval1+response[index2+len(EVAL):]
-                        index2+=1
                     else:
                         break
 
@@ -254,7 +255,7 @@ class Bot(commands.Bot):
                         await self.channel.send(response)
                         return
         except mysql.connector.Error as e:
-            await self.channelx.send("An error occured")
+            await self.channel.send("An error occured")
         return
 
 
