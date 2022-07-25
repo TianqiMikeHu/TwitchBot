@@ -24,9 +24,9 @@ def quiz_start(attributes):
     try:
         difficulty = int(attributes['args'][2])
     except ValueError:
-        return "Difficulty must be an integer"
+        return "Difficulty must be an integer."
     if difficulty<1 or difficulty>9:
-        return "Invalid difficulty"
+        return "Invalid difficulty."
 
     # Categories
     if category=='random':

@@ -3,15 +3,16 @@ import requests
 import difflib
 
 
+
 # return values: message, status code
 def broadcaster_ID(name, header):
     r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=header)
     if r.status_code!=200:
         print(r.status_code)
-        return "Error: status code is not 200", 2
+        return "[ERROR]: status code is not 200", 2
     data = r.json()
     if len(data.get('data'))==0:
-        return "Error: User not found", 1
+        return "[ERROR]: User not found", 1
     id = data.get('data')[0].get('id')
     return id, 0
 
@@ -35,7 +36,7 @@ def getclip(attributes):
     while 1:
         if r.status_code!=200:
             print(r.status_code)
-            return "Error: status code is not 200"
+            return "[ERROR]: status code is not 200"
         data = r.json()
         pagination = data.get('pagination').get('cursor')
         if pagination is None or pagination=='':
@@ -90,10 +91,10 @@ def so(attributes):
     r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=attributes['header'])
     if r.status_code!=200:
         print(r.status_code)
-        return "Error: status code is not 200"
+        return "[ERROR]: status code is not 200"
     data = r.json()
     if len(data.get('data'))==0:
-        return "Error: User not found"
+        return "[ERROR]: User not found"
     broadcaster_name = data.get('data')[0].get('broadcaster_name')
     game_name = data.get('data')[0].get('game_name')
     if len(game_name)<1:
@@ -129,10 +130,26 @@ def title(attributes):
     r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=attributes['header'])
     if r.status_code!=200:
         print(r.status_code)
-        return "Error: status code is not 200"
+        return "[ERROR]: status code is not 200"
     data = r.json()
     if len(data.get('data'))==0:
-        return "Error: User not found"
+        return "[ERROR]: User not found"
     title_name = data.get('data')[0].get('title')
     
     return title_name
+
+
+def ls_chatters(broadcaster, header):
+    r = requests.get(url=f'https://tmi.twitch.tv/group/user/{broadcaster}/chatters', headers=header)
+    if r.status_code!=200:
+        print(r.status_code)
+        return "[ERROR]: status code is not 200"
+    data = r.json().get('chatters')
+    broadcaster = data['broadcaster']
+    vips = data['vips']
+    moderators = data['moderators']
+    staff = data['staff']
+    admins = data['admins']
+    global_mods = data['global_mods']
+    viewers = data['viewers']
+    return broadcaster+vips+moderators+staff+admins+global_mods+viewers

@@ -2,6 +2,7 @@
 EVAL = '@#'
 SUBQUERY = '$%'
 SEPARATE = '*SEP*'
+COMMAND = '!'
 
 BRACKET_L = '${'
 BRACKET_R = '}'
@@ -17,3 +18,26 @@ MODS = [ME, "a_poorly_written_bot", BREAKING, "thelastofchuck", "ebhb1210"]
 #                 M - Mods
 
 FILTER = ['famous', 'follower', 'prime', 'viewer', 'buy', 'subscriber']
+
+BLAME_LIST = ['Mike', \
+            'the bot :(', \
+            'Breaking', \
+            'Chuck', \
+            'Evie', \
+            'Aether', \
+            'Bins', \
+            'Cres', \
+            'Emmie', \
+            'Crystal', \
+            'Georgia', \
+            'Tano', \
+            'Kim', \
+            'Joanna', \
+            'Juggalo', \
+            'Kama', \
+            'Mikki', \
+            'Shadow', \
+            'Syush', \
+            'Tufy', \
+            'ubo', \
+            'CTG']

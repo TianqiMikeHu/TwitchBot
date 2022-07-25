@@ -11,6 +11,7 @@ import csv
 import random
 import shlex
 import re
+import API
 from constants import *
 
 
@@ -68,7 +69,7 @@ class Web_Scrapper():
                     self.se_defaults.append(row[0])
             return None
         else:
-            return "Error: failed to clear cache"
+            return "[ERROR]: failed to clear cache"
 
 
     def se_get_command(self, streamer_name):
@@ -110,7 +111,7 @@ class Web_Scrapper():
 
 
     # Note: args start from the requested command. e.g. For '!se breakingpointes !manifest plant', args is ['!manifest', 'plant']
-    def se_handler(self, streamer_name, command_name, author, args):
+    def se_handler(self, streamer_name, command_name, author, args, header):
         streamer_name = streamer_name.lower()
         command_name = command_name.lower()
         if streamer_name == 'streamelements':
@@ -121,9 +122,9 @@ class Web_Scrapper():
         if commands is not None:
             val = commands.get(command_name)
             if val is not None:
-                return self.se_parse(val, author, args)
+                return self.se_parse(val, author, args, streamer_name, header)
             else:
-                return "Error: command not found"
+                return "[ERROR]: command not found"
 
         # Check local disk
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
@@ -132,7 +133,7 @@ class Web_Scrapper():
 
         # If still not on disk, declare failure
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
-            return "Error: failed to load to memory. Likely subprocess timed out."
+            return "[ERROR]: failed to load to memory. Likely subprocess timed out."
 
 
         # Load commands on disk
@@ -143,12 +144,12 @@ class Web_Scrapper():
                 self.se_dict[streamer_name][row[0]] = row[1]
         val = self.se_dict[streamer_name].get(command_name)
         if val is not None:
-            return self.se_parse(val, author, args)
+            return self.se_parse(val, author, args, streamer_name, header)
         else:
-            return "Error: command not found"
+            return "[ERROR]: command not found"
 
 
-    def se_parse(self, text, author, args):
+    def se_parse(self, text, author, args, streamer_name, header):
         index = 0
         index2 = 0
         while 1:
@@ -173,6 +174,8 @@ class Web_Scrapper():
                         return None
                     if isinstance(eval1, list):
                         eval1 = ' '.join(eval1)
+                elif se_code[0]=='random.chatter':
+                    eval1 = random.choice(API.ls_chatters(streamer_name, header))
                 elif se_code[0]=='repeat':
                     num = int(se_code[1])
                     eval1 = ' '.join([se_code[2]]*num)

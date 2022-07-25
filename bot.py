@@ -12,7 +12,6 @@ from quiz_functions import *
 from other import *
 from API import *
 
-
 is_POSTAG = None
 appearance_list = []
 
@@ -172,7 +171,7 @@ class Bot(commands.Bot):
                         for row in result:
                             await self.channel.send(str(row))
                 except mysql.connector.Error as e:
-                    await self.channel.send("An error occured")
+                    await self.channel.send("[ERROR]: MySQL")
             else:
                 await self.channel.send("You are not authorized to do this.")
             return
@@ -180,9 +179,7 @@ class Bot(commands.Bot):
 
 
         # regex check so that it doesn't crash later
-        if re.match('^[a-zA-Z0-9\t\n\s,.~/<>?;:\"\'`!@#$%^&*()\[\]\{\}_+=|\\-]+$', msg.content):
-            pass
-        else:
+        if not re.match('^[a-zA-Z0-9\t\n\s,.~/<>?;:\"\'`!@#$%^&*()\[\]\{\}_+=|\\-]+$', msg.content):
             return
 
         # Some extra precautions
@@ -255,7 +252,12 @@ class Bot(commands.Bot):
                         await self.channel.send(response)
                         return
         except mysql.connector.Error as e:
-            await self.channel.send("An error occured")
+            await self.channel.send("[ERROR]: MySQL")
+        
+        # Try to infer SE alias
+        response = se_alias(self.__dict__)
+        if response is not None:
+            await self.channel.send(response)
         return
 
 
