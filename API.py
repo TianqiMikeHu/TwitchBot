@@ -1,7 +1,9 @@
 from tools import *
 import requests
 import difflib
-
+import urllib.parse
+import html2text
+import nltk.data
 
 
 # return values: message, status code
@@ -153,3 +155,67 @@ def ls_chatters(broadcaster, header):
     global_mods = data['global_mods']
     viewers = data['viewers']
     return broadcaster+vips+moderators+staff+admins+global_mods+viewers
+
+
+def wiki(attributes):
+    if len(attributes['args'])<2:
+        return "Usage: !wiki [query]"
+    arg = ' '.join(attributes['args'][1:])
+    safe_string = urllib.parse.quote_plus(arg)
+    r = requests.get(url=f'https://en.wikipedia.org/w/api.php?action=query&generator=search&format=json&gsrsearch={safe_string}&gsrlimit=1&prop=extracts|categories')
+    html = r.json().get('query')
+
+    if html is None:
+        return "[ERROR]: The page does not exist."
+    else:
+        html = html.get('pages')
+        key = next(iter(html))
+        category = html.get(key).get('categories')
+        if 'disambiguation' in category[0]['title']:
+            return "[ERROR]: Reached disambiguation page."
+        else:
+            page = html.get(key).get('extract')
+            text = html2text.html2text(page)
+            tokenizer = nltk.data.load('./english.pickle')
+            sentences = (tokenizer.tokenize(text))
+            response = ''
+            count = 0
+            length = 0
+            for i in range(len(sentences)):               
+                if length+len(sentences[i])>300:
+                    count+=1
+                    length = 0
+                    if count==2:
+                        break
+                    response+=SEPARATE
+                length+=len(sentences[i])
+                response+=sentences[i]
+                response+=' '
+            return response
+
+
+def wiki_random(attributes):
+    r = requests.get(url=f'https://en.wikipedia.org/w/api.php?format=json&action=query&generator=random&grnnamespace=0&prop=extracts')
+
+    html = r.json().get('query')
+    html = html.get('pages')
+    key = next(iter(html))
+    page = html.get(key).get('extract')
+    text = html2text.html2text(page)
+    tokenizer = nltk.data.load('./english.pickle')
+    sentences = (tokenizer.tokenize(text))
+
+    response = ''
+    count = 0
+    length = 0
+    for i in range(len(sentences)):               
+        if length+len(sentences[i])>300:
+            count+=1
+            length = 0
+            if count==2:
+                break
+            response+=SEPARATE
+        length+=len(sentences[i])
+        response+=sentences[i]
+        response+=' '
+    return response
