@@ -5,8 +5,10 @@ import urllib.parse
 import html2text
 import nltk.data
 
+tokenizer = nltk.data.load('./english.pickle')
 
-# return values: message, status code
+
+## return values: message, status code
 def broadcaster_ID(name, header):
     r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=header)
     if r.status_code!=200:
@@ -19,6 +21,7 @@ def broadcaster_ID(name, header):
     return id, 0
 
 
+## Retrieves a clip given the username and key words, best effort match
 def getclip(attributes):
     if len(attributes['args'])<3:
         return "Usage: !getclip [user] [key words]"
@@ -70,7 +73,7 @@ def getclip(attributes):
         result = difflib.get_close_matches(key, list(clips.keys()), cutoff=0.7)
 
         if len(result)!=0:
-                return "Best match: {0}".format(clips.get(result[0]))
+            return "Best match: {0}".format(clips.get(result[0]))
 
         limit-=1
         if limit==0:
@@ -80,6 +83,7 @@ def getclip(attributes):
         r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50&after={1}".format(id, pagination), headers=attributes['header'])
 
 
+## Shoutout the user
 def so(attributes):
     if len(attributes['args'])<2:
         return "Usage: !so [user]"
@@ -117,6 +121,7 @@ def so(attributes):
     return response
 
 
+## Get stream title of any channel
 def title(attributes):
     if len(attributes['args'])<2:
         user = ME
@@ -141,12 +146,14 @@ def title(attributes):
     return title_name
 
 
+## List all chatters in a channel
 def ls_chatters(broadcaster, header):
     r = requests.get(url=f'https://tmi.twitch.tv/group/user/{broadcaster}/chatters', headers=header)
     if r.status_code!=200:
         print(r.status_code)
         return "[ERROR]: status code is not 200"
     data = r.json().get('chatters')
+    # Aggregate all types of chatters
     broadcaster = data['broadcaster']
     vips = data['vips']
     moderators = data['moderators']
@@ -154,14 +161,17 @@ def ls_chatters(broadcaster, header):
     admins = data['admins']
     global_mods = data['global_mods']
     viewers = data['viewers']
+    # return combined list
     return broadcaster+vips+moderators+staff+admins+global_mods+viewers
 
 
+## Search something from Wikipedia
 def wiki(attributes):
     if len(attributes['args'])<2:
         return "Usage: !wiki [query]"
-    arg = ' '.join(attributes['args'][1:])
-    safe_string = urllib.parse.quote_plus(arg)
+    arg = ' '.join(attributes['args'][1:])  # the query
+    safe_string = urllib.parse.quote_plus(arg)  # url encode
+    # I don't fully understand the following query parameters, but it does a very good closest match
     r = requests.get(url=f'https://en.wikipedia.org/w/api.php?action=query&generator=search&format=json&gsrsearch={safe_string}&gsrlimit=1&prop=extracts|categories')
     html = r.json().get('query')
 
@@ -169,20 +179,23 @@ def wiki(attributes):
         return "[ERROR]: The page does not exist."
     else:
         html = html.get('pages')
-        key = next(iter(html))
-        category = html.get(key).get('categories')
-        if 'disambiguation' in category[0]['title']:
+        key = next(iter(html))  # needed because we don't actually know the page id (the key to index)
+        category = html.get(key).get('categories')      # Check category to see if it's a disambiguation page
+        if 'disambiguation' in category[0]['title']:    # We will not resolve disambiguation if wikipedia cannot
             return "[ERROR]: Reached disambiguation page."
         else:
             page = html.get(key).get('extract')
-            text = html2text.html2text(page)
-            tokenizer = nltk.data.load('./english.pickle')
-            sentences = (tokenizer.tokenize(text))
+            text = html2text.html2text(page)    # covnert html to text
+            subsection = text.find('##')        # Limit result and discard subsections
+            if subsection!=-1:
+                text = text[:subsection]
+            global tokenizer
+            sentences = (tokenizer.tokenize(text))      # because we want to return complete sentences
             response = ''
             count = 0
             length = 0
             for i in range(len(sentences)):               
-                if length+len(sentences[i])>300:
+                if length+len(sentences[i])>300:    # Each message from the bot is capped at 300 chars, and 2 messages max
                     count+=1
                     length = 0
                     if count==2:
@@ -194,6 +207,8 @@ def wiki(attributes):
             return response
 
 
+## Fetches random article from Wikipedia
+# Similar logic as the above function, see comments there
 def wiki_random(attributes):
     r = requests.get(url=f'https://en.wikipedia.org/w/api.php?format=json&action=query&generator=random&grnnamespace=0&prop=extracts')
 
@@ -202,7 +217,11 @@ def wiki_random(attributes):
     key = next(iter(html))
     page = html.get(key).get('extract')
     text = html2text.html2text(page)
-    tokenizer = nltk.data.load('./english.pickle')
+    subsection = text.find('##')
+    if subsection!=-1:
+        text = text[:subsection]
+    
+    global tokenizer
     sentences = (tokenizer.tokenize(text))
 
     response = ''

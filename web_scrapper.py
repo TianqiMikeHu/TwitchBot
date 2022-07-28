@@ -42,6 +42,7 @@ class Web_Scrapper():
             self.se_clear()
 
 
+    ## Used to programmatically delete all SE cache, or delete a specified one
     def se_clear(self, name=None):   
         # Remove local files
         if name is None:
@@ -72,18 +73,23 @@ class Web_Scrapper():
             return "[ERROR]: failed to clear cache"
 
 
+    ## Launches Selenium browser to retrieve a commands page
+    # Should be ran within se_timeout_manager so that it can be killed if it takes too long
     def se_get_command(self, streamer_name):
         driver = webdriver.Chrome(options=self.chrome_options)
 
         driver.get(f"https://streamelements.com/{streamer_name}/commands")
 
         try:
+            # Wait until the rows of the table load (class: md-cell)
             WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'md-cell')))
         except:
+            # Time out after 10 seconds
             print("Web driver timed out")
             driver.close()
             return
 
+        # Use BeautifulSoup to gather the cells into list
         soup = BeautifulSoup(driver.page_source, 'html.parser')
         driver.close()
         cells = [x.getText().rstrip() for x in soup.find_all("td", {"class", "md-cell"})] 
@@ -91,15 +97,19 @@ class Web_Scrapper():
         index = 0
         tempBuffer = []
         while index<len(cells):
+            # filter through SE default commands
             if cells[index] not in self.se_defaults:
                 tempBuffer.append([cells[index], cells[index+1]])
+            # We only need 2 out of every 3 rows from the result of BeautifulSoup
             index+=3
 
+        # Write as csv
         with open(f'SE_Cache/{streamer_name}.txt', 'w', newline='', encoding='utf-8') as csvfile:
             mywriter = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             mywriter.writerows(tempBuffer)
 
 
+    ## Exactly what it looks like. Runs se_get_command and kills it if needed
     def se_timeout_manager(self, streamer_name):
         p = multiprocessing.Process(target=self.se_get_command, args=(streamer_name,))
         p.start()
@@ -110,6 +120,7 @@ class Web_Scrapper():
             p.join()
 
 
+    ## Main handler to retrieve a SE command
     # Note: args start from the requested command. e.g. For '!se breakingpointes !manifest plant', args is ['!manifest', 'plant']
     def se_handler(self, streamer_name, command_name, author, args, header):
         streamer_name = streamer_name.lower()
@@ -149,24 +160,32 @@ class Web_Scrapper():
             return "[ERROR]: command not found"
 
 
+    ## Analyze and parse SE syntax
     def se_parse(self, text, author, args, streamer_name, header):
         index = 0
         index2 = 0
         while 1:
+            # Find code that need to be evaluated, starting from the "innermost" one
             index2 = text.find(BRACKET_R)
             index = text.rfind(BRACKET_L, 0, index2-1)
 
-            if index!=-1 and index2!=-1:
+            if index!=-1 and index2!=-1:    # Found
                 eval1 = text[index+len(BRACKET_L):index2]
-                se_code = shlex.split(eval1)
-                if se_code[0]=='random.pick':
+                se_code = shlex.split(eval1)    # preserving quotes
+
+                # pick from the following choices
+                if se_code[0]=='random.pick':   
                     eval1 = random.choice(se_code[1:])
-                elif se_code[0]=='user' or se_code[0]=='sender':
+
+                # the user/target's name
+                elif se_code[0]=='user' or se_code[0]=='sender':    
                     if len(se_code)>1:
                         eval1 = se_code[1]
                     else:
                         eval1 = author
-                elif re.match("([0-9]+:?[0-9]*)|([0-9]*:?[0-9]+)", se_code[0]):
+                # slicing notation detected
+
+                elif re.match("([0-9]+:?[0-9]*)|([0-9]*:?[0-9]+)", se_code[0]):     
                     try:
                         eval1 = eval(f'args[{se_code[0]}]')
                     except IndexError:  # Index out of range, say nothing
@@ -174,12 +193,17 @@ class Web_Scrapper():
                         return None
                     if isinstance(eval1, list):
                         eval1 = ' '.join(eval1)
+
+                # Use random chatter API call
                 elif se_code[0]=='random.chatter':
                     eval1 = random.choice(API.ls_chatters(streamer_name, header))
+
+                # Kama Kama Kama Kama
                 elif se_code[0]=='repeat':
                     num = int(se_code[1])
                     eval1 = ' '.join([se_code[2]]*num)
                 else:
+                    # random range of number
                     groups = re.match("random.([0-9]+)-([0-9]+)", se_code[0])
                     if groups:
                         groups = groups.groups()
@@ -189,6 +213,7 @@ class Web_Scrapper():
                         except ValueError:
                             return None
                     else:
+                        # else do not resolve, we don't know what this is
                         eval1 = '['+eval1+']'
 
 
