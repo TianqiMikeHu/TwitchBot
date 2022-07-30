@@ -13,22 +13,37 @@ import shlex
 import re
 import API
 from constants import *
-
+# import time
 
 class Web_Scrapper():
     def __init__(self):
         # Setting options for a headless Chrome browser
         chrome_options = Options()
+        prefs = {'profile.default_content_setting_values': {'cookies': 2, 'images': 2,
+                            'plugins': 2, 'popups': 2, 'geolocation': 2, 
+                            'notifications': 2, 'auto_select_certificate': 2, 'fullscreen': 2, 
+                            'mouselock': 2, 'mixed_script': 2, 'media_stream': 2, 
+                            'media_stream_mic': 2, 'media_stream_camera': 2, 'protocol_handlers': 2, 
+                            'ppapi_broker': 2, 'automatic_downloads': 2, 'midi_sysex': 2, 
+                            'push_messaging': 2, 'ssl_cert_decisions': 2, 'metro_switch_to_desktop': 2, 
+                            'protected_media_identifier': 2, 'app_banner': 2, 'site_engagement': 2, 
+                            'durable_storage': 2}}
+        chrome_options.add_experimental_option('prefs', prefs)
         chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("start-maximized")
+        chrome_options.add_argument("disable-infobars")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.page_load_strategy = 'none'
         # Suppress JS warnings
         chrome_options.add_argument("--log-level=3")
         # Hide the fact that we are using a headless browser
         userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36"
         chrome_options.add_argument(f'user-agent={userAgent}')
         self.chrome_options = chrome_options
+        self.driver = webdriver.Chrome(options=self.chrome_options)
 
         self.se_dict = {}
         self.se_defaults = []
@@ -76,22 +91,25 @@ class Web_Scrapper():
     ## Launches Selenium browser to retrieve a commands page
     # Should be ran within se_timeout_manager so that it can be killed if it takes too long
     def se_get_command(self, streamer_name):
-        driver = webdriver.Chrome(options=self.chrome_options)
+        if self.driver is None:
+            self.driver = webdriver.Chrome(options=self.chrome_options)
 
-        driver.get(f"https://streamelements.com/{streamer_name}/commands")
+        self.driver.get(f"https://streamelements.com/{streamer_name}/commands")
 
         try:
             # Wait until the rows of the table load (class: md-cell)
-            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'md-cell')))
+            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'md-cell')))
         except:
             # Time out after 10 seconds
             print("Web driver timed out")
-            driver.close()
+            self.driver.close()
+            self.driver = None
             return
 
         # Use BeautifulSoup to gather the cells into list
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        driver.close()
+        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+        self.driver.close()
+        self.driver = None
         cells = [x.getText().rstrip() for x in soup.find_all("td", {"class", "md-cell"})] 
 
         index = 0
@@ -109,6 +127,7 @@ class Web_Scrapper():
             mywriter.writerows(tempBuffer)
 
 
+    ### WARNING: subprocess was causing too much performance hit that I decided it's not worth it
     ## Exactly what it looks like. Runs se_get_command and kills it if needed
     def se_timeout_manager(self, streamer_name):
         p = multiprocessing.Process(target=self.se_get_command, args=(streamer_name,))
@@ -138,13 +157,15 @@ class Web_Scrapper():
                 return "[ERROR]: command not found"
 
         # Check local disk
+        # starttime = time.time()
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
             # Web request if not on disk
-            self.se_timeout_manager(streamer_name)
+            self.se_get_command(streamer_name)
+        # print(time.time()-starttime)
 
         # If still not on disk, declare failure
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
-            return "[ERROR]: failed to load to memory. Likely subprocess timed out."
+            return "[ERROR]: failed to load to memory. Likely a timed out."
 
 
         # Load commands on disk
@@ -224,10 +245,10 @@ class Web_Scrapper():
 
 
 # For testing purposes
-# if __name__ == '__main__':
-#     # files = glob.glob('./SE_Cache/*')
-#     # for f in files:
-#     #     os.remove(f)
-#     ws = Web_Scrapper()
-#     res = ws.se_handler('breakingpointes', '!prank3', 'Mike', ['!prank3', 'prank', 'Han'])
-#     print(res)
+if __name__ == '__main__':
+    # files = glob.glob('./SE_Cache/*')
+    # for f in files:
+    #     os.remove(f)
+    ws = Web_Scrapper()
+    res = ws.se_handler('breakingpointes', '!prank3', 'Mike', ['!prank3', 'prank', 'Han'], header=None)
+    print(res)
