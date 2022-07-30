@@ -2,6 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 import os
@@ -13,7 +14,7 @@ import shlex
 import re
 import API
 from constants import *
-# import time
+import time
 
 class Web_Scrapper():
     def __init__(self):
@@ -36,14 +37,14 @@ class Web_Scrapper():
         chrome_options.add_argument("start-maximized")
         chrome_options.add_argument("disable-infobars")
         chrome_options.add_argument("--disable-extensions")
-        chrome_options.page_load_strategy = 'none'
+        # chrome_options.page_load_strategy = 'none'
         # Suppress JS warnings
         chrome_options.add_argument("--log-level=3")
         # Hide the fact that we are using a headless browser
         userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36"
         chrome_options.add_argument(f'user-agent={userAgent}')
         self.chrome_options = chrome_options
-        self.driver = webdriver.Chrome(options=self.chrome_options)
+        self.driver = webdriver.Chrome(options=self.chrome_options)    
 
         self.se_dict = {}
         self.se_defaults = []
@@ -68,6 +69,8 @@ class Web_Scrapper():
             files = glob.glob(f'./SE_Cache/{name}.txt')
             for f in files:
                 os.remove(f)
+
+            self.se_dict.pop(name, None)
             return "Done"
 
         # Refetch SE default commands
@@ -108,8 +111,8 @@ class Web_Scrapper():
 
         # Use BeautifulSoup to gather the cells into list
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        self.driver.close()
-        self.driver = None
+        # self.driver.close()
+        # self.driver = None
         cells = [x.getText().rstrip() for x in soup.find_all("td", {"class", "md-cell"})] 
 
         index = 0
@@ -157,11 +160,11 @@ class Web_Scrapper():
                 return "[ERROR]: command not found"
 
         # Check local disk
-        # starttime = time.time()
+        starttime = time.time()
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
             # Web request if not on disk
             self.se_get_command(streamer_name)
-        # print(time.time()-starttime)
+        print(time.time()-starttime)
 
         # If still not on disk, declare failure
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
