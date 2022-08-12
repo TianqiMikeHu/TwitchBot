@@ -8,17 +8,49 @@ import nltk.data
 tokenizer = nltk.data.load('./english.pickle')
 
 
+def new_access_token():
+    token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=client_credentials"
+    r = requests.post(url=token_request)
+    token = (r.json()).get('access_token')
+    dotenv.set_key('.env', 'ACCESSTOKEN', token)
+    return token
+
+
 ## return values: message, status code
-def broadcaster_ID(name, header):
-    r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=header)
+def broadcaster_ID(name):
+    r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
     if r.status_code!=200:
-        print(r.status_code)
-        return "[ERROR]: status code is not 200", 2
+        if r.status_code!=401:
+            return f'[ERROR]: status code is {str(r.status_code)}', 2
+        else:
+            print("[ERROR]: status code is 401. Getting new access token...")
+            token = new_access_token()
+            print(f'The new access token is: {token}')
+            r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
+            if r.status_code!=200:
+                return f'[ERROR]: status code is {str(r.status_code)}', 2
     data = r.json()
     if len(data.get('data'))==0:
         return "[ERROR]: User not found", 1
     id = data.get('data')[0].get('id')
     return id, 0
+
+
+## returns game name of broadcaster
+def get_game(name):
+    id, status = broadcaster_ID(name)
+    # Get game name
+    r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=get_header())
+    if r.status_code!=200:
+        print(r.status_code)
+        return '[no game]'
+    data = r.json()
+    if len(data.get('data'))==0:
+        return '[no game]'
+    game_name = data.get('data')[0].get('game_name')
+    if len(game_name)<1:
+        game_name = '[no game]'
+    return game_name
 
 
 ## Retrieves a clip given the username and key words, best effort match
@@ -27,9 +59,11 @@ def getclip(attributes):
         return "Usage: !getclip [user] [key words]"
 
     # Get user ID from name
-    id, status = broadcaster_ID(attributes['args'][1], attributes['header'])
+    id, status = broadcaster_ID(attributes['args'][1])
     if status:      # It's an error message
         return id
+
+    header = get_header()
 
 
     key = ' '.join(attributes['args'][2:])
@@ -37,7 +71,7 @@ def getclip(attributes):
     limit = 20      # We're only gonna search 20*50 = 1000 clips
 
     # Get top clips
-    r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50".format(id), headers=attributes['header'])
+    r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50".format(id), headers=header)
     while 1:
         if r.status_code!=200:
             print(r.status_code)
@@ -80,7 +114,7 @@ def getclip(attributes):
             return "No result (limit reached)"
 
         # Continue from pagination index
-        r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50&after={1}".format(id, pagination), headers=attributes['header'])
+        r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50&after={1}".format(id, pagination), headers=header)
 
 
 ## Shoutout the user
@@ -89,12 +123,13 @@ def so(attributes):
         return "Usage: !so [user]"
 
     # Get user ID from name
-    id, status = broadcaster_ID(attributes['args'][1], attributes['header'])
+    id, status = broadcaster_ID(attributes['args'][1])
     if status:      # It's an error message
         return id
 
+
     # Get game name
-    r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=attributes['header'])
+    r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=get_header())
     if r.status_code!=200:
         print(r.status_code)
         return "[ERROR]: status code is not 200"
@@ -129,12 +164,12 @@ def title(attributes):
         user = attributes['args'][1]
 
     # Get user ID from name
-    id, status = broadcaster_ID(user, attributes['header'])
+    id, status = broadcaster_ID(user)
     if status:      # It's an error message
         return id
 
     # Get title
-    r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=attributes['header'])
+    r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=get_header())
     if r.status_code!=200:
         print(r.status_code)
         return "[ERROR]: status code is not 200"
@@ -147,8 +182,11 @@ def title(attributes):
 
 
 ## List all chatters in a channel
-def ls_chatters(broadcaster, header):
-    r = requests.get(url=f'https://tmi.twitch.tv/group/user/{broadcaster}/chatters', headers=header)
+def ls_chatters(broadcaster):
+    # Not using the return values, purely for checking the validity of the access token
+    id, status = broadcaster_ID(ME)
+
+    r = requests.get(url=f'https://tmi.twitch.tv/group/user/{broadcaster}/chatters', headers=get_header())
     if r.status_code!=200:
         print(r.status_code)
         return "[ERROR]: status code is not 200"

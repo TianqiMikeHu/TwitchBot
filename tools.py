@@ -1,5 +1,7 @@
 import mysql.connector.pooling
 from constants import *
+import dotenv
+import os
 
 
 def query(pool, myquery, commit=False, args=None):
@@ -38,3 +40,11 @@ def my_name(attributes):
         return attributes['args'][1]     # The first argument is the name
     else:
         return attributes['author']
+
+
+def get_header():
+    dotenv.load_dotenv(override=True)
+    header = {"Client-ID": os.getenv('CLIENTID'), 
+                "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN')), 
+                "Content-Type":"application/json"}
+    return header

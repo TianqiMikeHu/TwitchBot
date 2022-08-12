@@ -1,3 +1,4 @@
+from concurrent.futures import thread
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -14,7 +15,13 @@ import shlex
 import re
 import API
 from constants import *
+import threading
 import time
+import sys
+
+
+exit_event = threading.Event()
+
 
 class Web_Scrapper():
     def __init__(self):
@@ -48,6 +55,8 @@ class Web_Scrapper():
 
         self.se_dict = {}
         self.se_defaults = []
+        self.lock = threading.Lock()
+        self.thread = threading.Thread(target=self.refresh_google)
 
         if os.path.isfile('SE_Cache/streamelements.txt'):
             # Load default SE commands
@@ -56,6 +65,8 @@ class Web_Scrapper():
         else:
             # If default file not present, re-request everything
             self.se_clear()
+
+        self.thread.start()
 
 
     ## Used to programmatically delete all SE cache, or delete a specified one
@@ -91,28 +102,45 @@ class Web_Scrapper():
             return "[ERROR]: failed to clear cache"
 
 
+    def refresh_google(self):
+        while not exit_event.is_set():
+            # starttime = time.time()
+            with self.lock:
+                if self.driver is None:
+                    self.driver = webdriver.Chrome(options=self.chrome_options)
+
+                self.driver.get("https://google.com")
+            # print(f'Google: {str(time.time()-starttime)}')
+            exit_event.wait(180)
+        print("Stopping thread...")
+        sys.exit()
+
+
+
     ## Launches Selenium browser to retrieve a commands page
     # Should be ran within se_timeout_manager so that it can be killed if it takes too long
     def se_get_command(self, streamer_name):
-        if self.driver is None:
-            self.driver = webdriver.Chrome(options=self.chrome_options)
+        starttime = time.time()
+        with self.lock:
+            if self.driver is None:
+                self.driver = webdriver.Chrome(options=self.chrome_options)
 
-        self.driver.get(f"https://streamelements.com/{streamer_name}/commands")
+            self.driver.get(f"https://streamelements.com/{streamer_name}/commands")
 
-        try:
-            # Wait until the rows of the table load (class: md-cell)
-            WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'md-cell')))
-        except:
-            # Time out after 10 seconds
-            print("Web driver timed out")
-            self.driver.close()
-            self.driver = None
-            return
+            try:
+                # Wait until the rows of the table load (class: md-cell)
+                WebDriverWait(self.driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, 'md-cell')))
+            except:
+                # Time out after 10 seconds
+                print("Web driver timed out")
+                self.driver.close()
+                self.driver = None
+                return
 
-        # Use BeautifulSoup to gather the cells into list
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        # self.driver.close()
-        # self.driver = None
+            # Use BeautifulSoup to gather the cells into list
+            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+        print(f'SE: {streamer_name} : {str(time.time()-starttime)}')
+
         cells = [x.getText().rstrip() for x in soup.find_all("td", {"class", "md-cell"})] 
 
         index = 0
@@ -144,7 +172,7 @@ class Web_Scrapper():
 
     ## Main handler to retrieve a SE command
     # Note: args start from the requested command. e.g. For '!se breakingpointes !manifest plant', args is ['!manifest', 'plant']
-    def se_handler(self, streamer_name, command_name, author, args, header):
+    def se_handler(self, streamer_name, command_name, author, args):
         streamer_name = streamer_name.lower()
         command_name = command_name.lower()
         if streamer_name == 'streamelements':
@@ -155,16 +183,14 @@ class Web_Scrapper():
         if commands is not None:
             val = commands.get(command_name)
             if val is not None:
-                return self.se_parse(val, author, args, streamer_name, header)
+                return self.se_parse(val, author, args, streamer_name)
             else:
                 return "[ERROR]: command not found"
 
         # Check local disk
-        starttime = time.time()
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
             # Web request if not on disk
             self.se_get_command(streamer_name)
-        print(time.time()-starttime)
 
         # If still not on disk, declare failure
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
@@ -179,13 +205,13 @@ class Web_Scrapper():
                 self.se_dict[streamer_name][row[0]] = row[1]
         val = self.se_dict[streamer_name].get(command_name)
         if val is not None:
-            return self.se_parse(val, author, args, streamer_name, header)
+            return self.se_parse(val, author, args, streamer_name)
         else:
             return "[ERROR]: command not found"
 
 
     ## Analyze and parse SE syntax
-    def se_parse(self, text, author, args, streamer_name, header):
+    def se_parse(self, text, author, args, streamer_name):
         index = 0
         index2 = 0
         while 1:
@@ -202,9 +228,11 @@ class Web_Scrapper():
                     eval1 = random.choice(se_code[1:])
 
                 # the user/target's name
-                elif se_code[0]=='user' or se_code[0]=='sender':    
+                elif se_code[0]=='user' or se_code[0]=='sender' or se_code[0]=='channel':    
                     if len(se_code)>1:
                         eval1 = se_code[1]
+                        if eval1[0]=='@':
+                            eval1 = eval1[1:]
                     else:
                         eval1 = author
                 # slicing notation detected
@@ -212,20 +240,35 @@ class Web_Scrapper():
                 elif re.match("([0-9]+:?[0-9]*)|([0-9]*:?[0-9]+)", se_code[0]):     
                     try:
                         eval1 = eval(f'args[{se_code[0]}]')
+                        if eval1[0]=='@':
+                            eval1 = eval1[1:]
                     except IndexError:  # Index out of range, say nothing
                         print("Index out of range")
                         return None
                     if isinstance(eval1, list):
                         eval1 = ' '.join(eval1)
 
+                elif se_code[0]=='touser':
+                    try:
+                        eval1 = args[1]
+                    except IndexError:  # Index out of range, say nothing
+                        print("Index out of range")
+                        return None
+
                 # Use random chatter API call
                 elif se_code[0]=='random.chatter':
-                    eval1 = random.choice(API.ls_chatters(streamer_name, header))
+                    eval1 = random.choice(API.ls_chatters(streamer_name))
 
                 # Kama Kama Kama Kama
                 elif se_code[0]=='repeat':
                     num = int(se_code[1])
                     eval1 = ' '.join([se_code[2]]*num)
+
+                elif se_code[0]=='game':
+                    if len(se_code)>1:
+                        eval1 = API.get_game(se_code[1])
+                    else:
+                        eval1 = API.get_game(author)
                 else:
                     # random range of number
                     groups = re.match("random.([0-9]+)-([0-9]+)", se_code[0])
@@ -253,5 +296,5 @@ if __name__ == '__main__':
     # for f in files:
     #     os.remove(f)
     ws = Web_Scrapper()
-    res = ws.se_handler('breakingpointes', '!prank3', 'Mike', ['!prank3', 'prank', 'Han'], header=None)
+    res = ws.se_handler('breakingpointes', '!prank3', 'Mike', ['!prank3', 'prank', 'Han'])
     print(res)

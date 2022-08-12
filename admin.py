@@ -1,4 +1,6 @@
+import sys
 from tools import *
+import web_scrapper
 
 
 def createcmd(attributes):
@@ -52,3 +54,8 @@ def editaccess(attributes):
     myquery = 'call bot.editaccess(%s, %s)'
     query(attributes['pool'], myquery, True, (attributes['args'][1].lower(), attributes['args'][2]))
     return "Done"
+
+
+def shutdown(attributes):
+    web_scrapper.exit_event.set()
+    sys.exit()

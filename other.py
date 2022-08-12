@@ -35,7 +35,7 @@ def manifest(attributes):
 def se(attributes):
     if len(attributes['args'])<3:
         return "Usage: !se [streamer] ![command]"
-    return attributes['scrapper'].se_handler(attributes['args'][1], attributes['args'][2], attributes['author'], attributes['args'][2:], attributes['header'])
+    return attributes['scrapper'].se_handler(attributes['args'][1], attributes['args'][2], attributes['author'], attributes['args'][2:])
 
 
 def se_alias(attributes):
@@ -45,7 +45,7 @@ def se_alias(attributes):
         if not os.path.isfile(f'SE_Cache/{attributes["args"][0][1:]}.txt'):
             return '[INFO]: If you meant to get a StreamElements command, it\'s not currently cached locally. Please use \'!se [streamer] ![command]\' first.'
         else:
-            return attributes['scrapper'].se_handler(attributes['args'][0][1:], attributes['args'][1], attributes['author'], attributes['args'][1:], attributes['header'])
+            return attributes['scrapper'].se_handler(attributes['args'][0][1:], attributes['args'][1], attributes['author'], attributes['args'][1:])
     else:
         return None
 
@@ -61,5 +61,5 @@ def blame(attributes):
 
 
 def blame2(attributes):
-    chatters = API.ls_chatters(ME, attributes['header'])
+    chatters = API.ls_chatters(ME)
     return f'Blame {random.choice(chatters)}'

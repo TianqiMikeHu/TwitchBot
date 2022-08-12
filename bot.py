@@ -1,11 +1,8 @@
 from twitchio.ext import commands
 import random
-import os
-from dotenv import load_dotenv
 import re
 import pos
 import quizstruct
-import web_scrapper
 
 from admin import *
 from quiz_functions import *
@@ -19,7 +16,7 @@ appearance_list = []
 class Bot(commands.Bot):
 
     def __init__(self):
-        load_dotenv()
+        dotenv.load_dotenv()
         super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=[os.getenv('CHANNEL')])
         self.probability = float(os.getenv('PROBABILITY'))
         # The following is an example of word replacement
@@ -51,9 +48,6 @@ class Bot(commands.Bot):
         self.args = []
         self.channel = None
         self.quiz = quizstruct.Quiz()
-        self.header = {"Client-ID": os.getenv('CLIENTID'), 
-                "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN')), 
-                "Content-Type":"application/json"}
         self.scrapper = web_scrapper.Web_Scrapper()
 
 
@@ -89,7 +83,6 @@ class Bot(commands.Bot):
         if change:
             await self.channel.send(output)
         return
-
 
     # Redirecting to the corresponding function 
     def redirect(self, function_name):
