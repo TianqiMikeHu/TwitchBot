@@ -183,7 +183,7 @@ class Web_Scrapper():
         if commands is not None:
             val = commands.get(command_name)
             if val is not None:
-                return self.se_parse(val, author, args, streamer_name)
+                return self.se_parse(val, author.lower(), args, streamer_name)
             else:
                 return "[ERROR]: command not found"
 
@@ -205,7 +205,7 @@ class Web_Scrapper():
                 self.se_dict[streamer_name][row[0]] = row[1]
         val = self.se_dict[streamer_name].get(command_name)
         if val is not None:
-            return self.se_parse(val, author, args, streamer_name)
+            return self.se_parse(val, author.lower(), args, streamer_name)
         else:
             return "[ERROR]: command not found"
 

@@ -48,3 +48,10 @@ def get_header():
                 "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN')), 
                 "Content-Type":"application/json"}
     return header
+
+def get_header2():
+    dotenv.load_dotenv(override=True)
+    header = {"Client-ID": os.getenv('CLIENTID'), 
+                "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN2')), 
+                "Content-Type":"application/json"}
+    return header

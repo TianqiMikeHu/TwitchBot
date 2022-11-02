@@ -32,7 +32,6 @@ BLAME_LIST = ['Mike', \
             'Georgia', \
             'Tano', \
             'Kim', \
-            'Joanna', \
             'Juggalo', \
             'Kama', \
             'Mikki', \
@@ -40,4 +39,16 @@ BLAME_LIST = ['Mike', \
             'Syush', \
             'Tufy', \
             'ubo', \
-            'CTG']
+            'CTG', \
+            'Walter',\
+            'Fierce',\
+            'Bonk',\
+            'Poly',\
+            'teja',\
+            'Anna',\
+            'Able',\
+            'Scoldy',\
+            'Potatoes',\
+            'Britt',\
+            'Kiwi',\
+            'Slay']

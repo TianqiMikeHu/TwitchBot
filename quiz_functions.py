@@ -4,7 +4,7 @@ from tools import *
 #########################################################
 # Quiz Bowl Game functions
 def quiz_reset(attributes):
-    if attributes['author']==attributes['quiz'].get_player() or attributes['author'].lower()==ME:
+    if attributes['author'].lower()==attributes['quiz'].get_player() or attributes['author'].lower()==ME:
         attributes['quiz'].reset()
         return "Current bonus question ended."
     else:

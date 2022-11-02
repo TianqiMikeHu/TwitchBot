@@ -63,3 +63,16 @@ def blame(attributes):
 def blame2(attributes):
     chatters = API.ls_chatters(ME)
     return f'Blame {random.choice(chatters)}'
+
+
+stipulation = None
+STIPULATION_LIST = ['Melee+Bricks/Bottles Only', 'No Melee', 'Kill All', 'No Throwables', 'Whoa%', 'No Guns Kill All']
+
+def next(attributes):
+    global stipulation
+    stipulation = random.choice(STIPULATION_LIST)
+    return f'Next Stipulation: {stipulation}'
+
+def current(attributes):
+    global stipulation
+    return f'Current Stipulation: {stipulation}' 

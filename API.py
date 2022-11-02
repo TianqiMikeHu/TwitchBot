@@ -4,6 +4,7 @@ import difflib
 import urllib.parse
 import html2text
 import nltk.data
+import random
 
 tokenizer = nltk.data.load('./english.pickle')
 
@@ -14,6 +15,18 @@ def new_access_token():
     token = (r.json()).get('access_token')
     dotenv.set_key('.env', 'ACCESSTOKEN', token)
     return token
+
+def refresh_token():
+    refresh = os.getenv('REFRESH')
+    refresh = requests.utils.quote(refresh, safe='')
+    token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=refresh_token&refresh_token="+refresh
+    r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
+    print(r.text)
+    token = (r.json()).get('access_token')
+    refresh = (r.json()).get('refresh_token')
+    dotenv.set_key('.env', 'ACCESSTOKEN2', token)
+    dotenv.set_key('.env', 'REFRESH', refresh)
+    return token, refresh
 
 
 ## return values: message, status code
@@ -34,6 +47,24 @@ def broadcaster_ID(name):
         return "[ERROR]: User not found", 1
     id = data.get('data')[0].get('id')
     return id, 0
+
+
+def announcement(message):
+    colors = ["blue", "green", "orange", "purple", "primary"]
+    body = {"message": message,"color": random.choice(colors)}
+    r = requests.post(url="https://api.twitch.tv/helix/chat/announcements?broadcaster_id=160025583&moderator_id=681131749", headers=get_header2(), json=body)
+    if r.status_code!=204:
+        if r.status_code!=401:
+            return f'[ERROR]: status code is {str(r.status_code)}'
+        else:
+            print("[ERROR]: status code is 401. Getting new access token...")
+            token, refresh = refresh_token()
+            print(f'The new access token is: {token}')
+            print(f'The new refresh token is: {refresh}')
+            r = requests.post(url="https://api.twitch.tv/helix/chat/announcements?broadcaster_id=160025583&moderator_id=681131749", headers=get_header2(), json=body)
+            if r.status_code!=204:
+                return f'[ERROR]: status code is {str(r.status_code)}'
+    return None
 
 
 ## returns game name of broadcaster
@@ -123,7 +154,7 @@ def so(attributes):
         return "Usage: !so [user]"
 
     # Get user ID from name
-    id, status = broadcaster_ID(attributes['args'][1])
+    id, status = broadcaster_ID(my_name(attributes))
     if status:      # It's an error message
         return id
 
@@ -151,9 +182,9 @@ def so(attributes):
     else:
         result = result[0][0]
 
-    response+=result
+    response = response + result
 
-    return response
+    return announcement(response)
 
 
 ## Get stream title of any channel

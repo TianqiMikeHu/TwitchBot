@@ -107,7 +107,7 @@ class Bot(commands.Bot):
         self.args = args
         self.channel = msg.channel
         command = self.args[0].lower()
-        self.author = msg.author.name
+        self.author = msg.author.display_name
         user = self.author.lower()
         trimmed = " ".join(self.args)
         lowered = trimmed.lower()
@@ -214,7 +214,7 @@ class Bot(commands.Bot):
                     if index!=-1:
                         query_args = [x.lower() for x in self.args[1:]]
                         if len(query_args)==0:  # In case the user meant to target themselves
-                            query_args.append(self.author)
+                            query_args.append(user)
                         index2 = response.find(SUBQUERY, index+1)
                         myquery = response[index+len(SUBQUERY):index2]
                         num_args = myquery.count('%s')
