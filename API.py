@@ -21,7 +21,7 @@ def refresh_token():
     refresh = requests.utils.quote(refresh, safe='')
     token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=refresh_token&refresh_token="+refresh
     r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
-    print(r.text)
+    print("User access token refreshed")
     token = (r.json()).get('access_token')
     refresh = (r.json()).get('refresh_token')
     dotenv.set_key('.env', 'ACCESSTOKEN2', token)
@@ -38,7 +38,7 @@ def broadcaster_ID(name):
         else:
             print("[ERROR]: status code is 401. Getting new access token...")
             token = new_access_token()
-            print(f'The new access token is: {token}')
+            # print(f'The new access token is: {token}')
             r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
             if r.status_code!=200:
                 return f'[ERROR]: status code is {str(r.status_code)}', 2
@@ -59,7 +59,7 @@ def announcement(message):
         else:
             print("[ERROR]: status code is 401. Getting new access token...")
             token, refresh = refresh_token()
-            print(f'The new access token is: {token}')
+            # print(f'The new access token is: {token}')
             print(f'The new refresh token is: {refresh}')
             r = requests.post(url="https://api.twitch.tv/helix/chat/announcements?broadcaster_id=160025583&moderator_id=681131749", headers=get_header2(), json=body)
             if r.status_code!=204:

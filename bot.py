@@ -49,7 +49,7 @@ class Bot(commands.Bot):
         self.channel = None
         self.quiz = quizstruct.Quiz()
         self.scrapper = web_scrapper.Web_Scrapper()
-
+        refresh_token()
 
     async def event_ready(self):
         print("bot is ready")
