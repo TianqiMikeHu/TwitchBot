@@ -69,7 +69,7 @@ def announcement(message):
 
 ## returns game name of broadcaster
 def get_game(name):
-    id, status, display_name = broadcaster_ID(name)
+    id, status, display_name, img = broadcaster_ID(name)
     # Get game name
     r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=get_header())
     if r.status_code!=200:
@@ -119,7 +119,7 @@ def getclip(attributes):
         return "Usage: !getclip [user] [key words]"
 
     # Get user ID from name
-    id, status, display_name = broadcaster_ID(attributes['args'][1])
+    id, status, display_name, img = broadcaster_ID(attributes['args'][1])
     if status:      # It's an error message
         return id
 
@@ -251,7 +251,7 @@ def so(attributes):
         return "Usage: !so [user]"
 
     # Get user ID from name
-    id, status, display_name = broadcaster_ID(my_name(attributes))
+    id, status, display_name, img = broadcaster_ID(my_name(attributes))
     if status:      # It's an error message
         return id
 
@@ -292,7 +292,7 @@ def title(attributes):
         user = attributes['args'][1]
 
     # Get user ID from name
-    id, status, display_name = broadcaster_ID(user)
+    id, status, display_name, img = broadcaster_ID(user)
     if status:      # It's an error message
         return id
 
@@ -312,7 +312,7 @@ def title(attributes):
 ## List all chatters in a channel
 def ls_chatters(broadcaster):
     # Not using the return values, purely for checking the validity of the access token
-    id, status, display_name = broadcaster_ID(ME)
+    id, status, display_name, img = broadcaster_ID(ME)
 
     r = requests.get(url=f'https://tmi.twitch.tv/group/user/{broadcaster}/chatters', headers=get_header())
     if r.status_code!=200:

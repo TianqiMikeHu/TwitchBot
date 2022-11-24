@@ -122,7 +122,7 @@ def fill_clips(csv, offline_image_url, file_name):
     if offline_image_url is not None:
         if offline_image_url!='':
             div_banner['class'] = "container-fluid display-1 p-5 text-white text-center bg-image"
-            div_banner['style'] = f"background-image: url('{offline_image_url}'); height: 30vh; background-repeat:no-repeat; background-position:center top;"
+            div_banner['style'] = f"background-image: url('{offline_image_url}'); height: 30vh; background-repeat:no-repeat; background-position:center center;"
 
     df = pandas.DataFrame(body, columns=header)
     html = df.to_html(justify="center", escape=False)
