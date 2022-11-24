@@ -29,24 +29,24 @@ def refresh_token():
     return token, refresh
 
 
-## return values: message, status code
+## return values: message, status code, display_name, offline_image_url
 def broadcaster_ID(name):
     r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
     if r.status_code!=200:
         if r.status_code!=401:
-            return f'[ERROR]: status code is {str(r.status_code)}', 2
+            return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None
         else:
             print("[ERROR]: status code is 401. Getting new access token...")
             token = new_access_token()
             # print(f'The new access token is: {token}')
             r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
             if r.status_code!=200:
-                return f'[ERROR]: status code is {str(r.status_code)}', 2
+                return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None
     data = r.json()
     if len(data.get('data'))==0:
-        return "[ERROR]: User not found", 1
+        return "[ERROR]: User not found", 1, None, None
     id = data.get('data')[0].get('id')
-    return id, 0
+    return id, 0, data.get('data')[0].get('display_name'), data.get('data')[0].get('offline_image_url')
 
 
 def announcement(message):
@@ -69,7 +69,7 @@ def announcement(message):
 
 ## returns game name of broadcaster
 def get_game(name):
-    id, status = broadcaster_ID(name)
+    id, status, display_name = broadcaster_ID(name)
     # Get game name
     r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=get_header())
     if r.status_code!=200:
@@ -84,13 +84,42 @@ def get_game(name):
     return game_name
 
 
+def get_game_from_id(game_id):
+    r = requests.get(url=f"https://api.twitch.tv/helix/games?id={game_id}", headers=get_header())
+    if r.status_code!=200:
+        if r.status_code!=401:
+            return f'[ERROR]: status code is {str(r.status_code)}'
+        else:
+            print("[ERROR]: status code is 401. Getting new access token...")
+            token, refresh = refresh_token()
+            r = requests.get(url=f"https://api.twitch.tv/helix/games?id={game_id}", headers=get_header())
+            if r.status_code!=200:
+                return f'[ERROR]: status code is {str(r.status_code)}'
+            else:
+                data = r.json()
+                data = data.get('data')
+                if data is not None:
+                    if len(data)>0:
+                        return data[0]['name']
+                return '-'
+    else:
+        data = r.json()
+        data = data.get('data')
+        if data is not None:
+            if len(data)>0:
+                return data[0]['name']
+        return '-'
+
+    
+
+
 ## Retrieves a clip given the username and key words, best effort match
 def getclip(attributes):
     if len(attributes['args'])<3:
         return "Usage: !getclip [user] [key words]"
 
     # Get user ID from name
-    id, status = broadcaster_ID(attributes['args'][1])
+    id, status, display_name = broadcaster_ID(attributes['args'][1])
     if status:      # It's an error message
         return id
 
@@ -108,9 +137,6 @@ def getclip(attributes):
             print(r.status_code)
             return "[ERROR]: status code is not 200"
         data = r.json()
-        pagination = data.get('pagination').get('cursor')
-        if pagination is None or pagination=='':
-            return "No result (end of pages)"
 
         # Put into a dictionary
         clips = {}
@@ -144,9 +170,80 @@ def getclip(attributes):
         if limit==0:
             return "No result (limit reached)"
 
+        pagination = data.get('pagination').get('cursor')
+        if pagination is None or pagination=='':
+            return "No result (end of pages)"
         # Continue from pagination index
         r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=50&after={1}".format(id, pagination), headers=header)
 
+
+def listclip(attributes):
+    if len(attributes['args'])<2:
+        return "Usage: !listclip [user]"
+
+    limit = 10      # We're only gonna search 10*100 = 1000 clips
+    csv = []
+    games = {}
+
+    if len(attributes['args'])>2:
+        if attributes['args'][2].isnumeric():
+            limit = int(attributes['args'][2])
+            if limit>5000:
+                limit = 5000
+            limit/=100
+    
+    # Get user ID from name
+    id, status, display_name, offline_image_url = broadcaster_ID(attributes['args'][1])
+    if status:      # It's an error message
+        return id
+
+
+    s3 = boto3.resource('s3')
+    try:
+        s3.Object('a-poorly-written-bot', f'clips/clips-{display_name}.html').load()
+    except botocore.exceptions.ClientError as e:
+       pass
+    else:
+        return f"https://apoorlywrittenbot.cc/clips/clips-{display_name}.html"
+
+    header = get_header()
+
+    # Get top clips
+    r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=100".format(id), headers=header)
+    for i in range(limit):
+        if r.status_code!=200:
+            return f"[ERROR]: status code is not {str(r.status_code)}"
+        data = r.json()
+
+        for item in data.get('data'):
+            title = item.get('title')
+            link = item.get('url')
+            creator_name = item.get('creator_name')
+            view_count = item.get('view_count')
+            created_at = item.get('created_at')
+            game_id = item.get('game_id')
+
+            game_name = games.get(game_id)
+            if game_name is None:
+                game_name = get_game_from_id(game_id)
+                games[game_id] = game_name
+            
+            url = f"<a href=\"{link}\" class=\"link-dark\" target=\"_blank\" rel=\"noopener noreferrer\">{title}</a>"
+
+            csv.append([url, game_name, view_count, created_at, creator_name])
+
+
+        pagination = data.get('pagination').get('cursor')
+        if pagination is None or pagination=='':
+            break
+        # Continue from pagination index
+        r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=100&after={1}".format(id, pagination), headers=header)
+
+    csv.insert(0, ["Clip", "Game", "Views", "Created At", "Creator Name"])
+    csv.insert(0, [f"{display_name}'s Clips"])
+    fill_clips(csv, offline_image_url, display_name)
+    return f"https://apoorlywrittenbot.cc/clips/clips-{display_name}.html"
+    
 
 ## Shoutout the user
 def so(attributes):
@@ -154,7 +251,7 @@ def so(attributes):
         return "Usage: !so [user]"
 
     # Get user ID from name
-    id, status = broadcaster_ID(my_name(attributes))
+    id, status, display_name = broadcaster_ID(my_name(attributes))
     if status:      # It's an error message
         return id
 
@@ -195,7 +292,7 @@ def title(attributes):
         user = attributes['args'][1]
 
     # Get user ID from name
-    id, status = broadcaster_ID(user)
+    id, status, display_name = broadcaster_ID(user)
     if status:      # It's an error message
         return id
 
@@ -215,7 +312,7 @@ def title(attributes):
 ## List all chatters in a channel
 def ls_chatters(broadcaster):
     # Not using the return values, purely for checking the validity of the access token
-    id, status = broadcaster_ID(ME)
+    id, status, display_name = broadcaster_ID(ME)
 
     r = requests.get(url=f'https://tmi.twitch.tv/group/user/{broadcaster}/chatters', headers=get_header())
     if r.status_code!=200:
