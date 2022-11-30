@@ -4,7 +4,16 @@ require('dotenv').config();
 
 const Discord = require('discord.js');
 const util = require('util');
-const client = new Discord.Client();
+const client = new Discord.Client({
+    intents: [
+        Discord.GatewayIntentBits.DirectMessages,
+        Discord.GatewayIntentBits.Guilds,
+        Discord.GatewayIntentBits.GuildBans,
+        Discord.GatewayIntentBits.GuildMessages,
+        Discord.GatewayIntentBits.MessageContent,
+    ],
+    partials: [Discord.Partials.Channel],
+  });
 
 const SIZE = 2;
 
@@ -77,8 +86,7 @@ client.once('ready', () => {
 
 client.login(process.env.DISCORD_TOKEN);
 
-
-client.on('message', async message => {
+client.on('messageCreate', async message => {
 	if (message.author.bot) return;
 
     switch (message.guild.name) {
@@ -582,7 +590,7 @@ client.on('message', async message => {
             message.channel.send(`${user} has left tossup mode.`);
         }
         else{
-            message.channel.send(`You do not appear to be in tossup mode`);
+            message.channel.send(`You are not in tossup mode`);
         }
         return;
     }
