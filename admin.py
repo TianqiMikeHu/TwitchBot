@@ -56,6 +56,45 @@ def editaccess(attributes):
     return "Done"
 
 
+def start_listening(attributes):
+    attributes['audio'].start_listening()
+    return "Started listening..."
+
+def stop_listening(attributes):
+    attributes['audio'].stop_listening()
+    return "Stopped listening..."
+
+def add_audio_key(attributes):
+    if len(attributes['args'])<3:
+        return "[ERROR] Too few arguments"
+    
+    args = ' '.join(attributes['args'][1:])
+
+    if ';' not in args:
+        return "[ERROR] Incorrect format"
+
+    args = args.split(';')
+
+    myquery = 'INSERT INTO bot.audio_key(keyword,response,count,enabled) VALUES (%s, %s, 0, 1)'
+    key = args[0].lower().strip()
+    response = args[1].strip()
+    
+    if len(key)>20 or len(response)>80: # Table column limit
+        return "[ERROR] Too many characters"
+
+    print(f'key: {key} | response: {response}')
+
+    query(attributes['pool'], myquery, True, (key, response))
+
+    attributes['audio'].load_audio_keywords()
+
+    return f"New key \"{key}\" added successfully."
+
+
+def audio_debug(attributes):
+    return attributes['audio'].toggle_debug()
+
 def shutdown(attributes):
     web_scrapper.exit_event.set()
+    attributes['audio'].stop_listening()
     sys.exit()

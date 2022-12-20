@@ -3,6 +3,7 @@ import random
 import re
 import pos
 import quizstruct
+import audio
 
 from admin import *
 from quiz_functions import *
@@ -23,12 +24,12 @@ class Bot(commands.Bot):
         # self.keyword = {'JJ': 'valid',
         #                 'JJR': 'more valid',
         #                 'JJS': 'most valid',
-        #                 'VB': 'yeet',
-        #                 'VBD': 'yeeted',
-        #                 'VBG': 'yeeting',
-        #                 'VBN': 'yeeted',
-        #                 'VBP': 'yeet',
-        #                 'VBZ': 'yeets'
+        #                 'VB': 'clomp',
+        #                 'VBD': 'clomped',
+        #                 'VBG': 'clomping',
+        #                 'VBN': 'clomped',
+        #                 'VBP': 'clomp',
+        #                 'VBZ': 'clomps'
         #                 }
         self.bot = os.getenv('BOT')
         ### MYSQL
@@ -49,6 +50,7 @@ class Bot(commands.Bot):
         self.channel = None
         self.quiz = quizstruct.Quiz()
         self.scrapper = web_scrapper.Web_Scrapper()
+        self.audio = audio.audio_transcript(os.getenv('CHANNEL'))
         refresh_token()
 
     async def event_ready(self):
@@ -96,7 +98,7 @@ class Bot(commands.Bot):
         if msg.author is None:
             return
         
-        if msg.author.name.lower() == self.bot:     # ignore self
+        if msg.author.name.lower() == self.bot and msg.content[0]!='<':     # ignore self unless it's <command>
             return
 
         if is_POSTAG:
@@ -125,7 +127,7 @@ class Bot(commands.Bot):
                     await self.channel.send("BOP BOP BOP")
                     return
                 # Okay not a follower bot
-                myquery = 'INSERT INTO bot.viewers(username, messages, points, greeting, shoutout) VALUES(%s, 0, 0, \'NONE\', \'\')'
+                myquery = 'INSERT INTO bot.viewers(username, messages, points, greeting, shoutout, autoshoutout) VALUES(%s, 0, 0, \'NONE\', \'\', 0)'
                 query(self.pool, myquery, True, (user,))
                 appearance_list.append(user)
             else:
@@ -133,6 +135,12 @@ class Bot(commands.Bot):
                 greeting = result[0][3]
                 if greeting != 'NONE':
                     await self.channel.send(greeting)
+                autoshoutout = result[0][5]
+                if autoshoutout:
+                    args_copy = self.args
+                    self.args = ["!so", user]
+                    self.redirect("so")
+                    self.args = args_copy
                 appearance_list.append(user)
         # Increment message count
         myquery = 'UPDATE bot.viewers SET messages = messages+1 WHERE username = %s'

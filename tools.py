@@ -54,10 +54,19 @@ def get_header():
                 "Content-Type":"application/json"}
     return header
 
+# ACCESSTOKEN2 is for the bot
 def get_header2():
     dotenv.load_dotenv(override=True)
     header = {"Client-ID": os.getenv('CLIENTID'), 
                 "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN2')), 
+                "Content-Type":"application/json"}
+    return header
+
+# ACCESSTOKEN3 is for the me
+def get_header3():
+    dotenv.load_dotenv(override=True)
+    header = {"Client-ID": os.getenv('CLIENTID'), 
+                "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN3')), 
                 "Content-Type":"application/json"}
     return header
 
@@ -122,7 +131,7 @@ def fill_clips(csv, offline_image_url, file_name):
     if offline_image_url is not None:
         if offline_image_url!='':
             div_banner['class'] = "container-fluid display-1 p-5 text-white text-center bg-image"
-            div_banner['style'] = f"background-image: url('{offline_image_url}'); height: 30vh; background-repeat:no-repeat; background-position:center center;"
+            div_banner['style'] = f"background-image: url('{offline_image_url}'); height: 30vh; background-repeat:no-repeat; background-position:top center;"
 
     df = pandas.DataFrame(body, columns=header)
     html = df.to_html(justify="center", escape=False)

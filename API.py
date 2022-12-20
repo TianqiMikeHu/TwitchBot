@@ -17,19 +17,30 @@ def new_access_token():
     return token
 
 def refresh_token():
-    refresh = os.getenv('REFRESH')
+    refresh = os.getenv('REFRESH_BOT')
     refresh = requests.utils.quote(refresh, safe='')
     token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=refresh_token&refresh_token="+refresh
     r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
-    print("User access token refreshed")
+    print("Bot user access token refreshed")
     token = (r.json()).get('access_token')
     refresh = (r.json()).get('refresh_token')
     dotenv.set_key('.env', 'ACCESSTOKEN2', token)
-    dotenv.set_key('.env', 'REFRESH', refresh)
-    return token, refresh
+    dotenv.set_key('.env', 'REFRESH_BOT', refresh)
+
+    refresh = os.getenv('REFRESH_ME')
+    refresh = requests.utils.quote(refresh, safe='')
+    token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=refresh_token&refresh_token="+refresh
+    r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
+    print("Streamer user access token refreshed")
+    token = (r.json()).get('access_token')
+    refresh = (r.json()).get('refresh_token')
+    dotenv.set_key('.env', 'ACCESSTOKEN3', token)
+    dotenv.set_key('.env', 'REFRESH_ME', refresh)
+
+    return
 
 
-## return values: message, status code, display_name, offline_image_url
+## return values: message, status code, display_name, offline_image_url, about
 def broadcaster_ID(name):
     r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
     if r.status_code!=200:
@@ -46,7 +57,7 @@ def broadcaster_ID(name):
     if len(data.get('data'))==0:
         return "[ERROR]: User not found", 1, None, None
     id = data.get('data')[0].get('id')
-    return id, 0, data.get('data')[0].get('display_name'), data.get('data')[0].get('offline_image_url')
+    return id, 0, data.get('data')[0].get('display_name'), data.get('data')[0].get('offline_image_url'), data.get('data')[0].get('description')
 
 
 def announcement(message):
@@ -58,9 +69,9 @@ def announcement(message):
             return f'[ERROR]: status code is {str(r.status_code)}'
         else:
             print("[ERROR]: status code is 401. Getting new access token...")
-            token, refresh = refresh_token()
+            refresh_token()
             # print(f'The new access token is: {token}')
-            print(f'The new refresh token is: {refresh}')
+            # print(f'The new refresh token is: {refresh}')
             r = requests.post(url="https://api.twitch.tv/helix/chat/announcements?broadcaster_id=160025583&moderator_id=681131749", headers=get_header2(), json=body)
             if r.status_code!=204:
                 return f'[ERROR]: status code is {str(r.status_code)}'
@@ -69,7 +80,7 @@ def announcement(message):
 
 ## returns game name of broadcaster
 def get_game(name):
-    id, status, display_name, img = broadcaster_ID(name)
+    id, status, display_name, img, about = broadcaster_ID(name)
     # Get game name
     r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=get_header())
     if r.status_code!=200:
@@ -91,7 +102,7 @@ def get_game_from_id(game_id):
             return f'[ERROR]: status code is {str(r.status_code)}'
         else:
             print("[ERROR]: status code is 401. Getting new access token...")
-            token, refresh = refresh_token()
+            refresh_token()
             r = requests.get(url=f"https://api.twitch.tv/helix/games?id={game_id}", headers=get_header())
             if r.status_code!=200:
                 return f'[ERROR]: status code is {str(r.status_code)}'
@@ -110,7 +121,16 @@ def get_game_from_id(game_id):
                 return data[0]['name']
         return '-'
 
-    
+def about(attributes):
+    if len(attributes['args'])<2:
+        return "Usage: !about [user]"    
+
+    # Get user ID from name
+    id, status, display_name, img, about = broadcaster_ID(attributes['args'][1])
+    if status:      # It's an error message
+        return id
+
+    return about
 
 
 ## Retrieves a clip given the username and key words, best effort match
@@ -119,7 +139,7 @@ def getclip(attributes):
         return "Usage: !getclip [user] [key words]"
 
     # Get user ID from name
-    id, status, display_name, img = broadcaster_ID(attributes['args'][1])
+    id, status, display_name, img, about = broadcaster_ID(attributes['args'][1])
     if status:      # It's an error message
         return id
 
@@ -185,26 +205,33 @@ def listclip(attributes):
     csv = []
     games = {}
 
+    override = False
+    # 0 means no override
     if len(attributes['args'])>2:
-        if attributes['args'][2].isnumeric():
-            limit = int(attributes['args'][2])
+        if attributes['args'][2].lower()=='true':
+            override = True
+
+    if len(attributes['args'])>3:
+        if attributes['args'][3].isnumeric():
+            limit = int(attributes['args'][3])
             if limit>5000:
                 limit = 5000
-            limit/=100
+            limit//=100
     
     # Get user ID from name
-    id, status, display_name, offline_image_url = broadcaster_ID(attributes['args'][1])
+    id, status, display_name, offline_image_url, about = broadcaster_ID(attributes['args'][1])
     if status:      # It's an error message
         return id
 
 
-    s3 = boto3.resource('s3')
-    try:
-        s3.Object('a-poorly-written-bot', f'clips/clips-{display_name}.html').load()
-    except botocore.exceptions.ClientError as e:
-       pass
-    else:
-        return f"https://apoorlywrittenbot.cc/clips/clips-{display_name}.html"
+    if not override:
+        s3 = boto3.resource('s3')
+        try:
+            s3.Object('a-poorly-written-bot', f'clips/clips-{display_name}.html').load()
+        except botocore.exceptions.ClientError as e:
+            pass
+        else:
+            return f"https://apoorlywrittenbot.cc/clips/clips-{display_name}.html"
 
     header = get_header()
 
@@ -251,7 +278,7 @@ def so(attributes):
         return "Usage: !so [user]"
 
     # Get user ID from name
-    id, status, display_name, img = broadcaster_ID(my_name(attributes))
+    id, status, display_name, img, about = broadcaster_ID(my_name(attributes))
     if status:      # It's an error message
         return id
 
@@ -292,7 +319,7 @@ def title(attributes):
         user = attributes['args'][1]
 
     # Get user ID from name
-    id, status, display_name, img = broadcaster_ID(user)
+    id, status, display_name, img, about = broadcaster_ID(user)
     if status:      # It's an error message
         return id
 
@@ -312,7 +339,7 @@ def title(attributes):
 ## List all chatters in a channel
 def ls_chatters(broadcaster):
     # Not using the return values, purely for checking the validity of the access token
-    id, status, display_name, img = broadcaster_ID(ME)
+    id, status, display_name, img, about = broadcaster_ID(ME)
 
     r = requests.get(url=f'https://tmi.twitch.tv/group/user/{broadcaster}/chatters', headers=get_header())
     if r.status_code!=200:

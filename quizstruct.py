@@ -1,7 +1,6 @@
 import nltk
 import re
-
-SEPARATE = '*SEP*'
+from constants import *
 
 class Quiz():
 

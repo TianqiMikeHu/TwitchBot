@@ -1,7 +1,7 @@
 # Delimiters:
 EVAL = '@#'
 SUBQUERY = '$%'
-SEPARATE = '*SEP*'
+SEPARATE = '*SPLIT*'
 COMMAND = '!'
 
 BRACKET_L = '${'
@@ -32,7 +32,7 @@ BLAME_LIST = ['Mike', \
             'Georgia', \
             'Tano', \
             'Kim', \
-            'Juggalo', \
+            'Manne', \
             'Kama', \
             'Mikki', \
             'Shadow', \
@@ -50,5 +50,4 @@ BLAME_LIST = ['Mike', \
             'Scoldy',\
             'Potatoes',\
             'Britt',\
-            'Kiwi',\
-            'Slay']
+            'Kiwi']

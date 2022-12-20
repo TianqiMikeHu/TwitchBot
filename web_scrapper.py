@@ -50,13 +50,13 @@ class Web_Scrapper():
         # Hide the fact that we are using a headless browser
         userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36"
         chrome_options.add_argument(f'user-agent={userAgent}')
-        self.chrome_options = chrome_options
-        self.driver = webdriver.Chrome(options=self.chrome_options)    
+        self.chrome_options = chrome_options    
 
         self.se_dict = {}
         self.se_defaults = []
         self.lock = threading.Lock()
-        self.thread = threading.Thread(target=self.refresh_google)
+        self.driver = None
+        self.thread = None
 
         if os.path.isfile('SE_Cache/streamelements.txt'):
             # Load default SE commands
@@ -65,8 +65,6 @@ class Web_Scrapper():
         else:
             # If default file not present, re-request everything
             self.se_clear()
-
-        self.thread.start()
 
 
     ## Used to programmatically delete all SE cache, or delete a specified one
@@ -124,6 +122,9 @@ class Web_Scrapper():
         with self.lock:
             if self.driver is None:
                 self.driver = webdriver.Chrome(options=self.chrome_options)
+            if self.thread is None:
+                self.thread = threading.Thread(target=self.refresh_google)
+                self.thread.start()
 
             self.driver.get(f"https://streamelements.com/{streamer_name}/commands")
 
@@ -194,7 +195,7 @@ class Web_Scrapper():
 
         # If still not on disk, declare failure
         if not os.path.isfile(f'SE_Cache/{streamer_name}.txt'):
-            return "[ERROR]: failed to load to memory. Likely a timed out."
+            return "[ERROR]: failed to load to memory. Likely a time out."
 
 
         # Load commands on disk
@@ -251,9 +252,8 @@ class Web_Scrapper():
                 elif se_code[0]=='touser':
                     try:
                         eval1 = args[1]
-                    except IndexError:  # Index out of range, say nothing
-                        print("Index out of range")
-                        return None
+                    except IndexError:  # Index out of range, target is self
+                        eval1 = author
 
                 # Use random chatter API call
                 elif se_code[0]=='random.chatter':
