@@ -5,6 +5,7 @@ import urllib.parse
 import html2text
 import nltk.data
 import random
+import numpy
 
 tokenizer = nltk.data.load('./english.pickle')
 
@@ -45,14 +46,14 @@ def broadcaster_ID(name):
     r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
     if r.status_code!=200:
         if r.status_code!=401:
-            return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None
+            return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None, None
         else:
             print("[ERROR]: status code is 401. Getting new access token...")
             token = new_access_token()
             # print(f'The new access token is: {token}')
             r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
             if r.status_code!=200:
-                return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None
+                return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None, None
     data = r.json()
     if len(data.get('data'))==0:
         return "[ERROR]: User not found", 1, None, None
@@ -202,7 +203,6 @@ def listclip(attributes):
         return "Usage: !listclip [user]"
 
     limit = 10      # We're only gonna search 10*100 = 1000 clips
-    csv = []
     games = {}
 
     override = False
@@ -223,6 +223,8 @@ def listclip(attributes):
     if status:      # It's an error message
         return id
 
+    csv = numpy.array([[f"{display_name}'s Clips", '', '', '', ''], \
+        ["Clip", "Game", "Views", "Created At", "Creator Name"]])
 
     if not override:
         s3 = boto3.resource('s3')
@@ -257,7 +259,7 @@ def listclip(attributes):
             
             url = f"<a href=\"{link}\" class=\"link-dark\" target=\"_blank\" rel=\"noopener noreferrer\">{title}</a>"
 
-            csv.append([url, game_name, view_count, created_at, creator_name])
+            csv = numpy.append(csv, [[url, game_name, view_count, created_at, creator_name]], axis=0)
 
 
         pagination = data.get('pagination').get('cursor')
@@ -266,8 +268,6 @@ def listclip(attributes):
         # Continue from pagination index
         r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=100&after={1}".format(id, pagination), headers=header)
 
-    csv.insert(0, ["Clip", "Game", "Views", "Created At", "Creator Name"])
-    csv.insert(0, [f"{display_name}'s Clips"])
     fill_clips(csv, offline_image_url, display_name)
     return f"https://apoorlywrittenbot.cc/clips/clips-{display_name}.html"
     

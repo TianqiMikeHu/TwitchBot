@@ -36,9 +36,9 @@ def say(message, channel):
     try:
         s.sendall(f"PASS {password}\r\n".encode('utf-8'))
         s.sendall(f"NICK {NICK}\r\n".encode('utf-8'))
-        s.sendall(f"JOIN {channel}\r\n".encode('utf-8'))
-        s.sendall(f"PRIVMSG {channel} : {message}\r\n".encode('utf-8'))
-        s.sendall(f"PART {channel}\r\n".encode('utf-8'))
+        s.sendall(f"JOIN #{channel}\r\n".encode('utf-8'))
+        s.sendall(f"PRIVMSG #{channel} : {message}\r\n".encode('utf-8'))
+        s.sendall(f"PART #{channel}\r\n".encode('utf-8'))
     except:
         raise Exception("Socket Error")
     finally:

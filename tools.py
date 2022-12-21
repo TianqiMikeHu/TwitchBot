@@ -127,10 +127,11 @@ def fill_clips(csv, offline_image_url, file_name):
 
     background = ['bg-primary', 'bg-success', 'bg-info', 'bg-warning', 'bg-danger']
     div_banner = soup.find("div", {"id": "div-banner"})
-    div_banner['class'] = f"container-fluid display-1 p-5 text-white text-center {random.choice(background)}"
+    div_banner['class'] = f"container-fluid display-1 m-0 p-0 {random.choice(background)}"
+    div_banner['style'] = "height: 30vh;"
     if offline_image_url is not None:
         if offline_image_url!='':
-            div_banner['class'] = "container-fluid display-1 p-5 text-white text-center bg-image"
+            div_banner['class'] = "container-fluid display-1 m-0 p-0 bg-image"
             div_banner['style'] = f"background-image: url('{offline_image_url}'); height: 30vh; background-repeat:no-repeat; background-position:top center;"
 
     df = pandas.DataFrame(body, columns=header)
