@@ -17,12 +17,14 @@ import socket
 
 
 HOST = 'irc.chat.twitch.tv'
-NICK = 'a_poorly_written_bot'
 PORT = 6667
+NICK = 'a_poorly_written_bot'
 
+# HOST = 'irc-ws.chat.twitch.tv'
+# PORT = 443
 
 def say(message, channel, password):
-    password = os.getenv('TWITCH_OAUTH_TOKEN')
+    # password = os.getenv('TWITCH_OAUTH_TOKEN')
     # print(password)
     try:
         s = socket.socket()
@@ -229,6 +231,6 @@ audio = audio_transcript('annaagtapp', opt.debug)
 # thread3.join()
 # say("abc", "mike_hu_0_0")
 # time.sleep(3)
-# say("def", "mike_hu_0_0")
+# say("def", "mike_hu_0_0", 'oauth:2molxdrwam7bgu3kd82zdjoy5pgesg')
 # time.sleep(3)
 # say("ghi", "mike_hu_0_0")
