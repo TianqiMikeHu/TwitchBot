@@ -19,12 +19,13 @@ import asyncio
 class Bot(commands.Bot):
     def __init__(self, channel, debug):
         dotenv.load_dotenv()
-        super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=[channel])
+        super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='~', initial_channels=[channel])
         self.channel = channel
         self.audio = audio_transcript(channel, debug)
 
 
     async def event_ready(self):
+        print("CONENCTED TO TWITCH IRC")
         chan = self.get_channel(self.channel)
         while True:
             # we want the raw data not the numpy array to send it to google api
@@ -51,7 +52,7 @@ class Bot(commands.Bot):
                 for item in self.audio.keywords:
                     if item[0] in transcript:
                         item[2]+=1
-                        query = 'UPDATE bot.audio_key_annaagtapp SET count=%s where keyword=%s'
+                        query = 'UPDATE bot.audio_key SET count=%s where keyword=%s'
                         tools.query(self.audio.pool, query, True, (item[2],item[0]))
                         asyncio.ensure_future(chan.send(f"{item[1]} (x{item[2]})"))
                         await asyncio.sleep(0.1)
@@ -95,7 +96,7 @@ class audio_transcript():
 
 
     def load_audio_keywords(self):
-        query = 'SELECT * FROM bot.audio_key_annaagtapp'
+        query = 'SELECT * FROM bot.audio_key'
         result = tools.query(self.pool, query, False, None)
 
         for item in result:
@@ -168,5 +169,5 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--debug', action='store_true', help='debug mode')
 parser.set_defaults(debug=False)
 opt = parser.parse_args()
-bot = Bot('annaagtapp', opt.debug)
+bot = Bot('mike_hu_0_0', opt.debug)
 bot.run()

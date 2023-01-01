@@ -50,7 +50,7 @@ class Bot(commands.Bot):
         self.channel = None
         self.quiz = quizstruct.Quiz()
         self.scrapper = web_scrapper.Web_Scrapper()
-        self.audio = audio.audio_transcript(os.getenv('CHANNEL'))
+        # self.audio = audio.audio_transcript(os.getenv('CHANNEL'))
         refresh_token()
 
     async def event_ready(self):
