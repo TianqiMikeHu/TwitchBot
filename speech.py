@@ -11,51 +11,67 @@ import os
 import dotenv
 import threading
 import argparse
-import time
 import dotenv
 from twitchio.ext import commands
 import asyncio
+from twitchio.ext import routines
+import time
+
+COOLDOWN = 60
 
 class Bot(commands.Bot):
     def __init__(self, channel, debug):
         dotenv.load_dotenv()
-        super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='~', initial_channels=[channel])
+        super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=[channel])
         self.channel = channel
         self.audio = audio_transcript(channel, debug)
 
 
     async def event_ready(self):
-        print("CONENCTED TO TWITCH IRC")
-        chan = self.get_channel(self.channel)
-        while True:
-            # we want the raw data not the numpy array to send it to google api
-            audio_segment = self.audio.audio_grabber.grab_raw()
-            if audio_segment:
-                raw = BytesIO(audio_segment)
-                try:
-                    raw_wav = AudioSegment.from_raw(
-                        raw, sample_width=2, frame_rate=16000, channels=1)
-                except CouldntEncodeError:
-                    print("could not decode")
-                    continue
-                raw_flac = BytesIO()
-                raw_wav.export(raw_flac, format='flac')
-                data = raw_flac.read()
-                transcript = self.audio.api_speech(data)
-                if self.audio.debug:
-                    print(transcript)
-                if transcript is None:
-                    continue
-                
-                transcript = transcript.lower()
+        print("CONNECTED TO TWITCH IRC")
+        self.transcribe.start()
+        print("TASK STARTED")
+        
 
-                for item in self.audio.keywords:
-                    if item[0] in transcript:
-                        item[2]+=1
-                        query = 'UPDATE bot.audio_key SET count=%s where keyword=%s'
-                        tools.query(self.audio.pool, query, True, (item[2],item[0]))
-                        asyncio.ensure_future(chan.send(f"{item[1]} (x{item[2]})"))
-                        await asyncio.sleep(0.1)
+    async def event_message(self, msg):
+        return
+
+    @routines.routine(seconds=3.0, iterations=None)
+    async def transcribe(self):
+        chan = self.get_channel(self.channel)
+        # we want the raw data not the numpy array to send it to google api
+        audio_segment = self.audio.audio_grabber.grab_raw()
+        if audio_segment:
+            raw = BytesIO(audio_segment)
+            try:
+                raw_wav = AudioSegment.from_raw(
+                    raw, sample_width=2, frame_rate=16000, channels=1)
+            except CouldntEncodeError:
+                print("could not decode")
+            raw_flac = BytesIO()
+            raw_wav.export(raw_flac, format='flac')
+            data = raw_flac.read()
+            transcript = self.audio.api_speech(data)
+            if self.audio.debug:
+                print(transcript)
+            if transcript is None:
+                return
+            
+            transcript = transcript.lower()
+
+            for item in self.audio.keywords:
+                if item[0] in transcript:
+                    timestamp = time.time()
+                    if timestamp-item[3]<COOLDOWN:
+                        print(f"\nKeyword \"{item[0]}\" was throttled: delta={timestamp-item[3]}\n")
+                        continue
+                    item[2]+=1
+                    item[3] = timestamp
+                    print(f"{item[1]} (x{item[2]})")
+                    query = 'UPDATE bot.audio_key SET count=%s where keyword=%s'
+                    tools.query(self.audio.pool, query, True, (item[2],item[0]))
+                    asyncio.ensure_future(chan.send(f"{item[1]} (x{item[2]})"))
+                    await asyncio.sleep(0.1)
 
 
 class audio_transcript():
@@ -101,7 +117,7 @@ class audio_transcript():
 
         for item in result:
             if item[3]:
-                self.keywords.append([item[0], item[1], item[2]])
+                self.keywords.append([item[0], item[1], item[2], 0]) # trigger, response, count, timestamp
 
 
 

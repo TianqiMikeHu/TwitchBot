@@ -96,5 +96,5 @@ def audio_debug(attributes):
 
 def shutdown(attributes):
     web_scrapper.exit_event.set()
-    attributes['audio'].stop_listening()
+    # attributes['audio'].stop_listening()
     sys.exit()
