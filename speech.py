@@ -41,7 +41,7 @@ class Bot(commands.Bot):
         chan = self.get_channel(self.channel)
         # we want the raw data not the numpy array to send it to google api
         audio_segment = self.audio.audio_grabber.grab_raw()
-        if audio_segment:
+        while audio_segment:
             raw = BytesIO(audio_segment)
             try:
                 raw_wav = AudioSegment.from_raw(
@@ -72,6 +72,7 @@ class Bot(commands.Bot):
                     tools.query(self.audio.pool, query, True, (item[2],item[0]))
                     asyncio.ensure_future(chan.send(f"{item[1]} (x{item[2]})"))
                     await asyncio.sleep(0.1)
+            audio_segment = self.audio.audio_grabber.grab_raw()
 
 
 class audio_transcript():

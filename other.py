@@ -5,11 +5,11 @@ import random
 
 ################################################    Other functions
 def lurk(attributes):
-    return f"Enjoy the lurk, {attributes['author']}!"
+    return f"Thanks for the lurk, {attributes['author']}! Let us know if you find anything interesting."
 
 
 def unlurk(attributes):
-    return f"Welcome back {attributes['author']}! Hope you had fun."
+    return f"Welcome back {attributes['author']}, hope you had fun!"
 
 
 def updatedeath(attributes):
