@@ -104,7 +104,7 @@ class audio_transcript():
         try:
             self.audio_grabber = TwitchAudioGrabber(twitch_url=self.twitch_url,
                                        dtype=np.int16,
-                                       segment_length=5,
+                                       segment_length=7,
                                        channels=1,
                                        rate=16000)
         except ValueError:

@@ -79,6 +79,24 @@ def announcement(message):
     return None
 
 
+def shoutout(to_broadcaster_id):
+    r = requests.post(url=f"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id=160025583&to_broadcaster_id={to_broadcaster_id}&moderator_id=681131749", headers=get_header2())
+
+    if r.status_code!=204 or r.status_code!=429:
+        if r.status_code!=401:
+            return f'[ERROR]: status code is {str(r.status_code)}'
+        else:
+            print("[ERROR]: status code is 401. Getting new access token...")
+            refresh_token()
+            # print(f'The new access token is: {token}')
+            # print(f'The new refresh token is: {refresh}')
+            r = requests.post(url=f"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id=160025583&to_broadcaster_id={to_broadcaster_id}&moderator_id=681131749", headers=get_header2())
+            if r.status_code!=204:
+                return f'[ERROR]: status code is {str(r.status_code)}'
+
+    return None
+
+
 ## returns game name of broadcaster
 def get_game(name):
     id, status, display_name, img, about = broadcaster_ID(name)
@@ -308,6 +326,7 @@ def so(attributes):
 
     response = response + result
 
+    shoutout(id)
     return announcement(response)
 
 

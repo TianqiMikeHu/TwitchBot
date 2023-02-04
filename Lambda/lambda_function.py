@@ -1,18 +1,55 @@
-import socket
 import hmac
 import hashlib
 import os
 import json
+import API
+import socket
+from twitchio.ext import commands
+import boto3
+import time
+# import asyncio
+
 
 HOST = 'irc.chat.twitch.tv'
-NICK = 'a_poorly_written_bot'
 PORT = 6667
-CHAN = '#mike_hu_0_0'
+NICK = 'a_poorly_written_bot'
+
+cold_start = True
 
 
-def say(message):
+def send_twitchio(message):
+    global cold_start
+    if not cold_start:
+        send_socket(message)
+        return
+    
+    class Bot(commands.Bot):
+        def __init__(self):
+            channel = 'mike_hu_0_0'
+            super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=[channel])
+            self.channel = channel
+    
+        async def event_ready(self):
+            chan = self.get_channel(self.channel)
+            await chan.send(message)
+            self.loop.stop()
+            return
+        
+    bot = Bot()
+    bot.run()
+    cold_start = False
+    
+    client = boto3.client('lambda')
+    response = client.update_function_configuration(
+        FunctionName='EventSub',
+        Description=f'Modified{str(time.time_ns())}'
+    )
+
+
+def send_socket(message):
     password = os.getenv('TWITCH_OAUTH_TOKEN')
     # print(password)
+    channel =  "mike_hu_0_0"
     try:
         s = socket.socket()
     except:
@@ -27,14 +64,16 @@ def say(message):
     try:
         s.sendall(f"PASS {password}\r\n".encode('utf-8'))
         s.sendall(f"NICK {NICK}\r\n".encode('utf-8'))
-        s.sendall(f"JOIN {CHAN}\r\n".encode('utf-8'))
-        s.sendall(f"PRIVMSG {CHAN} : {message}\r\n".encode('utf-8'))
-        s.sendall(f"PART {CHAN}\r\n".encode('utf-8'))
+        s.sendall(f"JOIN #{channel}\r\n".encode('utf-8'))
+        s.sendall(f"PRIVMSG #{channel} : {message}\r\n".encode('utf-8'))
+        s.sendall(f"PART #{channel}\r\n".encode('utf-8'))
     except:
         raise Exception("Socket Error")
     finally:
         s.shutdown(socket.SHUT_RDWR)
         s.close()
+
+
     
 
 
@@ -69,7 +108,7 @@ def lambda_handler(event, context):
     my_signature = "sha256=" + my_signature
 
     if signature!=my_signature:
-        say("signature mismatch: "+signature+" / "+my_signature)
+        send_twitchio(f"signature mismatch: {signature}/{my_signature}")
         return  {
             'statusCode': 403,
             'body': ''
@@ -80,16 +119,18 @@ def lambda_handler(event, context):
     if event_type == "channel.follow":
         target = body.get('event', {}).get('user_name')
         if target is not None:
-            message = target + ", thank you so much for the follow! Welcome to the stream!"
-            say(message)
+            message = f"{target}, thank you so much for the follow! Welcome to the stream!"
+            send_twitchio(message)
 
     elif event_type == "channel.prediction.begin":
         title = body.get('event', {}).get('title')
         outcomes = body.get('event', {}).get('outcomes')
         if title is not None and outcomes is not None:
-            message = "Kappa What a dilemma: \"" + title + "\" Make your prediction between *" + outcomes[0].get("title") + "* and *" + outcomes[1].get("title") + "*, chat!"
+            outcome_0 = outcomes[0].get("title")
+            outcome_1 = outcomes[1].get("title")
+            message = f"Kappa What a dilemma: \"{title}\" Make your prediction between *{outcome_0}* and *{outcome_1}*, chat!"
             #print(message)
-            say(message)
+            send_twitchio(message)
 
     elif event_type == 'channel.subscribe':
         user_name = body.get('event', {}).get('user_name')
@@ -97,10 +138,10 @@ def lambda_handler(event, context):
         if user_name is not None and tier is not None:
             try:
                 tier = int(tier) // 1000
-                message = "Whoa, "+user_name+" just subscribed at tier "+str(tier)+"! Thank you so much!"
+                message = f"Whoa, {user_name} just subscribed at tier {str(tier)}! Thank you so much!"
             except:
-                message = "Whoa, "+user_name+" just subscribed! Thank you so much!"
-            say(message)
+                message = f"Whoa, {user_name} just subscribed! Thank you so much!"
+            send_twitchio(message)
 
     elif event_type == 'channel.subscription.message':
         user_name = body.get('event', {}).get('user_name')
@@ -111,10 +152,10 @@ def lambda_handler(event, context):
                 tier = int(tier) // 1000
                 if cumulative_months>1:
                     cumulative_months = str(cumulative_months)
-                    message = "Whoa, "+user_name+" just resubscribed at tier "+str(tier)+" for "+cumulative_months+" months! Thank you so much!"
+                    message = f"Whoa, {user_name} just resubscribed at tier {str(tier)} for {cumulative_months} months! Thank you so much!"
             except:
-                message = "Whoa, "+user_name+" just resubscribed! Thank you so much!"
-            say(message)
+                message = f"Whoa, {user_name} just resubscribed! Thank you so much!"
+            send_twitchio(message)
 
     elif event_type == 'channel.cheer':
         is_anonymous = body.get('event', {}).get('is_anonymous')
@@ -124,32 +165,37 @@ def lambda_handler(event, context):
             if user_name is not None and bits is not None:
                 try:
                     bits = str(bits)
-                    message = "PogChamp "+user_name+" just cheered for "+bits+" bits! I really appreaciate it :D"
-                    say(message)
+                    message = f"PogChamp {user_name} just cheered for {bits} bits! I really appreaciate it :D"
+                    send_twitchio(message)
                 except:
                     pass
 
     elif event_type == 'channel.raid':
         from_broadcaster_user_name = body.get('event', {}).get('from_broadcaster_user_name')
         if from_broadcaster_user_name is not None:
-            message = "Welcome, raiders from "+from_broadcaster_user_name+"\'s channel!"
-            say(message)
+            message = f"Welcome, raiders from {from_broadcaster_user_name}\'s channel!"
+            send_twitchio(message)
 
     elif event_type == 'channel.poll.begin':
         title = body.get('event', {}).get('title')
         choices = body.get('event', {}).get('choices')
         if title is not None and choices is not None:
-            message = "PopCorn We have a new poll about...*checks notes*...\""+title+"\". The options are:"
+            message = f"PopCorn We have a new poll about...*checks notes*...\"{title}\". The options are:"
             try:
                 for i in range(len(choices)):
                     option = choices[i].get("title")
                     message = message + " " + str(i+1) + ") " + option
             except:
                 raise Exception("Error assembling message")
-            say(message)
+            send_twitchio(message)
+            
+    elif event_type == 'channel.channel_points_custom_reward_redemption.add':
+        response = API.redeem(body)
+        if response!="":
+            send_twitchio(response)
 
     else:
-        say("This is an error message")
+        send_twitchio("This is an error message")
 
     return  {
         'statusCode': 200,
