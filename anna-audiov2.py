@@ -13,66 +13,36 @@ import threading
 import argparse
 import dotenv
 from twitchio.ext import commands
-import asyncio
-from twitchio.ext import routines
 import time
+import queue
+from twitchio.ext import routines
 
 COOLDOWN = 60
+q = queue.Queue()
 
 class Bot(commands.Bot):
-    def __init__(self, channel, debug):
+    def __init__(self, channel):
         dotenv.load_dotenv()
         super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=[channel])
         self.channel = channel
-        self.audio = audio_transcript(channel, debug)
 
 
     async def event_ready(self):
         print("CONNECTED TO TWITCH IRC")
-        self.transcribe.start()
-        print("TASK STARTED")
+        self.poll.start(stop_on_error=False)
+        print("POLL STARTED")
         
 
     async def event_message(self, msg):
         return
-
-    @routines.routine(seconds=3.0, iterations=None)
-    async def transcribe(self):
-        chan = self.get_channel(self.channel)
-        # we want the raw data not the numpy array to send it to google api
-        audio_segment = self.audio.audio_grabber.grab_raw()
-        while audio_segment:
-            raw = BytesIO(audio_segment)
-            try:
-                raw_wav = AudioSegment.from_raw(
-                    raw, sample_width=2, frame_rate=16000, channels=1)
-            except CouldntEncodeError:
-                print("could not decode")
-            raw_flac = BytesIO()
-            raw_wav.export(raw_flac, format='flac')
-            data = raw_flac.read()
-            transcript = self.audio.api_speech(data)
-            if self.audio.debug:
-                print(transcript)
-            if transcript is None:
-                return
-            
-            transcript = transcript.lower()
-
-            for item in self.audio.keywords:
-                if item[0] in transcript:
-                    timestamp = time.time()
-                    if timestamp-item[3]<COOLDOWN:
-                        print(f"\nKeyword \"{item[0]}\" was throttled: delta={timestamp-item[3]}\n")
-                        continue
-                    item[2]+=1
-                    item[3] = timestamp
-                    print(f"{item[1]} (x{item[2]})")
-                    query = 'UPDATE bot.audio_key SET count=%s where keyword=%s'
-                    tools.query(self.audio.pool, query, True, (item[2],item[0]))
-                    asyncio.ensure_future(chan.send(f"{item[1]} (x{item[2]})"))
-                    await asyncio.sleep(0.1)
-            audio_segment = self.audio.audio_grabber.grab_raw()
+    
+    @routines.routine(seconds=0.1, iterations=None)
+    async def poll(self):
+        try:
+            item = q.get(block=False)
+            await self.connected_channels[0].send(item)
+        except:
+            pass
 
 
 class audio_transcript():
@@ -95,7 +65,7 @@ class audio_transcript():
 
         self.exit_event = threading.Event()
         self.debug = debug
-        self.keywords = []  # list of [keyword, response, count]
+        self.keywords = []  # list of [keyword, response, count, timestamp]
         self.load_audio_keywords()
         self.start_listening()
 
@@ -113,7 +83,7 @@ class audio_transcript():
 
 
     def load_audio_keywords(self):
-        query = 'SELECT * FROM bot.audio_key'
+        query = 'SELECT * FROM bot.audio_key_annaagtapp'
         result = tools.query(self.pool, query, False, None)
 
         for item in result:
@@ -180,11 +150,54 @@ class audio_transcript():
         except Exception as inst:
             print(inst)
             return
+        
+    def transcribe(self):
+        while True:
+            # we want the raw data not the numpy array to send it to google api
+            audio_segment = self.audio_grabber.grab_raw()
+            if audio_segment:
+                raw = BytesIO(audio_segment)
+                try:
+                    raw_wav = AudioSegment.from_raw(
+                        raw, sample_width=2, frame_rate=16000, channels=1)
+                except CouldntEncodeError:
+                    print("could not decode")
+                    continue
+                raw_flac = BytesIO()
+                raw_wav.export(raw_flac, format='flac')
+                data = raw_flac.read()
+                transcript = self.api_speech(data)
+                
+                if self.debug:
+                    print(transcript)
+                if transcript is None:
+                    continue       
+
+                transcript = transcript.lower()
+
+                for item in self.keywords:
+                    if item[0] in transcript:
+                        timestamp = time.time()
+                        if timestamp-item[3]<COOLDOWN:
+                            print(f"\nKeyword \"{item[0]}\" was throttled: delta={timestamp-item[3]}\n")
+                            continue
+                        item[2]+=1
+                        item[3] = timestamp
+                        print(f"{item[1]} (x{item[2]})")
+                        query = 'UPDATE bot.audio_key_annaagtapp SET count=%s where keyword=%s'
+                        tools.query(self.pool, query, True, (item[2],item[0]))
+                        q.put(f"{item[1]} (x{item[2]})")
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--debug', action='store_true', help='debug mode')
 parser.set_defaults(debug=False)
 opt = parser.parse_args()
-bot = Bot('mike_hu_0_0', opt.debug)
+
+audio = audio_transcript('annaagtapp', opt.debug)
+threading.Thread(target=audio.transcribe, daemon=True).start()
+
+
+
+bot = Bot('annaagtapp')
 bot.run()
