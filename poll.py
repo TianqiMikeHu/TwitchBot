@@ -111,7 +111,7 @@ class Bot(commands.Bot):
                 await msg.channel.send("Poll routine resumed.")
     
 
-    @routines.routine(seconds=60.0, iterations=None)
+    @routines.routine(minutes=15.0, iterations=None)
     async def run_poll(self):
         poll()
         chan = self.connected_channels[0]
