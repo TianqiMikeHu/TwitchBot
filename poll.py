@@ -3,19 +3,51 @@ import dotenv
 import os
 import random
 import requests
-import poll_constant
-from API import *
+import poll_options
 from twitchio.ext import routines
 
+
+
+dotenv.load_dotenv()
+
 RUNNING = True
+CLIENTID = os.getenv('CLIENTID')
+CLIENTSECRET = os.getenv('CLIENTSECRET')
+
+
+
+def refresh_token():
+    refresh = os.getenv('REFRESH_ANNA')
+    refresh = requests.utils.quote(refresh, safe='')
+    token_request = f"https://id.twitch.tv/oauth2/token?client_id={CLIENTID}&client_secret={CLIENTSECRET}&grant_type=refresh_token&refresh_token="+refresh
+    r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
+
+    print("User access token refreshed")
+
+    token = (r.json()).get('access_token')
+    refresh = (r.json()).get('refresh_token')
+
+    dotenv.set_key('.env', 'ACCESSTOKEN_ANNA', token)
+    dotenv.set_key('.env', 'REFRESH_ANNA', refresh)
+
+    return
+
+
+def get_header():
+    dotenv.load_dotenv(override=True)
+    header = {"Client-ID": CLIENTID, 
+                "Authorization": f"Bearer {os.getenv('ACCESSTOKEN_ANNA')}", 
+                "Content-Type":"application/json"}
+    return header
+
 
 def poll():
 
-    options = random.sample(poll_constant.OPTIONS, 4)
+    options = random.sample(poll_options.OPTIONS, 4)
 
     body = {
-        "broadcaster_id":"160025583", 
-        "title":"Next Effect?", 
+        "broadcaster_id":"598261113", 
+        "title":"Next Help or Harm Effect?", 
         "choices":[{ 
             "title": options[0]
         },
@@ -30,24 +62,23 @@ def poll():
         }],
         "duration": 30
     }
-    r = requests.post(url="https://api.twitch.tv/helix/polls/", headers=get_header3(), json=body)
+    r = requests.post(url="https://api.twitch.tv/helix/polls/", headers=get_header(), json=body)
+
+    if r.status_code==401:
+        print("[ERROR]: status code is 401. Getting new access token...")
+        refresh_token()
+        r = requests.post(url="https://api.twitch.tv/helix/polls/", headers=get_header(), json=body)
+
     if r.status_code!=200:
-        if r.status_code!=401:
-            return f'[ERROR]: status code is {str(r.status_code)}'
-        else:
-            print("[ERROR]: status code is 401. Getting new access token...")
-            refresh_token()
-            r = requests.post(url="https://api.twitch.tv/helix/polls/", headers=get_header3(), json=body)
-            if r.status_code!=204:
-                return f'[ERROR]: status code is {str(r.status_code)}'
+        print(f'[ERROR]: status code is {str(r.status_code)}')
+
     return None
 
 
 class Bot(commands.Bot):
 
     def __init__(self):
-        dotenv.load_dotenv()
-        super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=['mike_hu_0_0'])
+        super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=['annaagtapp'])
         self.bot = os.getenv('BOT')
 
     async def event_ready(self):
@@ -60,18 +91,18 @@ class Bot(commands.Bot):
         
         args = msg.content.split()
         command = args[0].lower()
-        author = msg.author.display_name
+        authorized = msg.author.is_mod
 
         global RUNNING
 
-        if command == "!pause":
+        if command == "!pause" and authorized:
             if RUNNING:
                 RUNNING = False
                 self.run_poll.cancel()
                 await msg.channel.send("Poll routine paused.")
             else:
                 return
-        elif command == "!unpause":
+        elif command == "!unpause" and authorized:
             if RUNNING:
                 return
             else:
@@ -79,10 +110,14 @@ class Bot(commands.Bot):
                 self.run_poll.start()
                 await msg.channel.send("Poll routine resumed.")
     
+
     @routines.routine(seconds=60.0, iterations=None)
     async def run_poll(self):
         poll()
-    
+        chan = self.connected_channels[0]
+        await chan.send("There is a new poll in chat! agtappDisco")
+
+
 
 bot = Bot()
 bot.run()
