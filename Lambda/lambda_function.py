@@ -39,11 +39,14 @@ def send_twitchio(message):
     bot.run()
     cold_start = False
     
-    client = boto3.client('lambda')
-    response = client.update_function_configuration(
-        FunctionName='EventSub',
-        Description=f'Modified{str(time.time_ns())}'
-    )
+    try:
+        client = boto3.client('lambda')
+        response = client.update_function_configuration(
+            FunctionName='EventSub',
+            Description=f'Modified{str(time.time_ns())}'
+        )
+    except:
+        pass
 
 
 def send_socket(message):
@@ -193,6 +196,16 @@ def lambda_handler(event, context):
         response = API.redeem(body)
         if response!="":
             send_twitchio(response)
+            
+    elif event_type == 'stream.online':
+        username = body.get('event', {}).get('broadcaster_user_name')
+        if username == "AnnaAgtapp":
+            API.start_ec2()
+            
+    elif event_type == 'stream.offline':
+        username = body.get('event', {}).get('broadcaster_user_name')
+        if username == "AnnaAgtapp":
+            API.stop_ec2()
 
     else:
         send_twitchio("This is an error message")

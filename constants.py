@@ -6,6 +6,8 @@ COMMAND = '!'
 
 BRACKET_L = '${'
 BRACKET_R = '}'
+BRACKET_L2 = '$('
+BRACKET_R2 = ')'
 
 EXCLUDE = ['@', '\'', '\'m', 'is', 'was', 'are', 'were', 'am', 'been', '\'s', 'does', 'do', 'i']
 DENY = ['sudo', 'import']

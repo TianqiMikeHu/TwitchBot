@@ -1,0 +1,86 @@
+<html>
+
+<head>
+  <title>Twitch Player Embed</title>
+</head>
+
+<body>
+  <script>
+
+    window.onload = function () {
+      var video = document.getElementById('video');
+      video.addEventListener('load', onFrameLoad);
+      video.duration = 0;
+    }
+
+    function onFrameLoad(event) {
+      video.style.display = 'initial';
+      setTimeout(function () {
+        video.style.display = 'none';
+      }, event.currentTarget.duration);
+
+    };
+
+    function isOpen(ws) {
+      return ws.readyState === ws.OPEN;
+    }
+
+
+    function connectws() {
+      let socket = new WebSocket("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev");
+
+      let intervalId = window.setInterval(function () {
+        if (!isOpen(socket)) return;
+        socket.send('ping');
+      }, 300000);
+
+      socket.onopen = function (event) {
+        const params = new Proxy(new URLSearchParams(window.location.search), {
+          get: (searchParams, prop) => searchParams.get(prop),
+        });
+        let channel = params.channel;
+
+        payload = {
+          'route': "sendmessage",
+          'action': 'joinchannel',
+          'channel': params.channel
+        }
+        socket.send(JSON.stringify(payload));
+      };
+
+      socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        // console.log(data);
+        video.duration = data.duration;
+        video.src = data.src;
+      };
+
+      socket.onclose = function (event) {
+        if (event.wasClean) {
+          console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+        } else {
+          console.log('[close] Connection died');
+        }
+        clearInterval(intervalId);
+        setTimeout(function () {
+          connectws();
+        }, 1000);
+      };
+
+      socket.onerror = function (error) {
+        console.log(`[error]`);
+      };
+    }
+
+    connectws();
+
+  </script>
+
+
+  <iframe id="video" src="" height="480" width="854" allowfullscreen style="display: none">
+  </iframe>
+
+
+</body>
+
+</html>

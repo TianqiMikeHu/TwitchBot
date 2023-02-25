@@ -62,6 +62,9 @@ class Web_Scrapper():
             # Load default SE commands
             with open('SE_Cache/streamelements.txt', "r", encoding='utf-8') as f:
                 self.se_defaults = f.read().splitlines()
+                for i in range(len(self.se_defaults)):
+                    row = (self.se_defaults)[i].split('\t')
+                    (self.se_defaults)[i] = row[0]
         else:
             # If default file not present, re-request everything
             self.se_clear()
@@ -71,9 +74,10 @@ class Web_Scrapper():
     def se_clear(self, name=None):   
         # Remove local files
         if name is None:
-            files = glob.glob('./SE_Cache/*')
-            for f in files:
-                os.remove(f)
+            # files = glob.glob('./SE_Cache/*')
+            # for f in files:
+            #     os.remove(f)
+            return "[ERROR]: I'm not allowing this currently"
         else:
             files = glob.glob(f'./SE_Cache/{name}.txt')
             for f in files:
@@ -149,7 +153,8 @@ class Web_Scrapper():
         while index<len(cells):
             # filter through SE default commands
             if cells[index] not in self.se_defaults:
-                tempBuffer.append([cells[index], cells[index+1]])
+                text = cells[index+1].replace("\'\'", "\' \'")
+                tempBuffer.append([cells[index], text])
             # We only need 2 out of every 3 rows from the result of BeautifulSoup
             index+=3
 
