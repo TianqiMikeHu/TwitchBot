@@ -4,13 +4,11 @@ import os
 import random
 import requests
 import poll_options
-from twitchio.ext import routines
 
 
 
 dotenv.load_dotenv()
 
-RUNNING = True
 CLIENTID = os.getenv('CLIENTID')
 CLIENTSECRET = os.getenv('CLIENTSECRET')
 
@@ -47,7 +45,7 @@ def poll():
 
     body = {
         "broadcaster_id":"598261113", 
-        "title":"Next Help or Harm Effect?", 
+        "title":"Next Stipulation?", 
         "choices":[{ 
             "title": options[0]
         },
@@ -83,7 +81,6 @@ class Bot(commands.Bot):
 
     async def event_ready(self):
         print("bot is ready")
-        self.run_poll.start()
 
     async def event_message(self, msg):
         if msg.author is None:
@@ -93,30 +90,8 @@ class Bot(commands.Bot):
         command = args[0].lower()
         authorized = msg.author.is_mod
 
-        global RUNNING
-
-        if command == "!pause" and authorized:
-            if RUNNING:
-                RUNNING = False
-                self.run_poll.cancel()
-                await msg.channel.send("Poll routine paused.")
-            else:
-                return
-        elif command == "!unpause" and authorized:
-            if RUNNING:
-                return
-            else:
-                RUNNING = True
-                self.run_poll.start()
-                await msg.channel.send("Poll routine resumed.")
-    
-
-    @routines.routine(minutes=15.0, iterations=None)
-    async def run_poll(self):
-        poll()
-        chan = self.connected_channels[0]
-        await chan.send("There is a new poll in chat! agtappDisco")
-
+        if command == "!poll" and authorized:
+            poll()
 
 
 bot = Bot()

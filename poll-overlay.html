@@ -1,0 +1,113 @@
+<html>
+
+<head>
+    <title>Poll Overlay</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@700&display=swap');
+    </style>
+</head>
+
+<body style="font-family: 'Kalam', cursive; color: #e134eb; font-size: 30px">
+    <script>
+        const countdown = 1 * 30;
+        var timerIntervalID;
+        var pollInProgress = false;
+
+        function startTimer(duration, display) {
+            var start = Date.now(),
+                diff,
+                minutes,
+                seconds;
+            function timer() {
+                diff = duration - (((Date.now() - start) / 1000) | 0);
+
+                minutes = (diff / 60) | 0;
+                seconds = (diff % 60) | 0;
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                if (pollInProgress) {
+                    display.textContent = "[Pending New Poll]";
+                    clearInterval(timerIntervalID);
+                }
+                else {
+                    display.textContent = minutes + ":" + seconds;
+                }
+
+                if (diff <= 0) {
+                    clearInterval(timerIntervalID);
+                }
+            };
+            timer();
+            timerIntervalID = setInterval(timer, 1000);
+        }
+
+        function isOpen(ws) {
+            return ws.readyState === ws.OPEN;
+        }
+
+
+        function connectws() {
+            let socket = new WebSocket("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev");
+
+            let intervalId = window.setInterval(function () {
+                if (!isOpen(socket)) return;
+                socket.send('ping');
+            }, 300000);
+
+            socket.onopen = function (event) {
+                payload = {
+                    'route': "sendmessage",
+                    'action': 'joinchannel',
+                    'channel': 'polloverlay'
+                }
+                socket.send(JSON.stringify(payload));
+            };
+
+            socket.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                // console.log(data);
+                if (data.action == "pollstart") {
+                    pollInProgress = true;
+                    timer = document.getElementById('timer');
+                    timer.textContent = "[Pending New Poll]";
+                }
+                else if (data.action == "pollend") {
+                    pollInProgress = false;
+                    stipulation = document.getElementById('stipulation');
+                    timer = document.getElementById('timer');
+                    stipulation.textContent = data.stipulation;
+                    startTimer(countdown, timer);
+                }
+            };
+
+            socket.onclose = function (event) {
+                if (event.wasClean) {
+                    console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+                } else {
+                    console.log('[close] Connection died');
+                }
+                clearInterval(intervalId);
+                setTimeout(function () {
+                    connectws();
+                }, 1000);
+            };
+
+            socket.onerror = function (error) {
+                console.log(`[error]`);
+            };
+        }
+
+        connectws();
+
+    </script>
+
+
+    <div>Current Stipulation: <span id="stipulation">[Waiting for new poll]</span></div>
+    <div>Timer: <span id="timer">00:00</span></div>
+
+
+</body>
+
+</html>
