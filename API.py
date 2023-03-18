@@ -38,6 +38,16 @@ def refresh_token():
     dotenv.set_key('.env', 'ACCESSTOKEN3', token)
     dotenv.set_key('.env', 'REFRESH_ME', refresh)
 
+    refresh = os.getenv('REFRESH_ANNA_BACKUP')
+    refresh = requests.utils.quote(refresh, safe='')
+    token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=refresh_token&refresh_token="+refresh
+    r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
+    print("Anna's user access token refreshed")
+    token = (r.json()).get('access_token')
+    refresh = (r.json()).get('refresh_token')
+    dotenv.set_key('.env', 'ACCESSTOKEN_ANNA_BACKUP', token)
+    dotenv.set_key('.env', 'REFRESH_ANNA_BACKUP', refresh)
+
     return
 
 

@@ -25,11 +25,11 @@ client.login(process.env.DISCORD_TOKEN);
 client.on('messageCreate', async message => {
 	if (message.author.bot) return;
 
-    switch (message.guild.name) {
-        case 'Mike Hu\'s test server':
+    switch (message.guild.id) {
+        case '838919912168488984':  // My test server
             index = 0;
             break;
-        case 'enorp enthusiasts':
+        case '927811251474677800':  // Anna
             index = 1;
             break;
         default: return;

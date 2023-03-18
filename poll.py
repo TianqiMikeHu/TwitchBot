@@ -15,7 +15,7 @@ CLIENTSECRET = os.getenv('CLIENTSECRET')
 
 
 def refresh_token():
-    refresh = os.getenv('REFRESH_ANNA')
+    refresh = os.getenv('REFRESH_ANNA_BACKUP')
     refresh = requests.utils.quote(refresh, safe='')
     token_request = f"https://id.twitch.tv/oauth2/token?client_id={CLIENTID}&client_secret={CLIENTSECRET}&grant_type=refresh_token&refresh_token="+refresh
     r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
@@ -25,8 +25,8 @@ def refresh_token():
     token = (r.json()).get('access_token')
     refresh = (r.json()).get('refresh_token')
 
-    dotenv.set_key('.env', 'ACCESSTOKEN_ANNA', token)
-    dotenv.set_key('.env', 'REFRESH_ANNA', refresh)
+    dotenv.set_key('.env', 'ACCESSTOKEN_ANNA_BACKUP', token)
+    dotenv.set_key('.env', 'REFRESH_ANNA_BACKUP', refresh)
 
     return
 
@@ -34,7 +34,7 @@ def refresh_token():
 def get_header():
     dotenv.load_dotenv(override=True)
     header = {"Client-ID": CLIENTID, 
-                "Authorization": f"Bearer {os.getenv('ACCESSTOKEN_ANNA')}", 
+                "Authorization": f"Bearer {os.getenv('ACCESSTOKEN_ANNA_BACKUP')}", 
                 "Content-Type":"application/json"}
     return header
 
