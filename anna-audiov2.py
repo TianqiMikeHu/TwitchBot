@@ -29,6 +29,7 @@ class Bot(commands.Bot):
 
     async def event_ready(self):
         print("CONNECTED TO TWITCH IRC")
+        await self.connected_channels[0].send("bot is live")
         self.poll.start(stop_on_error=False)
         print("POLL STARTED")
         
