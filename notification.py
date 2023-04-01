@@ -6,9 +6,9 @@ import requests
 
 DEVICE = 'mike-iphone'
 
-channels = ["mike_hu_0_0", "thelastofchuck", "inabox44", "breakingpointes", "buritters", "annaagtapp", "mikkigemu"]
+channels = ["mike_hu_0_0", "thelastofchuck", "inabox44", "breakingpointes", "buritters", "annaagtapp", "mikkigemu", "shadowdaze"]
 key_words = ["mike"]
-exclude_key_words = ["mike and ike", "mike n ike"]
+exclude_key_words = ["mike and ike", "mike n ike", "mikehu4", "johnmike"]
 key_names = []
 
 class Bot(commands.Bot):
@@ -89,6 +89,7 @@ class Bot(commands.Bot):
         if "boring" in lower_case and msg.author.name.lower()=="mag_7798":
             await msg.channel.send("\"Anna is the opposite of boring\" - loyal viewer, mag")
 
+        # if msg.author.name.lower() in key_names or msg.author.name.lower() == msg.channel.name:
         if msg.author.name.lower() in key_names:
             chan_name, status = self.channel_name(msg.channel.name)
             if status!=0:
