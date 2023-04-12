@@ -7,6 +7,9 @@
 <body>
   <script>
 
+    var preload = true;
+    var url = "";
+
     window.onload = function () {
       var video = document.getElementById('video');
       video.addEventListener('load', onFrameLoad);
@@ -14,11 +17,19 @@
     }
 
     function onFrameLoad(event) {
-      video.style.display = 'initial';
-      setTimeout(function () {
-        video.style.display = 'none';
-      }, event.currentTarget.duration);
-
+      if (preload) {
+        setTimeout(function () {
+          preload = false;
+          video.src = url;
+        }, 1000);
+      }
+      else {
+        video.style = "position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:999999;";
+        setTimeout(function () {
+          video.style = "position: absolute;width:0;height:0;border:0;";
+          preload = true;
+        }, event.currentTarget.duration);
+      }
     };
 
     function isOpen(ws) {
@@ -52,7 +63,8 @@
         const data = JSON.parse(event.data);
         // console.log(data);
         video.duration = data.duration;
-        video.src = data.src;
+        video.src = data.src + "&muted=true";
+        url = data.src;
       };
 
       socket.onclose = function (event) {
@@ -77,7 +89,7 @@
   </script>
 
 
-  <iframe id="video" src="" style="position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:999999; display:none">
+  <iframe id="video" src="" style="position: absolute;width:0;height:0;border:0;" preload="auto">
   </iframe>
   <!-- <iframe id="video" src="" height="480" width="854" allowfullscreen style="display: none">
   </iframe> -->
