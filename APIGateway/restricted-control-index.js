@@ -170,9 +170,13 @@ exports.handler = async (event) => {
         }
     }
     else if (event.httpMethod == "POST") {
+        let mods = require("./modList.js");
         let body = JSON.parse(event.body);
         let payload;
         if (event.path == "/restricted/annaagtapp/text") {
+            if (mods.modListAnnaAgtapp.includes(display_name.toLowerCase())==false){
+                return forbidden();
+            }
             payload = {
                 route: "sendmessage",
                 action: "modaction",
@@ -184,6 +188,9 @@ exports.handler = async (event) => {
             };
         }
         else if (event.path == "/restricted/annaagtapp/timer") {
+            if (mods.modListAnnaAgtapp.includes(display_name.toLowerCase())==false){
+                return forbidden();
+            }
             payload = {
                 route: "sendmessage",
                 action: "modaction",
@@ -196,6 +203,9 @@ exports.handler = async (event) => {
             };
         }
         else if (event.path == "/restricted/annaagtapp/clearall") {
+            if (mods.modListAnnaAgtapp.includes(display_name.toLowerCase())==false){
+                return forbidden();
+            }
             payload = {
                 route: "sendmessage",
                 action: "modaction",
