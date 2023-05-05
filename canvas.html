@@ -1,0 +1,129 @@
+<html>
+
+<head>
+  <title>Timers & Things</title>
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+  <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+</head>
+
+<body>
+  <script>
+
+    function isOpen(ws) {
+      return ws.readyState === ws.OPEN;
+    }
+
+
+    function connectws() {
+      let socket = new WebSocket("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev");
+
+      let intervalId = window.setInterval(function () {
+        if (!isOpen(socket)) return;
+        socket.send('ping');
+      }, 300000);
+
+      socket.onopen = function (event) {
+        const params = new Proxy(new URLSearchParams(window.location.search), {
+          get: (searchParams, prop) => searchParams.get(prop),
+        });
+        let channel = params.channel;
+
+        payload = {
+          'route': "sendmessage",
+          'action': 'joinchannel',
+          'channel': params.channel
+        }
+        socket.send(JSON.stringify(payload));
+      };
+
+      let timers = {};
+
+      function startTimer(timerText, expiration, element) {
+        var diff, TTL, minutes, seconds, timerIntervalID;
+        function timer() {
+          TTL = expiration - ((Date.now()/ 1000) | 0);
+          diff = TTL-30;
+
+          minutes = (diff / 60) | 0;
+          seconds = (diff % 60) | 0;
+
+          minutes = minutes < 10 ? "0" + minutes : minutes;
+          seconds = seconds < 10 ? "0" + seconds : seconds;
+
+          if (TTL <=0){
+            clearInterval(timerIntervalID);
+            element.remove();
+          }
+          else if (diff <= 0) {
+            element.textContent = `${timerText}: DONE`;
+          }
+          else {
+            element.textContent = `${timerText}: ${minutes}:${seconds}`;
+          }
+        };
+        timer();
+        timerIntervalID = setInterval(timer, 1000);
+      }
+
+      socket.onmessage = function (event) {
+        const data = JSON.parse(event.data);
+        // console.log(data);
+        if (data.action == "modaction") {
+          if (data.category == "json") {
+            let index = 0;
+            for (const cor of data.coordinates){
+              let element = document.createElement("div");
+              element.id = index.toString();
+              document.getElementById('canvas').appendChild(element);
+              element.style = `font-family: 'Kalam', cursive; position: absolute; top: ${cor.top}%; left: ${cor.left}%`;
+              element.style.border = '2px solid transparent';
+              for (const ele of cor.elements){
+                if (ele.category == 'text'){
+                  let subelement = document.createElement("div");
+                  subelement.style = `color: ${ele.color}; font-size: ${ele.size}px`;
+                  element.textContent = ele.content;
+                  document.getElementById(index.toString()).appendChild(element);
+                }
+                else if (ele.category == 'timer'){
+                  let subelement = document.createElement("div");
+                  subelement.style = `color: ${ele.color}; font-size: ${ele.size}px`;
+                  document.getElementById(index.toString()).appendChild(subelement);
+                  startTimer(ele.content, ele.expiration, subelement);
+                }
+              }
+              index+=1;
+            }
+          }
+          else if (data.category == "clearAll") {
+            document.getElementById('canvas').textContent = '';
+          }
+        }
+      };
+
+      socket.onclose = function (event) {
+        if (event.wasClean) {
+          console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+        } else {
+          console.log('[close] Connection died');
+        }
+        clearInterval(intervalId);
+        setTimeout(function () {
+          connectws();
+        }, 1000);
+      };
+
+      socket.onerror = function (error) {
+        console.log(`[error]`);
+      };
+    }
+
+    connectws();
+
+  </script>
+
+<div id="canvas"></div>
+
+</body>
+
+</html>

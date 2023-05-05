@@ -104,13 +104,13 @@
         else if (data.action == "modaction") {
           if (data.category == "text") {
             let element = document.createElement("div");
-            element.style = `font-family: 'Kalam', cursive; color: ${data.color}; font-size: ${data.size}px`
+            element.style = `font-family: 'Kalam', cursive; color: ${data.color}; font-size: ${data.size}px`;
             element.textContent = data.content;
             document.getElementById('over').appendChild(element);
           }
           else if (data.category == "timer") {
             let element = document.createElement("div");
-            element.style = `font-family: 'Kalam', cursive; color: ${data.color}; font-size: ${data.size}px`
+            element.style = `font-family: 'Kalam', cursive; color: ${data.color}; font-size: ${data.size}px`;
             document.getElementById('over').appendChild(element);
             startTimer(data.content, data.duration, element);
           }

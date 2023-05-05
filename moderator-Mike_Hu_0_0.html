@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html id="html" lang="en">
+
+<head>
+    <title>Mike's Mod Interface</title>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+</head>
+
+<body style="background-color: black;">
+    <script>
+        var mapping = [];
+        var index = 0;
+
+        var left_INT = 0;
+        var width_INT = 0;
+
+        var lastClickedElement;
+
+
+        function resize() {
+            let video = document.getElementById('video');
+            let html = document.getElementById('html');
+            let sidebar = document.getElementById('sidebar');
+            video.style.height = `${window.innerHeight}px`;
+
+            width_INT = (window.innerHeight / 9.0 * 16.0 | 0);
+            video.style.width = `${width_INT}px`;
+
+            left_INT = html.clientWidth - width_INT;
+            video.style.left = `${left_INT}px`;
+
+            sidebar.style.height = video.style.height;
+            sidebar.style.width = video.style.left;
+        }
+        window.onload = function () {
+            resize();
+            let newButton = document.getElementById("newButton");
+            newButton.addEventListener("click", create);
+
+            video.src = "https://player.twitch.tv/?channel=mike_hu_0_0&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true&controls=false";
+        }
+        window.onresize = function () {
+            resize();
+        }
+
+        function elementUnfocused(){
+            if(lastClickedElement != null){
+                lastClickedElement.style.border='2px solid transparent';
+            }
+            let editButton = document.getElementById("editButton");
+            editButton.disabled = true;
+            editButton.style.background = "#d9d9d9";
+        }
+
+        window.onclick = function () {
+            elementUnfocused();
+        }
+
+        function elementFocused(e){
+            e.stopPropagation();
+            this.style.border='2px solid #ff6600';
+            lastClickedElement = this;
+
+            let editButton = document.getElementById("editButton");
+            editButton.disabled = false;
+            editButton.style.background = "#6441a5";
+        }
+
+        function create(e) {
+            e.stopPropagation();
+            let element = document.createElement("div");
+            let video = document.getElementById('video');
+            element.id = index.toString();
+            index += 1;
+            document.getElementById('canvas').appendChild(element);
+            element.style = `position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px;`;
+            element.style.border = '2px solid #ff6600';
+            element.addEventListener("click", elementFocused);
+
+            // Autofocus on new element
+            if(lastClickedElement != null){
+                lastClickedElement.style.border='2px solid transparent';
+            }
+            lastClickedElement = element;
+            let editButton = document.getElementById("editButton");
+            editButton.disabled = false;
+            editButton.style.background = "#6441a5";
+
+            let subelement = document.createElement("div");
+            subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / 20}px`;
+            subelement.textContent = "PLACEHOLDER";
+            document.getElementById(element.id).appendChild(subelement);
+
+            element_json = {
+                top: window.innerHeight / 2,
+                left: left_INT + width_INT / 2,
+                elements: [
+                    {
+                        category: 'text',
+                        content: 'PLACEHOLDER',
+                        color: 'FFFFFF',
+                        size: `${window.innerHeight / 20}`
+                    }
+                ]
+            };
+            mapping.push(element_json);
+        }
+    </script>
+
+    <div id="sidebar" class="d-grid"
+        style="position: absolute; top: 0px; left: 0px; z-index: 1000; font-family: 'Kalam', cursive;">
+        <button type="button" id="helpButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#6699ff'"
+            onmouseleave="this.style.background = '#6441a5'">Help</button>
+
+        <button type="button" id="newButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#ffe066'" 
+            onmouseleave="this.style.background = '#6441a5'">New Element</button>
+
+        <button disabled type="button" id="editButton" class="btn btn-primary rounded-0" style="background-color: #d9d9d9;"
+            onmouseover="if(!this.disabled){this.style.background = '#ff9966';}"
+            onmouseleave="if(this.disabled){this.style.background = '#d9d9d9'}else{this.style.background = '#6441a5'}">Edit
+            This Element</button>
+
+        <button type="button" id="saveButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#99ff99'"
+            onmouseleave="this.style.background = '#6441a5'">Save</button>
+
+        <button type="button" id="clearButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#ff6666'" onmouseleave="this.style.background = '#6441a5'">Clear
+            All</button>
+    </div>
+
+    <iframe id="video" src="" style="position: absolute; top: 0px; pointer-events: none; border: none; z-index: 0;"
+        preload="auto"></iframe>
+
+    <div id="canvas" style="font-family: 'Kalam', cursive; position: absolute; z-index: 100;">
+
+    </div>
+</body>
+
+</html>
