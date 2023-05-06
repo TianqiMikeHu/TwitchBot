@@ -39,6 +39,7 @@
             sidebar.style.width = video.style.left;
         }
         window.onload = function () {
+            document.body.style.overflow = 'hidden';
             resize();
             let newButton = document.getElementById("newButton");
             newButton.addEventListener("click", create);
@@ -49,22 +50,81 @@
             resize();
         }
 
-        function elementUnfocused(){
-            if(lastClickedElement != null){
-                lastClickedElement.style.border='2px solid transparent';
+
+        var dragging = function () {
+            return {
+                move: function (divid, xpos, ypos) {
+                    divid.style.left = xpos + 'px';
+                    divid.style.top = ypos + 'px';
+                },
+                startMoving: function (divid, container, evt) {
+                    evt = evt || window.event;
+                    let rect = divid.getBoundingClientRect();
+                    let video = document.getElementById(container);
+                    var posX = evt.clientX,
+                        posY = evt.clientY,
+                        divTop = divid.style.top,
+                        divLeft = divid.style.left,
+                        eWi = parseInt(rect.width),
+                        eHe = parseInt(rect.height),
+                        cL = parseInt(video.style.left),
+                        cWi = parseInt(video.style.width),
+                        cHe = parseInt(video.style.height);
+                    document.getElementById(container).style.cursor = 'move';
+                    divTop = divTop.replace('px', '');
+                    divLeft = divLeft.replace('px', '');
+                    var diffX = posX - divLeft,
+                        diffY = posY - divTop;
+
+                    document.onmousemove = function (evt) {
+                        evt = evt || window.event;
+                        var posX = evt.clientX,
+                            posY = evt.clientY,
+                            aX = posX - diffX,
+                            aY = posY - diffY;
+                        if (aX < cL) aX = cL;
+                        if (aY < 0) aY = 0;
+                        if (aX + eWi > (cL + cWi)) aX = cL + cWi - eWi;
+                        if (aY + eHe > cHe) aY = cHe - eHe;
+                        dragging.move(divid, aX, aY);
+                    }
+                },
+                stopMoving: function (container) {
+                    document.getElementById(container).style.cursor = 'default';
+                    document.onmousemove = function () { }
+                },
+            }
+        }();
+
+        function elementUnfocused() {
+            if (lastClickedElement != null) {
+                lastClickedElement.style.border = '2px solid transparent';
             }
             let editButton = document.getElementById("editButton");
             editButton.disabled = true;
             editButton.style.background = "#d9d9d9";
         }
 
-        window.onclick = function () {
-            elementUnfocused();
-        }
+        document.onkeydown = function (evt) {
+            evt = evt || window.event;
+            var isEscape = false;
+            if ("key" in evt) {
+                isEscape = (evt.key === "Escape" || evt.key === "Esc");
+            } else {
+                isEscape = (evt.keyCode === 27);
+            }
+            if (isEscape) {
+                elementUnfocused();
+            }
+        };
 
-        function elementFocused(e){
-            e.stopPropagation();
-            this.style.border='2px solid #ff6600';
+        function elementFocused(e) {
+            //Unfocus last element
+            if (lastClickedElement != null) {
+                lastClickedElement.style.border = '2px solid transparent';
+            }
+
+            this.style.border = '2px solid #ff6600';
             lastClickedElement = this;
 
             let editButton = document.getElementById("editButton");
@@ -72,20 +132,45 @@
             editButton.style.background = "#6441a5";
         }
 
+        function htmlToElement(html) {
+            var template = document.createElement('template');
+            html = html.trim();
+            template.innerHTML = html;
+            return template.content.firstChild;
+        }
+
         function create(e) {
             e.stopPropagation();
-            let element = document.createElement("div");
-            let video = document.getElementById('video');
-            element.id = index.toString();
-            index += 1;
-            document.getElementById('canvas').appendChild(element);
-            element.style = `position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px;`;
+            let divString = `<div id="${index.toString()}" 
+            style="position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -o-user-select: none;
+            -ms-user-select: none;
+            -khtml-user-select: none;
+            user-select: none;" 
+            onmousedown="dragging.startMoving(this, 'video', event);" 
+            onmouseup="dragging.stopMoving('video');"></div>`;
+            let element = htmlToElement(divString);
+            // element.id = index.toString();
+            // element.style = `position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px;
+            // -webkit-user-select: none;
+            // -moz-user-select: none;
+            // -o-user-select: none;
+            // -ms-user-select: none;
+            // -khtml-user-select: none;
+            // user-select: none;`;
             element.style.border = '2px solid #ff6600';
             element.addEventListener("click", elementFocused);
+            // element.onmousedown = dragging.startMoving(element, "video", event);
+            // element.onmouseup = dragging.stopMoving("video");
+
+            index += 1;
+            document.getElementById('canvas').appendChild(element);
 
             // Autofocus on new element
-            if(lastClickedElement != null){
-                lastClickedElement.style.border='2px solid transparent';
+            if (lastClickedElement != null) {
+                lastClickedElement.style.border = '2px solid transparent';
             }
             lastClickedElement = element;
             let editButton = document.getElementById("editButton");
@@ -93,7 +178,7 @@
             editButton.style.background = "#6441a5";
 
             let subelement = document.createElement("div");
-            subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / 20}px`;
+            subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / 20}px;`;
             subelement.textContent = "PLACEHOLDER";
             document.getElementById(element.id).appendChild(subelement);
 
@@ -120,11 +205,11 @@
             onmouseleave="this.style.background = '#6441a5'">Help</button>
 
         <button type="button" id="newButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
-            onmouseover="this.style.background = '#ffe066'" 
-            onmouseleave="this.style.background = '#6441a5'">New Element</button>
+            onmouseover="this.style.background = '#ffe066'" onmouseleave="this.style.background = '#6441a5'">New
+            Element</button>
 
-        <button disabled type="button" id="editButton" class="btn btn-primary rounded-0" style="background-color: #d9d9d9;"
-            onmouseover="if(!this.disabled){this.style.background = '#ff9966';}"
+        <button disabled type="button" id="editButton" class="btn btn-primary rounded-0"
+            style="background-color: #d9d9d9;" onmouseover="if(!this.disabled){this.style.background = '#ff9966';}"
             onmouseleave="if(this.disabled){this.style.background = '#d9d9d9'}else{this.style.background = '#6441a5'}">Edit
             This Element</button>
 
@@ -138,10 +223,9 @@
     </div>
 
     <iframe id="video" src="" style="position: absolute; top: 0px; pointer-events: none; border: none; z-index: 0;"
-        preload="auto"></iframe>
+        preload="auto" ></iframe>
 
     <div id="canvas" style="font-family: 'Kalam', cursive; position: absolute; z-index: 100;">
-
     </div>
 </body>
 
