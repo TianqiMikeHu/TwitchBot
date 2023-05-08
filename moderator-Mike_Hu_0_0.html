@@ -12,7 +12,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
 </head>
 
-<body style="background-color: black;">
+<body style="background-color: black; height: 100vh;">
+    <style>
+        @keyframes menuAnimation {
+            0% {
+                transform: translate(-50%, -50%) scale(0.0);
+                -webkit-transform: translate(-50%, -50%) scale(0.0);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.0);
+                -webkit-transform: translate(-50%, -50%) scale(1.0);
+            }
+        }
+
+        .dark {
+            background-color: #BBBBBB;
+        }
+
+        .light {
+            background-color: white;
+        }
+    </style>
+
     <script>
         var mapping = [];
         var index = 0;
@@ -21,6 +43,7 @@
         var width_INT = 0;
 
         var lastClickedElement;
+        var editing = false;
 
 
         function resize() {
@@ -43,6 +66,12 @@
             resize();
             let newButton = document.getElementById("newButton");
             newButton.addEventListener("click", create);
+
+            let editButton = document.getElementById("editButton");
+            editButton.addEventListener("click", edit);
+
+            let saveButton = document.getElementById("saveButton");
+            saveButton.addEventListener("click", save);
 
             video.src = "https://player.twitch.tv/?channel=mike_hu_0_0&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true&controls=false";
         }
@@ -106,6 +135,9 @@
         }
 
         document.onkeydown = function (evt) {
+            if (editing) {
+                return;
+            }
             evt = evt || window.event;
             var isEscape = false;
             if ("key" in evt) {
@@ -141,6 +173,9 @@
 
         function create(e) {
             e.stopPropagation();
+            if (editing) {
+                return;
+            }
             let divString = `<div id="${index.toString()}" 
             style="position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px;
             -webkit-user-select: none;
@@ -152,18 +187,8 @@
             onmousedown="dragging.startMoving(this, 'video', event);" 
             onmouseup="dragging.stopMoving('video');"></div>`;
             let element = htmlToElement(divString);
-            // element.id = index.toString();
-            // element.style = `position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px;
-            // -webkit-user-select: none;
-            // -moz-user-select: none;
-            // -o-user-select: none;
-            // -ms-user-select: none;
-            // -khtml-user-select: none;
-            // user-select: none;`;
             element.style.border = '2px solid #ff6600';
             element.addEventListener("click", elementFocused);
-            // element.onmousedown = dragging.startMoving(element, "video", event);
-            // element.onmouseup = dragging.stopMoving("video");
 
             index += 1;
             document.getElementById('canvas').appendChild(element);
@@ -196,10 +221,55 @@
             };
             mapping.push(element_json);
         }
+
+        function edit(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+            editing = true;
+            let menu = document.getElementById("menu");
+            let mask = document.getElementById("mask");
+            mask.style.display = "block";
+            menu.style.display = "flex";
+            menu.style.animation = "menuAnimation 1s";
+        }
+
+        function save(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+            console.log(mapping);
+        }
     </script>
 
+    <div id="menu" class="container" style="font-family: 'Kalam', cursive; display: flex;
+        position: absolute; z-index: 10; 
+        width: 70%; height: 70%; 
+        top: 50%; left:50%; transform: translate(-50%, -50%); 
+        background-color: white;">
+        <div id="tableHeader" class="container" style="display: flex;
+            position: absolute; z-index: 12; 
+            width: 100%; height: 10%; 
+            top: 0%; left:50%; transform: translate(-50%, 0%); 
+            background-color: red;">
+
+        </div>
+        <div id="tableBody" class="container" style="display: flex;
+            position: absolute; z-index: 11; 
+            width: 100%; height: 80%; 
+            top: 50%; left:50%; transform: translate(-50%, -50%); overflow: auto;
+            background-color: yellow;">
+
+        </div>
+    </div>
+
+    <div id="mask" style="position: absolute; z-index: 9; 
+    width: 100%; height: 100%; pointer-events: none; opacity: 0.7; background-color: black; display: none"></div>
+
     <div id="sidebar" class="d-grid"
-        style="position: absolute; top: 0px; left: 0px; z-index: 1000; font-family: 'Kalam', cursive;">
+        style="position: absolute; top: 0px; left: 0px; z-index: 2; font-family: 'Kalam', cursive;">
         <button type="button" id="helpButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
             onmouseover="this.style.background = '#6699ff'"
             onmouseleave="this.style.background = '#6441a5'">Help</button>
@@ -223,9 +293,9 @@
     </div>
 
     <iframe id="video" src="" style="position: absolute; top: 0px; pointer-events: none; border: none; z-index: 0;"
-        preload="auto" ></iframe>
+        preload="auto"></iframe>
 
-    <div id="canvas" style="font-family: 'Kalam', cursive; position: absolute; z-index: 100;">
+    <div id="canvas" style="font-family: 'Kalam', cursive; position: absolute; z-index: 1;">
     </div>
 </body>
 
