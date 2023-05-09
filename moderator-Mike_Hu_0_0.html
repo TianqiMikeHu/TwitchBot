@@ -26,12 +26,58 @@
             }
         }
 
-        .dark {
-            background-color: #BBBBBB;
+        .wordsColumn {
+            width: 40%;
+            height: 100%;
+            display: inline-block;
+            background-color: #a1e4ff;
+            position: absolute;
+            left: 0%;
         }
 
-        .light {
-            background-color: white;
+        .typeColumn {
+            width: 12%;
+            height: 100%;
+            display: inline-block;
+            background-color: #99e2ff;
+            position: absolute;
+            left: 40%;
+        }
+
+        .colorColumn {
+            width: 14%;
+            height: 100%;
+            display: inline-block;
+            background-color: #80dbff;
+            position: absolute;
+            left: 52%;
+        }
+
+        .sizeColumn {
+            width: 13%;
+            height: 100%;
+            display: inline-block;
+            background-color: #66d4ff;
+            position: absolute;
+            left: 66%;
+        }
+
+        .timeColumn {
+            width: 13%;
+            height: 100%;
+            display: inline-block;
+            background-color: #4dccff;
+            position: absolute;
+            left: 79%;
+        }
+
+        .resetColumn {
+            width: 8%;
+            height: 100%;
+            display: inline-block;
+            background-color: #33c5ff;
+            position: absolute;
+            left: 92%;
         }
     </style>
 
@@ -232,7 +278,7 @@
             let mask = document.getElementById("mask");
             mask.style.display = "block";
             menu.style.display = "flex";
-            menu.style.animation = "menuAnimation 1s";
+            menu.style.animation = "menuAnimation 0.5s";
         }
 
         function save(e) {
@@ -249,19 +295,72 @@
         width: 70%; height: 70%; 
         top: 50%; left:50%; transform: translate(-50%, -50%); 
         background-color: white;">
-        <div id="tableHeader" class="container" style="display: flex;
+        <div id="tableHeader" class="container" style="
             position: absolute; z-index: 12; 
             width: 100%; height: 10%; 
-            top: 0%; left:50%; transform: translate(-50%, 0%); 
-            background-color: red;">
-
+            top: 0%; left:50%; transform: translate(-50%, 0%);">
+            <div class="wordsColumn d-flex align-items-center justify-content-center">
+                Words
+            </div>
+            <div class="typeColumn d-flex align-items-center justify-content-center">
+                Type
+            </div>
+            <div class="colorColumn d-flex align-items-center justify-content-center">
+                Font Color
+            </div>
+            <div class="sizeColumn d-flex align-items-center justify-content-center">
+                Font Size
+            </div>
+            <div class="timeColumn d-flex align-items-center justify-content-center">
+                Time
+            </div>
+            <div class="resetColumn d-flex align-items-center justify-content-center">
+                Reset?
+            </div>
         </div>
-        <div id="tableBody" class="container" style="display: flex;
+        <div id="tableBody" class="container" style="
             position: absolute; z-index: 11; 
             width: 100%; height: 80%; 
-            top: 50%; left:50%; transform: translate(-50%, -50%); overflow: auto;
-            background-color: yellow;">
-
+            top: 50%; left:50%; transform: translate(-50%, -50%); overflow: auto;">
+            <div class="tableRow mb-2">
+                <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
+                    <input type="text" class="form-control needs-validation rounded-0" id="words0" placeholder="PLACEHOLDER">
+                    <small id="words0Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                </div>
+                <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
+                    <select class="form-select rounded-0">
+                        <option selected value="Text">Text</option>
+                        <option value="Timer">Timer</option>
+                      </select>
+                </div>
+                <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <span class="input-group-text rounded-0" id="color0Prepend">#</span>
+                        <input type="text" class="form-control needs-validation rounded-0" id="color0"
+                            aria-describedby="color0Prepend" placeholder="FFFFFF" value="FFFFFF">
+                        <small id="color0Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="size0"
+                            aria-describedby="size0Postpend" placeholder="100" value="100">
+                        <span class="input-group-text rounded-0" id="size0Postpend">%</span>
+                        <small id="size0Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="time0"
+                            aria-describedby="time0Postpend" placeholder="300">
+                        <span class="input-group-text rounded-0" id="time0Postpend">s</span>
+                        <small id="time0Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="resetColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
+                    <input type="checkbox" class="form-check-input form-control needs-validation" id="reset0" style="height: 60%;">
+                </div>
+            </div>
         </div>
     </div>
 
