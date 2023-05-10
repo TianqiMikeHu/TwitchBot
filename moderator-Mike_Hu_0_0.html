@@ -82,7 +82,7 @@
     </style>
 
     <script>
-        var mapping = [];
+        var mapping = {};
         var index = 0;
 
         var left_INT = 0;
@@ -265,7 +265,7 @@
                     }
                 ]
             };
-            mapping.push(element_json);
+            mapping[element.id] = element_json;
         }
 
         function edit(e) {
@@ -276,9 +276,71 @@
             editing = true;
             let menu = document.getElementById("menu");
             let mask = document.getElementById("mask");
+            let tableBody = document.getElementById("tableBody");
+
+            let element_json = mapping[lastClickedElement.id];
+
+            for (const ele of element_json.elements){
+                let size_INT = parseFloat(ele.size);
+                size_INT = size_INT * 100.0 / (window.innerHeight / 20);
+
+                let divString = `<div class="tableRow mb-2">
+                <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
+                    <input type="text" class="form-control needs-validation rounded-0" id="words${lastClickedElement.id}" placeholder="PLACEHOLDER" value="${ele.content}">
+                    <small id="words${lastClickedElement.id}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                </div>
+                <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
+                    <select class="form-select rounded-0">
+                        <option ${ele.category=='text'?'selected':''} value="Text">Text</option>
+                        <option ${ele.category=='timer'?'selected':''} value="Timer">Timer</option>
+                        <option value="DELETE">DELETE</option>
+                      </select>
+                </div>
+                <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <span class="input-group-text rounded-0" id="color${lastClickedElement.id}Prepend">#</span>
+                        <input type="text" class="form-control needs-validation rounded-0" id="color${lastClickedElement.id}"
+                            aria-describedby="color${lastClickedElement.id}Prepend" placeholder="FFFFFF" value="${ele.color}">
+                        <small id="color${lastClickedElement.id}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="size${lastClickedElement.id}"
+                            aria-describedby="size${lastClickedElement.id}Postpend" placeholder="100" value="${size_INT}">
+                        <span class="input-group-text rounded-0" id="size${lastClickedElement.id}Postpend">%</span>
+                        <small id="size${lastClickedElement.id}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="time${lastClickedElement.id}"
+                            aria-describedby="time${lastClickedElement.id}Postpend" placeholder="300" ${ele.category=='text'?'disabled':''}>
+                        <span class="input-group-text rounded-0" id="time${lastClickedElement.id}Postpend">s</span>
+                        <small id="time${lastClickedElement.id}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="resetColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
+                    <input type="checkbox" class="form-check-input form-control needs-validation rounded-0" 
+                        style="width: 100%; height: 100%; margin: 0px;" ${ele.category=='text'?'disabled':''}>
+                </div>
+            </div>`;
+
+                let tableRow = htmlToElement(divString);
+                tableBody.appendChild(tableRow);
+            }
+
             mask.style.display = "block";
             menu.style.display = "flex";
             menu.style.animation = "menuAnimation 0.5s";
+        }
+
+        function subelement(e){
+            e.stopPropagation();
+        }
+
+        function closemenu(e){
+            e.stopPropagation();
         }
 
         function save(e) {
@@ -290,13 +352,13 @@
         }
     </script>
 
-    <div id="menu" class="container" style="font-family: 'Kalam', cursive; display: flex;
+    <div id="menu" class="container" style="font-family: 'Kalam', cursive; display: none;
         position: absolute; z-index: 10; 
         width: 70%; height: 70%; 
         top: 50%; left:50%; transform: translate(-50%, -50%); 
         background-color: white;">
         <div id="tableHeader" class="container" style="
-            position: absolute; z-index: 12; 
+            position: absolute; z-index: 11; 
             width: 100%; height: 10%; 
             top: 0%; left:50%; transform: translate(-50%, 0%);">
             <div class="wordsColumn d-flex align-items-center justify-content-center">
@@ -322,45 +384,17 @@
             position: absolute; z-index: 11; 
             width: 100%; height: 80%; 
             top: 50%; left:50%; transform: translate(-50%, -50%); overflow: auto;">
-            <div class="tableRow mb-2">
-                <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
-                    <input type="text" class="form-control needs-validation rounded-0" id="words0" placeholder="PLACEHOLDER">
-                    <small id="words0Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-                </div>
-                <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
-                    <select class="form-select rounded-0">
-                        <option selected value="Text">Text</option>
-                        <option value="Timer">Timer</option>
-                      </select>
-                </div>
-                <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <span class="input-group-text rounded-0" id="color0Prepend">#</span>
-                        <input type="text" class="form-control needs-validation rounded-0" id="color0"
-                            aria-describedby="color0Prepend" placeholder="FFFFFF" value="FFFFFF">
-                        <small id="color0Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-                    </div>
-                </div>
-                <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <input type="text" class="form-control needs-validation rounded-0" id="size0"
-                            aria-describedby="size0Postpend" placeholder="100" value="100">
-                        <span class="input-group-text rounded-0" id="size0Postpend">%</span>
-                        <small id="size0Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-                    </div>
-                </div>
-                <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <input type="text" class="form-control needs-validation rounded-0" id="time0"
-                            aria-describedby="time0Postpend" placeholder="300">
-                        <span class="input-group-text rounded-0" id="time0Postpend">s</span>
-                        <small id="time0Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-                    </div>
-                </div>
-                <div class="resetColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
-                    <input type="checkbox" class="form-check-input form-control needs-validation" id="reset0" style="height: 60%;">
-                </div>
-            </div>
+            
+        </div>
+        <div id="tableFooter" class="container" style="
+            position: absolute; z-index: 12; 
+            width: 100%; height: 10%; 
+            top: 90%; left:50%; transform: translate(-50%, 0%);">
+            <button type="button" class="btn btn-primary ms-1" onclick="subelement();"
+                style="display: inline-block; position: absolute; left: 0%">Add Sub-Element</button>
+
+            <button type="button" class="btn btn-success me-1" onclick="closemenu();"
+                style="display: inline-block; position: absolute; right: 0%">Close Menu</button>
         </div>
     </div>
 
