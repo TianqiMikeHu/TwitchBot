@@ -98,6 +98,7 @@
     <script>
         var mapping = {};
         var index = 0;
+        const font_scale = 25;
 
         var left_INT = 0;
         var width_INT = 0;
@@ -182,9 +183,10 @@
                     }
                 },
                 stopMoving: function (divid, container) {
-                    mapping[divid.id]["top"] = divid.style.top;
-                    mapping[divid.id]["left"] = divid.style.left;
-                    document.getElementById(container).style.cursor = 'default';
+                    let video = document.getElementById(container);
+                    video.style.cursor = 'default';
+                    mapping[divid.id]["top"] = parseFloat(divid.style.top) * 100.0 / window.innerHeight;
+                    mapping[divid.id]["left"] = (parseFloat(divid.style.left) - parseFloat(video.style.left)) * 100.0 / parseFloat(video.style.width);
                     document.onmousemove = function () { }
                 },
             }
@@ -268,53 +270,53 @@
             editButton.style.background = "#6441a5";
 
             let subelement = document.createElement("div");
-            subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / 20}px;`;
+            subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / font_scale}px;`;
             subelement.textContent = "PLACEHOLDER";
             document.getElementById(element.id).appendChild(subelement);
 
             element_json = {
-                top: window.innerHeight / 2,
-                left: left_INT + width_INT / 2,
+                top: 50,
+                left: 50,
                 elements: [
                     {
                         category: 'text',
                         content: 'PLACEHOLDER',
                         color: 'FFFFFF',
-                        size: `${window.innerHeight / 20}`
+                        size: `${window.innerHeight / font_scale}`
                     }
                 ]
             };
             mapping[element.id] = element_json;
 
-        //     mapping  = {"0": {
-        //      top: 50,
-        //      left: 20,
-        //      elements: [
-        //          {
-        //              category: 'timer',
-        //              content: 'Banned Word',
-        //              expiration: 1682833639,
-        //              active: true,
-        //              color: 'FFAAFF',
-        //              size: '35'
-        //          }
-        //      ]
-        //  }};
+            //     mapping  = {"0": {
+            //      top: 50,
+            //      left: 20,
+            //      elements: [
+            //          {
+            //              category: 'timer',
+            //              content: 'Banned Word',
+            //              expiration: 1682833639,
+            //              active: true,
+            //              color: 'FFAAFF',
+            //              size: '35'
+            //          }
+            //      ]
+            //  }};
         }
 
-        function selectTrigger(select){
+        function selectTrigger(select) {
             let type = select.value;
             let id = (select.id).substring(6);
             let time = document.getElementById(`time${id}`);
             let restart = document.getElementById(`restart${id}`);
-            if (type=="Timer"){
+            if (type == "Timer") {
                 time.disabled = false;
                 time.value = "";
                 time.style.color = "black";
                 restart.disabled = true;
                 restart.checked = true;
             }
-            else{
+            else {
                 time.disabled = true;
                 time.value = "-";
                 time.style.color = "black";
@@ -323,15 +325,15 @@
             }
         }
 
-        function checkboxTrigger(checkbox){
+        function checkboxTrigger(checkbox) {
             let id = (checkbox.id).substring(7);
             let time = document.getElementById(`time${id}`);
-            if(checkbox.checked){
+            if (checkbox.checked) {
                 time.value = "";
                 time.style.color = "black";
                 time.disabled = false;
             }
-            else{
+            else {
                 time.value = "ACTIVE";
                 time.style.color = "red";
                 time.disabled = true;
@@ -357,19 +359,19 @@
 
             for (const ele of element_json.elements) {
                 let size_INT = parseFloat(ele.size);
-                size_INT = size_INT * 100.0 / (window.innerHeight / 20);
+                size_INT = size_INT * 100.0 / (window.innerHeight / font_scale);
 
                 let timeString = "-";
-                if(ele.expiration){
-                    if(ele.active){
+                if (ele.expiration) {
+                    if (ele.active) {
                         timeString = "ACTIVE";
                     }
-                    else{
+                    else {
                         timeString = `${ele.expiration}`;
                     }
                 }
 
-                let divString = `<div class="tableRow mb-2">
+                let divString = `<div class="tableRow mb-2" style="height: 12%">
                 <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
                     <input type="text" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER" value="${ele.content}">
                     <small id="words${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
@@ -400,8 +402,8 @@
                 <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
-                            aria-describedby="time${index}Postpend" style="color:${ele.active?'red':'black'}"
-                            placeholder="300" value=${timeString} ${ele.category=='timer'&&ele.active==false?'':'disabled'}>
+                            aria-describedby="time${index}Postpend" style="color:${ele.active ? 'red' : 'black'}"
+                            placeholder="300" value=${timeString} ${ele.category == 'timer' && ele.active == false ? '' : 'disabled'}>
                         <span class="input-group-text rounded-0" id="time${index}Postpend">s</span>
                         <small id="time${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
                     </div>
@@ -409,14 +411,14 @@
                 <div class="restartColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
                     <input type="checkbox" class="form-check-input form-control needs-validation rounded-0" id="restart${index}" 
                         style="width: 100%; height: 100%; margin: 0px;" onchange="checkboxTrigger(this);"
-                        ${ele.category=='timer'&&ele.active?'':'disabled'} ${ele.category=='timer'&&ele.active==false?'checked':''}>
+                        ${ele.category == 'timer' && ele.active ? '' : 'disabled'} ${ele.category == 'timer' && ele.active == false ? 'checked' : ''}>
                 </div>
             </div>`;
 
 
                 let tableRow = htmlToElement(divString);
                 tableBody.appendChild(tableRow);
-                index+=1;
+                index += 1;
             }
 
             mask.style.display = "block";
@@ -426,6 +428,55 @@
 
         function subelement(e) {
             e.stopPropagation();
+            let tableBody = document.getElementById("tableBody");
+            let index = tableBody.childElementCount;
+
+            let divString = `<div class="tableRow mb-2" style="height: 12%">
+                <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
+                    <input type="text" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER">
+                    <small id="words${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                </div>
+                <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
+                    <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
+                        <option selected value="Text">Text</option>
+                        <option value="Timer">Timer</option>
+                        <option value="DELETE">DELETE</option>
+                      </select>
+                </div>
+                <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <span class="input-group-text rounded-0" id="color${index}Prepend">#</span>
+                        <input type="text" class="form-control needs-validation rounded-0" id="color${index}"
+                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="FFFFFF">
+                        <small id="color${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="size${index}"
+                            aria-describedby="size${index}Postpend" placeholder="100" value="100">
+                        <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
+                        <small id="size${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
+                            aria-describedby="time${index}Postpend" style="color:black"
+                            placeholder="300" value="-" disabled>
+                        <span class="input-group-text rounded-0" id="time${index}Postpend">s</span>
+                        <small id="time${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    </div>
+                </div>
+                <div class="restartColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
+                    <input type="checkbox" class="form-check-input form-control needs-validation rounded-0" id="restart${index}" 
+                        style="width: 100%; height: 100%; margin: 0px;" onchange="checkboxTrigger(this);"
+                        disabled>
+                </div>
+            </div>`;
+
+            let tableRow = htmlToElement(divString);
+            tableBody.appendChild(tableRow);
         }
 
         function closemenu(e) {
@@ -465,7 +516,7 @@
         width: 70%; height: 70%; 
         top: 50%; left:50%; transform: translate(-50%, -50%); 
         background-color: white;">
-        <div id="tableHeader" class="container" style="
+        <div id="tableHeader" class="container pe-1" style="
             position: absolute; z-index: 11; 
             width: 100%; height: 10%; 
             top: 0%; left:50%; transform: translate(-50%, 0%);">
@@ -491,17 +542,17 @@
         <div id="tableBody" class="container" style="
             position: absolute; z-index: 11; 
             width: 100%; height: 80%; 
-            top: 50%; left:50%; transform: translate(-50%, -50%); overflow: auto;">
+            top: 50%; left:50%; transform: translate(-50%, -50%); overflow: auto; overflow-y: overlay;">
 
         </div>
         <div id="tableFooter" class="container" style="
             position: absolute; z-index: 12; 
             width: 100%; height: 10%; 
             top: 90%; left:50%; transform: translate(-50%, 0%);">
-            <button type="button" class="btn btn-primary m-1" onclick="subelement(event);"
+            <button type="button" class="btn btn-primary mb-1 ms-1" onclick="subelement(event);"
                 style="display: inline-block; position: absolute; left: 0%; height: 90%;">Add Sub-Element</button>
 
-            <button type="button" class="btn btn-success m-1" onclick="closemenu(event);"
+            <button type="button" class="btn btn-success mb-1 me-1" onclick="closemenu(event);"
                 style="display: inline-block; position: absolute; right: 0%; height: 90%;">Close Menu</button>
         </div>
     </div>
