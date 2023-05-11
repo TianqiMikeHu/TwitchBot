@@ -106,6 +106,14 @@
         var lastClickedElement;
         var editing = false;
 
+        var validationDictionary = {};
+        const patterns = {
+            nonEmpty: /^(?!\s*$).+/,
+            hex: /^[0-9A-F]{6}$/i,
+            positiveInteger: /^[1-9]\d*$/,
+            positiveFloat: /^(?=.+)(?:[1-9]\d*|0)?(?:\.\d+)?$/
+        }
+
 
         function resize() {
             let video = document.getElementById('video');
@@ -315,6 +323,8 @@
                 time.style.color = "black";
                 restart.disabled = true;
                 restart.checked = true;
+                validationDictionary[`time${id}`] = false;
+                time.classList.add("is-invalid");
             }
             else {
                 time.disabled = true;
@@ -322,6 +332,8 @@
                 time.style.color = "black";
                 restart.disabled = true;
                 restart.checked = false;
+                validationDictionary[`time${id}`] = true;
+                time.classList.remove("is-invalid");
             }
         }
 
@@ -332,11 +344,38 @@
                 time.value = "";
                 time.style.color = "black";
                 time.disabled = false;
+                validationDictionary[`time${id}`] = false;
+                time.classList.add("is-invalid");
             }
             else {
                 time.value = "ACTIVE";
                 time.style.color = "red";
                 time.disabled = true;
+                validationDictionary[`time${id}`] = true;
+                time.classList.remove("is-invalid");
+            }
+        }
+
+        const alert = (message, type) => {
+            const wrapper = document.createElement('div')
+            wrapper.innerHTML = [
+                `<div class="alert alert-${type} alert-dismissible" role="alert" style="z-index:99;">`,
+                `   <div>${message}</div>`,
+                '   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>',
+                '</div>'
+            ].join('');
+
+            let alertPlaceholder = document.getElementById('liveAlertPlaceholder');
+            alertPlaceholder.append(wrapper);
+        }
+
+        function validateInput(input, pattern) {
+            if (patterns[pattern].test(input.value)) {
+                input.classList.remove("is-invalid");
+                validationDictionary[input.id] = true;
+            } else {
+                input.classList.add("is-invalid");
+                validationDictionary[input.id] = false;
             }
         }
 
@@ -352,6 +391,7 @@
             let canvas = document.getElementById("canvas");
             canvas.style.pointerEvents = "none";
             tableBody.textContent = '';
+            validationDictionary = {};
 
             let element_json = mapping[lastClickedElement.id];
 
@@ -373,8 +413,8 @@
 
                 let divString = `<div class="tableRow mb-2" style="height: 12%">
                 <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
-                    <input type="text" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER" value="${ele.content}">
-                    <small id="words${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    <input type="text" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER" value="${ele.content}"
+                    onkeyup="validateInput(this, 'nonEmpty');">
                 </div>
                 <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
                     <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
@@ -387,25 +427,25 @@
                     <div class="input-group">
                         <span class="input-group-text rounded-0" id="color${index}Prepend">#</span>
                         <input type="text" class="form-control needs-validation rounded-0" id="color${index}"
-                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="${ele.color}">
-                        <small id="color${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="${ele.color}"
+                            onkeyup="validateInput(this, 'hex');">
                     </div>
                 </div>
                 <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <input type="text" class="form-control needs-validation rounded-0" id="size${index}"
-                            aria-describedby="size${index}Postpend" placeholder="100" value="${size_INT}">
+                            aria-describedby="size${index}Postpend" placeholder="100" value="${size_INT}"
+                            onkeyup="validateInput(this, 'positiveFloat');">
                         <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
-                        <small id="size${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
                     </div>
                 </div>
                 <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
                             aria-describedby="time${index}Postpend" style="color:${ele.active ? 'red' : 'black'}"
-                            placeholder="300" value=${timeString} ${ele.category == 'timer' && ele.active == false ? '' : 'disabled'}>
+                            placeholder="300" value=${timeString} ${ele.category == 'timer' && ele.active == false ? '' : 'disabled'}
+                            onkeyup="validateInput(this, 'positiveInteger');">
                         <span class="input-group-text rounded-0" id="time${index}Postpend">s</span>
-                        <small id="time${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
                     </div>
                 </div>
                 <div class="restartColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
@@ -418,6 +458,10 @@
 
                 let tableRow = htmlToElement(divString);
                 tableBody.appendChild(tableRow);
+                validationDictionary[`words${index}`] = true;
+                validationDictionary[`color${index}`] = true;
+                validationDictionary[`size${index}`] = true;
+                validationDictionary[`time${index}`] = true;
                 index += 1;
             }
 
@@ -433,8 +477,8 @@
 
             let divString = `<div class="tableRow mb-2" style="height: 12%">
                 <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
-                    <input type="text" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER">
-                    <small id="words${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                    <input type="text" class="form-control needs-validation rounded-0 is-invalid" id="words${index}" placeholder="PLACEHOLDER"
+                    onkeyup="validateInput(this, 'nonEmpty');">
                 </div>
                 <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
                     <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
@@ -447,25 +491,25 @@
                     <div class="input-group">
                         <span class="input-group-text rounded-0" id="color${index}Prepend">#</span>
                         <input type="text" class="form-control needs-validation rounded-0" id="color${index}"
-                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="FFFFFF">
-                        <small id="color${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="FFFFFF"
+                            onkeyup="validateInput(this, 'hex');">
                     </div>
                 </div>
                 <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <input type="text" class="form-control needs-validation rounded-0" id="size${index}"
-                            aria-describedby="size${index}Postpend" placeholder="100" value="100">
+                            aria-describedby="size${index}Postpend" placeholder="100" value="100"
+                            onkeyup="validateInput(this, 'positiveFloat');">
                         <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
-                        <small id="size${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
                     </div>
                 </div>
                 <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
                             aria-describedby="time${index}Postpend" style="color:black"
-                            placeholder="300" value="-" disabled>
+                            placeholder="300" value="-" disabled
+                            onkeyup="validateInput(this, 'positiveInteger');">
                         <span class="input-group-text rounded-0" id="time${index}Postpend">s</span>
-                        <small id="time${index}Valid" class="form-text text-danger invalid-feedback">Invalid Input</small>
                     </div>
                 </div>
                 <div class="restartColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
@@ -477,16 +521,28 @@
 
             let tableRow = htmlToElement(divString);
             tableBody.appendChild(tableRow);
+            validationDictionary[`words${index}`] = false;
+            validationDictionary[`color${index}`] = true;
+            validationDictionary[`size${index}`] = true;
+            validationDictionary[`time${index}`] = true;
         }
 
         function closemenu(e) {
             e.stopPropagation();
+            for (const [key, value] of Object.entries(validationDictionary)) {
+                if(!value){
+                    alert("Please fix the invalid value(s)", "warning");
+                    console.log(validationDictionary);
+                    return;
+                }
+            }
             let menu = document.getElementById("menu");
             let mask = document.getElementById("mask");
             let canvas = document.getElementById("canvas");
             canvas.style.pointerEvents = "auto";
             menu.style.animation = "menuAnimationReversed 0.2s";
             mask.style.display = "none";
+            alert("Successfully validated all input values", "success");
             setTimeout(() => {
                 menu.style.display = "none";
                 editing = false;
@@ -511,9 +567,10 @@
         }
     </script>
 
+    <div id="liveAlertPlaceholder" style="position:fixed; top: 0px; width: 100%; z-index: 100;"></div>
     <div id="menu" class="container" style="font-family: 'Kalam', cursive; display: none;
         position: absolute; z-index: 10; 
-        width: 70%; height: 70%; 
+        width: 75%; height: 70%; 
         top: 50%; left:50%; transform: translate(-50%, -50%); 
         background-color: white;">
         <div id="tableHeader" class="container pe-1" style="
