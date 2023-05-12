@@ -145,6 +145,9 @@
             let clearButton = document.getElementById("clearButton");
             clearButton.addEventListener("click", clearAll);
 
+            let jsonButton = document.getElementById("jsonButton");
+            jsonButton.addEventListener("click", showJSON);
+
             video.src = "https://player.twitch.tv/?channel=mike_hu_0_0&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true&controls=false";
         }
         window.onresize = function () {
@@ -225,18 +228,20 @@
             }
         };
 
-        function elementFocused(e) {
+        function elementFocused(element, event) {
             //Unfocus last element
             if (lastClickedElement != null) {
                 lastClickedElement.style.border = '2px solid transparent';
             }
 
-            this.style.border = '2px solid #ff6600';
-            lastClickedElement = this;
+            element.style.border = '2px solid #ff6600';
+            lastClickedElement = element;
 
             let editButton = document.getElementById("editButton");
             editButton.disabled = false;
             editButton.style.background = "#6441a5";
+
+            dragging.startMoving(element, 'video', event);
         }
 
         function htmlToElement(html) {
@@ -259,11 +264,10 @@
             -ms-user-select: none;
             -khtml-user-select: none;
             user-select: none;" 
-            onmousedown="dragging.startMoving(this, 'video', event);" 
+            onmousedown="elementFocused(this, event);" 
             onmouseup="dragging.stopMoving(this, 'video');"></div>`;
             let element = htmlToElement(divString);
             element.style.border = '2px solid #ff6600';
-            element.addEventListener("click", elementFocused);
 
             index += 1;
             document.getElementById('canvas').appendChild(element);
@@ -530,7 +534,7 @@
         function closemenu(e) {
             e.stopPropagation();
             for (const [key, value] of Object.entries(validationDictionary)) {
-                if(!value){
+                if (!value) {
                     alert("Please fix the invalid value(s)", "warning");
                     console.log(validationDictionary);
                     return;
@@ -564,6 +568,38 @@
             }
             mapping = {};
             document.getElementById("canvas").textContent = '';
+        }
+
+        function showJSON(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+            editing = true;
+            let menu = document.getElementById("JSONmenu");
+            let mask = document.getElementById("mask");
+            let canvas = document.getElementById("canvas");
+            canvas.style.pointerEvents = "none";
+
+            document.getElementById("JSONPRE").textContent = JSON.stringify(mapping, undefined, 2);
+
+            mask.style.display = "block";
+            menu.style.display = "flex";
+            menu.style.animation = "menuAnimation 0.5s";
+        }
+
+        function closeJSON(e) {
+            e.stopPropagation();
+            let menu = document.getElementById("JSONmenu");
+            let mask = document.getElementById("mask");
+            let canvas = document.getElementById("canvas");
+            canvas.style.pointerEvents = "auto";
+            menu.style.animation = "menuAnimationReversed 0.2s";
+            mask.style.display = "none";
+            setTimeout(() => {
+                menu.style.display = "none";
+                editing = false;
+            }, 200);
         }
     </script>
 
@@ -614,6 +650,30 @@
         </div>
     </div>
 
+    <div id="JSONmenu" class="container" style="font-family: 'Kalam', cursive; display: none;
+        position: absolute; z-index: 10; 
+        width: 50%; height: 90%; 
+        top: 50%; left:50%; transform: translate(-50%, -50%); 
+        background-color: white;">
+
+        <div class="container" style="
+            position: absolute; z-index: 11; 
+            width: 70%; height: 100%; 
+            top: 50%; left:45%; transform: translate(-50%, -50%); overflow: auto;">
+            <pre id="JSONPRE" style="overflow: auto;">
+            </pre>
+        </div>
+
+
+        <div id="JSONFooter" class="container" style="
+            position: absolute; z-index: 12; 
+            width: 100%; height: 10%; 
+            top: 90%; left:50%; transform: translate(-50%, 0%);">
+            <button type="button" class="btn btn-success mb-1 me-1" onclick="closeJSON(event);"
+                style="display: inline-block; position: absolute; right: 0%; height: 90%;">Close Menu</button>
+        </div>
+    </div>
+
     <div id="mask" style="position: absolute; z-index: 9; 
     width: 100%; height: 100%; pointer-events: none; opacity: 0.7; background-color: black; display: none"></div>
 
@@ -639,6 +699,10 @@
         <button type="button" id="clearButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
             onmouseover="this.style.background = '#ff6666'" onmouseleave="this.style.background = '#6441a5'">Clear
             All</button>
+
+        <button type="button" id="jsonButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#ff99cc'" onmouseleave="this.style.background = '#6441a5'">Show
+            JSON</button>
     </div>
 
     <iframe id="video" src="" style="position: absolute; top: 0px; pointer-events: none; border: none; z-index: 0;"
