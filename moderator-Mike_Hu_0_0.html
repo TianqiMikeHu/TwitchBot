@@ -294,7 +294,7 @@
                         category: 'text',
                         content: 'PLACEHOLDER',
                         color: 'FFFFFF',
-                        size: `${window.innerHeight / font_scale}`
+                        size: '100'
                     }
                 ]
             };
@@ -402,9 +402,6 @@
             let index = 0;
 
             for (const ele of element_json.elements) {
-                let size_INT = parseFloat(ele.size);
-                size_INT = size_INT * 100.0 / (window.innerHeight / font_scale);
-
                 let timeString = "-";
                 if (ele.expiration) {
                     if (ele.active) {
@@ -438,7 +435,7 @@
                 <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <input type="text" class="form-control needs-validation rounded-0" id="size${index}"
-                            aria-describedby="size${index}Postpend" placeholder="100" value="${size_INT}"
+                            aria-describedby="size${index}Postpend" placeholder="100" value="${ele.size}"
                             onkeyup="validateInput(this, 'positiveFloat');">
                         <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
                     </div>
@@ -536,10 +533,66 @@
             for (const [key, value] of Object.entries(validationDictionary)) {
                 if (!value) {
                     alert("Please fix the invalid value(s)", "warning");
-                    console.log(validationDictionary);
                     return;
                 }
             }
+            // Write to mapping dictionary
+            let index = lastClickedElement.id;
+            let reference = mapping[index]["elements"];
+            let words, type, color, size, time, restart;
+            let parentNode = [];
+            for (let i = 0; i < tableBody.childElementCount; i++) {  // row iteration
+                words = document.getElementById(`words${i}`).value;
+                type = document.getElementById(`select${i}`).value;
+                color = document.getElementById(`color${i}`).value;
+                size = document.getElementById(`size${i}`).value;
+                time = document.getElementById(`time${i}`).value;
+                restart = document.getElementById(`restart${i}`).checked;
+                if (type == "DELETE") {
+                    continue;
+                }
+                let childNode = {};
+                childNode["category"] = type.toLowerCase();
+                childNode["content"] = words;
+                childNode["color"] = color.toUpperCase();
+                childNode["size"] = size;
+                if (type == "Timer") {
+                    childNode["active"] = !restart;
+                    if (restart) {
+                        childNode["expiration"] = time;
+                    }
+                    else {// Active timer, check reference
+                        childNode["expiration"] = reference[i]["expiration"];
+                    }
+                }
+                parentNode.push(childNode);
+            }
+            if (parentNode.length == 0) {
+                delete mapping[index];
+                lastClickedElement.remove();
+                lastClickedElement = null;
+            }
+            else {
+                mapping[index]["elements"] = parentNode;
+                // Draw new elements
+                lastClickedElement.innerHTML = '';
+                for (const childNode of parentNode) {
+                    let subelement = document.createElement("div");
+                    subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px;`;
+                    subelement.textContent = childNode["content"];
+                    if (childNode["category"]=="timer"){
+                        if(childNode["active"]){
+                            subelement.textContent+=": ";
+                            // TODO
+                        }
+                        else{
+                            subelement.textContent+=": --:--";
+                        }
+                    }
+                    lastClickedElement.appendChild(subelement);
+                }
+            }
+
             let menu = document.getElementById("menu");
             let mask = document.getElementById("mask");
             let canvas = document.getElementById("canvas");
@@ -558,7 +611,6 @@
             if (editing) {
                 return;
             }
-            console.log(mapping);
         }
 
         function clearAll(e) {
