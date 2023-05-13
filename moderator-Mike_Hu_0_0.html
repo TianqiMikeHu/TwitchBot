@@ -114,6 +114,8 @@
             positiveFloat: /^(?=.+)(?:[1-9]\d*|0)?(?:\.\d+)?$/
         }
 
+        var pendingTimers = {};
+
 
         function resize() {
             let video = document.getElementById('video');
@@ -133,6 +135,10 @@
         window.onload = function () {
             document.body.style.overflow = 'hidden';
             resize();
+
+            let helpButton = document.getElementById("helpButton");
+            helpButton.addEventListener("click", help);
+
             let newButton = document.getElementById("newButton");
             newButton.addEventListener("click", create);
 
@@ -251,13 +257,20 @@
             return template.content.firstChild;
         }
 
+        function help(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+        }
+
         function create(e) {
             e.stopPropagation();
             if (editing) {
                 return;
             }
             let divString = `<div id="${index.toString()}" 
-            style="position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px;
+            style="position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px; white-space: nowrap;
             -webkit-user-select: none;
             -moz-user-select: none;
             -o-user-select: none;
@@ -299,21 +312,6 @@
                 ]
             };
             mapping[element.id] = element_json;
-
-            //     mapping  = {"0": {
-            //      top: 50,
-            //      left: 20,
-            //      elements: [
-            //          {
-            //              category: 'timer',
-            //              content: 'Banned Word',
-            //              expiration: 1682833639,
-            //              active: true,
-            //              color: 'FFAAFF',
-            //              size: '35'
-            //          }
-            //      ]
-            //  }};
         }
 
         function selectTrigger(select) {
@@ -371,6 +369,9 @@
 
             let alertPlaceholder = document.getElementById('liveAlertPlaceholder');
             alertPlaceholder.append(wrapper);
+            setTimeout(() => {
+                wrapper.remove();
+            }, 3000);
         }
 
         function validateInput(input, pattern) {
@@ -559,7 +560,7 @@
                 if (type == "Timer") {
                     childNode["active"] = !restart;
                     if (restart) {
-                        childNode["expiration"] = time;
+                        childNode["expiration"] = parseInt(time);
                     }
                     else {// Active timer, check reference
                         childNode["expiration"] = reference[i]["expiration"];
@@ -567,6 +568,13 @@
                 }
                 parentNode.push(childNode);
             }
+            // Update pendingTimers
+            for (const child of lastClickedElement.children) {
+                if (pendingTimers[child.id]) {
+                    delete pendingTimers[child.id];
+                }
+            }
+            // Remove element if empty
             if (parentNode.length == 0) {
                 delete mapping[index];
                 lastClickedElement.remove();
@@ -580,13 +588,19 @@
                     let subelement = document.createElement("div");
                     subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px;`;
                     subelement.textContent = childNode["content"];
-                    if (childNode["category"]=="timer"){
-                        if(childNode["active"]){
-                            subelement.textContent+=": ";
-                            // TODO
+                    if (childNode["category"] == "timer") {
+                        subelement.id = crypto.randomUUID();
+                        if (childNode["active"]) {
+                            startTimer(childNode["content"], childNode["expiration"], subelement);
                         }
-                        else{
-                            subelement.textContent+=": --:--";
+                        else {
+                            let seconds = childNode["expiration"];
+                            minutes = (seconds / 60) | 0;
+                            seconds = (seconds % 60) | 0;
+                            minutes = minutes < 10 ? "0" + minutes : minutes;
+                            seconds = seconds < 10 ? "0" + seconds : seconds;
+                            subelement.textContent += `: ${minutes}:${seconds}`;
+                            pendingTimers[subelement.id] = [childNode["content"], childNode["expiration"]];
                         }
                     }
                     lastClickedElement.appendChild(subelement);
@@ -610,6 +624,28 @@
             e.stopPropagation();
             if (editing) {
                 return;
+            }
+            let payload = {
+                coordinates: mapping
+            };
+
+            fetch("https://apoorlywrittenbot.cc/restricted/mike_hu_0_0/json", {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        alert(`Error: Status ${String(response.status)}`, 'danger');
+                        throw new Error("HTTP status " + response.status);
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    alert("Submitted successfully", "success");
+                })
+
+            for (const [key, value] of Object.entries(pendingTimers)) {
+                startTimer(value[0], value[1] + ((Date.now() / 1000) | 0) + 30, document.getElementById(key));
             }
         }
 
@@ -652,6 +688,30 @@
                 menu.style.display = "none";
                 editing = false;
             }, 200);
+        }
+
+        function startTimer(timerText, expiration, element) {
+            var diff, TTL, minutes, seconds, timerIntervalID;
+            function timer() {
+                TTL = expiration - ((Date.now() / 1000) | 0);
+                diff = TTL - 30;
+
+                minutes = (diff / 60) | 0;
+                seconds = (diff % 60) | 0;
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                if (diff <= 0) {
+                    element.textContent = `${timerText}: DONE`;
+                    clearInterval(timerIntervalID);
+                }
+                else {
+                    element.textContent = `${timerText}: ${minutes}:${seconds}`;
+                }
+            };
+            timer();
+            timerIntervalID = setInterval(timer, 1000);
         }
     </script>
 

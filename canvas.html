@@ -93,7 +93,7 @@
                     startTimer(ele.content, ele.expiration, subelement);
                   }
                   else {
-                    startTimer(ele.content, ele.expiration + ((Date.now() / 1000) | 0), subelement);
+                    startTimer(ele.content, ele.expiration + ((Date.now() / 1000) | 0) + 30, subelement);
                   }
                 }
               }
