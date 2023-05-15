@@ -114,7 +114,7 @@
             positiveFloat: /^(?=.+)(?:[1-9]\d*|0)?(?:\.\d+)?$/
         }
 
-        var pendingTimers = {};
+        var intervalList = [];
 
 
         function resize() {
@@ -529,6 +529,44 @@
             validationDictionary[`time${index}`] = true;
         }
 
+        function redraw() {
+            // Cancel all timers
+            for (const interval of intervalList) {
+                clearInterval(interval);
+            }
+            intervalList = [];
+            // Draw new elements
+            for (var element of document.getElementById("canvas").children) {
+                element.innerHTML = '';
+                parentNode = mapping[element.id]["elements"];
+                if (parentNode.length == 0){
+                    delete mapping[element.id];
+                    element.remove();
+                    continue;
+                }
+                for (const childNode of parentNode) {
+                    let subelement = document.createElement("div");
+                    subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px;`;
+                    subelement.textContent = childNode["content"];
+                    if (childNode["category"] == "timer") {
+                        subelement.id = crypto.randomUUID();
+                        if (childNode["active"]) {
+                            startTimer(childNode["content"], childNode["expiration"], subelement);
+                        }
+                        else {
+                            let seconds = childNode["expiration"];
+                            minutes = (seconds / 60) | 0;
+                            seconds = (seconds % 60) | 0;
+                            minutes = minutes < 10 ? "0" + minutes : minutes;
+                            seconds = seconds < 10 ? "0" + seconds : seconds;
+                            subelement.textContent += `: ${minutes}:${seconds}`;
+                        }
+                    }
+                    element.appendChild(subelement);
+                }
+            }
+        }
+
         function closemenu(e) {
             e.stopPropagation();
             for (const [key, value] of Object.entries(validationDictionary)) {
@@ -568,43 +606,16 @@
                 }
                 parentNode.push(childNode);
             }
-            // Update pendingTimers
-            for (const child of lastClickedElement.children) {
-                if (pendingTimers[child.id]) {
-                    delete pendingTimers[child.id];
-                }
-            }
             // Remove element if empty
             if (parentNode.length == 0) {
                 delete mapping[index];
                 lastClickedElement.remove();
                 lastClickedElement = null;
+                elementUnfocused();
             }
             else {
                 mapping[index]["elements"] = parentNode;
-                // Draw new elements
-                lastClickedElement.innerHTML = '';
-                for (const childNode of parentNode) {
-                    let subelement = document.createElement("div");
-                    subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px;`;
-                    subelement.textContent = childNode["content"];
-                    if (childNode["category"] == "timer") {
-                        subelement.id = crypto.randomUUID();
-                        if (childNode["active"]) {
-                            startTimer(childNode["content"], childNode["expiration"], subelement);
-                        }
-                        else {
-                            let seconds = childNode["expiration"];
-                            minutes = (seconds / 60) | 0;
-                            seconds = (seconds % 60) | 0;
-                            minutes = minutes < 10 ? "0" + minutes : minutes;
-                            seconds = seconds < 10 ? "0" + seconds : seconds;
-                            subelement.textContent += `: ${minutes}:${seconds}`;
-                            pendingTimers[subelement.id] = [childNode["content"], childNode["expiration"]];
-                        }
-                    }
-                    lastClickedElement.appendChild(subelement);
-                }
+                redraw();
             }
 
             let menu = document.getElementById("menu");
@@ -644,9 +655,32 @@
                     alert("Submitted successfully", "success");
                 })
 
-            for (const [key, value] of Object.entries(pendingTimers)) {
-                startTimer(value[0], value[1] + ((Date.now() / 1000) | 0) + 30, document.getElementById(key));
+            // Activate timers and throw out expired ones
+            let mapping_replica = {};
+            for (const [index, element] of Object.entries(mapping)) {
+                let temp_ele = JSON.parse(JSON.stringify(element));
+                let j = 0;
+                for (let i = 0; i < (element.elements).length; i++) {
+                    if ((element.elements)[i]["expiration"] != null) {
+                        if ((element.elements)[i]["active"]) {
+                            if ((element.elements)[i]["expiration"] - 30 <= ((Date.now() / 1000) | 0)) {
+                                (temp_ele.elements).splice(j, 1);
+                                j--;
+                            }
+                        }
+                        else {
+                            (temp_ele.elements)[j]["active"] = true;
+                            (temp_ele.elements)[j]["expiration"] += (30 + ((Date.now() / 1000) | 0));
+                        }
+                    }
+                    j++;
+                }
+                mapping_replica[index] = temp_ele;
             }
+            mapping = mapping_replica;
+            elementUnfocused();
+            lastClickedElement = null;
+            redraw();
         }
 
         function clearAll(e) {
@@ -656,6 +690,10 @@
             }
             mapping = {};
             document.getElementById("canvas").textContent = '';
+            for (const interval of intervalList) {
+                clearInterval(interval);
+            }
+            intervalList = [];
         }
 
         function showJSON(e) {
@@ -712,6 +750,7 @@
             };
             timer();
             timerIntervalID = setInterval(timer, 1000);
+            intervalList.push(timerIntervalID);
         }
     </script>
 
