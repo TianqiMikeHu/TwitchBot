@@ -72,18 +72,19 @@
         // console.log(data);
         if (data.action == "modaction") {
           if (data.category == "json") {
-            let index = 0;
             for (const interval of intervalList) {
-                clearInterval(interval);
+              clearInterval(interval);
             }
             intervalList = [];
             document.getElementById('canvas').innerHTML = '';
-            for (const cor of data.coordinates) {
+            for (const [index, cor] of Object.entries(data.coordinates)) {
               let element = document.createElement("div");
-              element.id = index.toString();
               document.getElementById('canvas').appendChild(element);
               element.style = `font-family: 'Kalam', cursive; position: absolute; top: ${cor.top}%; left: ${cor.left}%`;
               element.style.border = '2px solid transparent';
+              // Latency adjustment
+              let diff = ((Date.now() / 1000) | 0) - cor.now;
+              console.log(`diff is ${diff}`);
               for (const ele of cor.elements) {
                 if (ele.category == 'text') {
                   let subelement = document.createElement("div");
@@ -96,14 +97,10 @@
                   subelement.style = `color: ${ele.color}; font-size: ${ele.size}px`;
                   document.getElementById(index.toString()).appendChild(subelement);
                   if (ele.active) {
-                    startTimer(ele.content, ele.expiration, subelement);
-                  }
-                  else {
-                    startTimer(ele.content, ele.expiration + ((Date.now() / 1000) | 0) + 30, subelement);
+                    startTimer(ele.content, ele.expiration + diff, subelement);
                   }
                 }
               }
-              index += 1;
             }
           }
         }

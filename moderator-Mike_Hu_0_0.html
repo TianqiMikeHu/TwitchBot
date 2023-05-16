@@ -302,6 +302,7 @@
             element_json = {
                 top: 50,
                 left: 50,
+                now: ((Date.now() / 1000) | 0),
                 elements: [
                     {
                         category: 'text',
@@ -539,7 +540,7 @@
             for (var element of document.getElementById("canvas").children) {
                 element.innerHTML = '';
                 parentNode = mapping[element.id]["elements"];
-                if (parentNode.length == 0){
+                if (parentNode.length == 0) {
                     delete mapping[element.id];
                     element.remove();
                     continue;
@@ -640,44 +641,43 @@
                 coordinates: mapping
             };
 
-            fetch("https://apoorlywrittenbot.cc/restricted/mike_hu_0_0/json", {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        alert(`Error: Status ${String(response.status)}`, 'danger');
-                        throw new Error("HTTP status " + response.status);
-                    }
-                    return response.json();
-                })
-                .then(function (data) {
-                    alert("Submitted successfully", "success");
-                })
-
             // Activate timers and throw out expired ones
-            let mapping_replica = {};
-            for (const [index, element] of Object.entries(mapping)) {
-                let temp_ele = JSON.parse(JSON.stringify(element));
-                let j = 0;
-                for (let i = 0; i < (element.elements).length; i++) {
+            for (var [index, element] of Object.entries(mapping)) {
+                let j = (element.elements).length;
+                let now = ((Date.now() / 1000) | 0);
+                element.now = now;
+                for (let i = 0; i < j; i++) {
                     if ((element.elements)[i]["expiration"] != null) {
                         if ((element.elements)[i]["active"]) {
-                            if ((element.elements)[i]["expiration"] - 30 <= ((Date.now() / 1000) | 0)) {
-                                (temp_ele.elements).splice(j, 1);
+                            if ((element.elements)[i]["expiration"] - 30 <= now) {
+                                (element.elements).splice(i, 1);
+                                i--;
                                 j--;
                             }
                         }
                         else {
-                            (temp_ele.elements)[j]["active"] = true;
-                            (temp_ele.elements)[j]["expiration"] += (30 + ((Date.now() / 1000) | 0));
+                            (element.elements)[i]["active"] = true;
+                            (element.elements)[i]["expiration"] += (30 + now);
                         }
                     }
-                    j++;
                 }
-                mapping_replica[index] = temp_ele;
             }
-            mapping = mapping_replica;
+
+            // fetch("https://apoorlywrittenbot.cc/restricted/mike_hu_0_0/json", {
+            //     method: 'POST',
+            //     body: JSON.stringify(payload)
+            // })
+            //     .then(function (response) {
+            //         if (!response.ok) {
+            //             alert(`Error: Status ${String(response.status)}`, 'danger');
+            //             throw new Error("HTTP status " + response.status);
+            //         }
+            //         return response.json();
+            //     })
+            //     .then(function (data) {
+            //         alert("Submitted successfully", "success");
+            //     })
+
             elementUnfocused();
             lastClickedElement = null;
             redraw();
