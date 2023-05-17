@@ -10,6 +10,7 @@
 <body>
   <script>
     var intervalList = [];
+    const font_scale = 25;
 
     function isOpen(ws) {
       return ws.readyState === ws.OPEN;
@@ -88,14 +89,14 @@
               for (const ele of cor.elements) {
                 if (ele.category == 'text') {
                   let subelement = document.createElement("div");
-                  subelement.style = `color: ${ele.color}; font-size: ${ele.size}px`;
-                  element.textContent = ele.content;
-                  document.getElementById(index.toString()).appendChild(element);
+                  subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
+                  subelement.textContent = ele.content;
+                  element.appendChild(subelement);
                 }
                 else if (ele.category == 'timer') {
                   let subelement = document.createElement("div");
-                  subelement.style = `color: ${ele.color}; font-size: ${ele.size}px`;
-                  document.getElementById(index.toString()).appendChild(subelement);
+                  subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
+                  element.appendChild(subelement);
                   if (ele.active) {
                     startTimer(ele.content, ele.expiration + diff, subelement);
                   }
@@ -127,7 +128,7 @@
 
   </script>
 
-  <div id="canvas"></div>
+  <div id="canvas" style="width: 1920px; height: 1080px;"></div>
 
 </body>
 

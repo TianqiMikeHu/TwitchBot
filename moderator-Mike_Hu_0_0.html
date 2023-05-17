@@ -270,7 +270,7 @@
                 return;
             }
             let divString = `<div id="${index.toString()}" 
-            style="position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px; white-space: nowrap;
+            style="position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px; white-space: nowrap; line-height: 1.0;
             -webkit-user-select: none;
             -moz-user-select: none;
             -o-user-select: none;
@@ -637,9 +637,6 @@
             if (editing) {
                 return;
             }
-            let payload = {
-                coordinates: mapping
-            };
 
             // Activate timers and throw out expired ones
             for (var [index, element] of Object.entries(mapping)) {
@@ -663,20 +660,20 @@
                 }
             }
 
-            // fetch("https://apoorlywrittenbot.cc/restricted/mike_hu_0_0/json", {
-            //     method: 'POST',
-            //     body: JSON.stringify(payload)
-            // })
-            //     .then(function (response) {
-            //         if (!response.ok) {
-            //             alert(`Error: Status ${String(response.status)}`, 'danger');
-            //             throw new Error("HTTP status " + response.status);
-            //         }
-            //         return response.json();
-            //     })
-            //     .then(function (data) {
-            //         alert("Submitted successfully", "success");
-            //     })
+            fetch("https://apoorlywrittenbot.cc/restricted/mike_hu_0_0/json", {
+                method: 'POST',
+                body: JSON.stringify(mapping)
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        alert(`Error: Status ${String(response.status)}`, 'danger');
+                        throw new Error("HTTP status " + response.status);
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    alert("Submitted successfully", "success");
+                })
 
             elementUnfocused();
             lastClickedElement = null;
