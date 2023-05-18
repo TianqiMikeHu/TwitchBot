@@ -16,7 +16,6 @@
       return ws.readyState === ws.OPEN;
     }
 
-
     function connectws() {
       let socket = new WebSocket("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev");
 
@@ -68,41 +67,63 @@
         timerIntervalID = setInterval(timer, 1000);
       }
 
+      function redraw(coordinates) {
+        for (const interval of intervalList) {
+          clearInterval(interval);
+        }
+        intervalList = [];
+        document.getElementById('canvas').innerHTML = '';
+        for (const [index, cor] of Object.entries(coordinates)) {
+          let element = document.createElement("div");
+          document.getElementById('canvas').appendChild(element);
+          element.style = `font-family: 'Kalam', cursive; position: absolute; top: ${cor.top}%; left: ${cor.left}%; white-space: nowrap; line-height: 1.0;`;
+          element.style.border = '2px solid transparent';
+          // Latency adjustment
+          let diff = ((Date.now() / 1000) | 0) - cor.now;
+          for (const ele of cor.elements) {
+            if (ele.category == 'text') {
+              let subelement = document.createElement("div");
+              subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
+              subelement.textContent = ele.content;
+              element.appendChild(subelement);
+            }
+            else if (ele.category == 'timer') {
+              let subelement = document.createElement("div");
+              subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
+              element.appendChild(subelement);
+              if (ele.active) {
+                startTimer(ele.content, ele.expiration + diff, subelement);
+              }
+            }
+          }
+        }
+      }
+
+      window.onload = function () {
+        const params = new Proxy(new URLSearchParams(window.location.search), {
+          get: (searchParams, prop) => searchParams.get(prop),
+        });
+        let channel = params.channel;
+        fetch(`https://apoorlywrittenbot.cc/public/json/${channel}`, {
+          method: 'GET'
+        })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error("HTTP status " + response.status);
+            }
+            return response.json();
+          })
+          .then(function (data) {
+            redraw(data);
+          })
+      }
+
       socket.onmessage = function (event) {
         const data = JSON.parse(event.data);
         // console.log(data);
         if (data.action == "modaction") {
           if (data.category == "json") {
-            for (const interval of intervalList) {
-              clearInterval(interval);
-            }
-            intervalList = [];
-            document.getElementById('canvas').innerHTML = '';
-            for (const [index, cor] of Object.entries(data.coordinates)) {
-              let element = document.createElement("div");
-              document.getElementById('canvas').appendChild(element);
-              element.style = `font-family: 'Kalam', cursive; position: absolute; top: ${cor.top}%; left: ${cor.left}%`;
-              element.style.border = '2px solid transparent';
-              // Latency adjustment
-              let diff = ((Date.now() / 1000) | 0) - cor.now;
-              console.log(`diff is ${diff}`);
-              for (const ele of cor.elements) {
-                if (ele.category == 'text') {
-                  let subelement = document.createElement("div");
-                  subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
-                  subelement.textContent = ele.content;
-                  element.appendChild(subelement);
-                }
-                else if (ele.category == 'timer') {
-                  let subelement = document.createElement("div");
-                  subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
-                  element.appendChild(subelement);
-                  if (ele.active) {
-                    startTimer(ele.content, ele.expiration + diff, subelement);
-                  }
-                }
-              }
-            }
+            redraw(data.coordinates);
           }
         }
       };

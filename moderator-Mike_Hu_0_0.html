@@ -154,6 +154,34 @@
             let jsonButton = document.getElementById("jsonButton");
             jsonButton.addEventListener("click", showJSON);
 
+            let video = document.getElementById('video');
+
+            fetch("https://apoorlywrittenbot.cc/public/json/mike_hu_0_0", {
+                method: 'GET'
+            })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error("HTTP status " + response.status);
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    let count = 0;
+                    for (const [key, value] of Object.entries(data)) {
+                        let element = create(null);
+                        element.style.top = `${value.top / 100.0 * window.innerHeight}px`;
+                        element.style.left = `${value.left / 100.0 * parseFloat(video.style.width) + parseFloat(video.style.left)}px`;
+                    }
+                    // Reset index
+                    for (const [key, value] of Object.entries(data)) {
+                        mapping[count.toString()] = value;
+                        count++;
+                    }
+                    deleteExpiredTimers();
+                    elementUnfocused();
+                    redraw();
+                })
+
             video.src = "https://player.twitch.tv/?channel=mike_hu_0_0&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true&controls=false";
         }
         window.onresize = function () {
@@ -202,8 +230,8 @@
                 stopMoving: function (divid, container) {
                     let video = document.getElementById(container);
                     video.style.cursor = 'default';
-                    mapping[divid.id]["top"] = parseFloat(divid.style.top) * 100.0 / window.innerHeight;
-                    mapping[divid.id]["left"] = (parseFloat(divid.style.left) - parseFloat(video.style.left)) * 100.0 / parseFloat(video.style.width);
+                    mapping[divid.id]["top"] = Math.round(parseFloat(divid.style.top) * 100.0 / window.innerHeight * 1000) / 1000;
+                    mapping[divid.id]["left"] = Math.round((parseFloat(divid.style.left) - parseFloat(video.style.left)) * 100.0 / parseFloat(video.style.width) * 1000) / 1000;
                     document.onmousemove = function () { }
                 },
             }
@@ -265,7 +293,9 @@
         }
 
         function create(e) {
-            e.stopPropagation();
+            if (e) {
+                e.stopPropagation();
+            }
             if (editing) {
                 return;
             }
@@ -313,6 +343,8 @@
                 ]
             };
             mapping[element.id] = element_json;
+
+            return element;
         }
 
         function selectTrigger(select) {
@@ -632,12 +664,7 @@
             }, 200);
         }
 
-        function save(e) {
-            e.stopPropagation();
-            if (editing) {
-                return;
-            }
-
+        function deleteExpiredTimers() {
             // Activate timers and throw out expired ones
             for (var [index, element] of Object.entries(mapping)) {
                 let j = (element.elements).length;
@@ -659,6 +686,15 @@
                     }
                 }
             }
+        }
+
+        function save(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+
+            deleteExpiredTimers();
 
             fetch("https://apoorlywrittenbot.cc/restricted/mike_hu_0_0/json", {
                 method: 'POST',
