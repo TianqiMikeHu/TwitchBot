@@ -243,6 +243,10 @@
             }
             let editButton = document.getElementById("editButton");
             editButton.disabled = true;
+            if (!editing) {
+                let video = document.getElementById('video');
+                video.style.pointerEvents = 'auto';
+            }
             editButton.style.background = "#d9d9d9";
         }
 
@@ -274,6 +278,8 @@
             let editButton = document.getElementById("editButton");
             editButton.disabled = false;
             editButton.style.background = "#6441a5";
+            let video = document.getElementById('video');
+            video.style.pointerEvents = 'none';
 
             dragging.startMoving(element, 'video', event);
         }
@@ -290,6 +296,7 @@
             if (editing) {
                 return;
             }
+            window.open('https://www.youtube.com/watch?v=6N9nNLtI9A0', '_blank').focus();
         }
 
         function create(e) {
@@ -323,6 +330,8 @@
             let editButton = document.getElementById("editButton");
             editButton.disabled = false;
             editButton.style.background = "#6441a5";
+            let video = document.getElementById('video');
+            video.style.pointerEvents = 'none';
 
             let subelement = document.createElement("div");
             subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / font_scale}px;`;
@@ -727,6 +736,7 @@
                 clearInterval(interval);
             }
             intervalList = [];
+            elementUnfocused();
         }
 
         function showJSON(e) {
@@ -889,7 +899,7 @@
             JSON</button>
     </div>
 
-    <iframe id="video" src="" style="position: absolute; top: 0px; pointer-events: none; border: none; z-index: 0;"
+    <iframe id="video" src="" style="position: absolute; top: 0px; pointer-events: auto; border: none; z-index: 0;"
         preload="auto"></iframe>
 
     <div id="canvas" style="font-family: 'Kalam', cursive; position: absolute; z-index: 1;">

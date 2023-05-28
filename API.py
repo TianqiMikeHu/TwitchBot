@@ -53,7 +53,7 @@ def refresh_token():
 
 ## return values: message, status code, display_name, offline_image_url, about
 def broadcaster_ID(name):
-    r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header())
+    r = requests.get(url=f"https://api.twitch.tv/helix/users?login={name}", headers=get_header())
     if r.status_code!=200:
         if r.status_code!=401:
             return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None, None
@@ -111,7 +111,7 @@ def shoutout(to_broadcaster_id):
 def get_game(name):
     id, status, display_name, img, about = broadcaster_ID(name)
     # Get game name
-    r = requests.get(url="https://api.twitch.tv/helix/channels?broadcaster_id={0}".format(id), headers=get_header())
+    r = requests.get(url=f"https://api.twitch.tv/helix/channels?broadcaster_id={id}", headers=get_header())
     if r.status_code!=200:
         print(r.status_code)
         return '[no game]'

@@ -1,7 +1,8 @@
-<html lang="en">
+<!DOCTYPE html>
+<html id="html" lang="en">
 
 <head>
-    <title id="tab-title">Anna's Mod Interface</title>
+    <title>Anna's Mod Interface</title>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" />
@@ -11,29 +12,151 @@
     <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
 </head>
 
-<body>
+<body style="background-color: black; height: 100vh;">
+    <style>
+        @keyframes menuAnimation {
+            0% {
+                transform: translate(-50%, -50%) scale(0.0);
+                -webkit-transform: translate(-50%, -50%) scale(0.0);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1.0);
+                -webkit-transform: translate(-50%, -50%) scale(1.0);
+            }
+        }
+
+        @keyframes menuAnimationReversed {
+            0% {
+                transform: translate(-50%, -50%) scale(1.0);
+                -webkit-transform: translate(-50%, -50%) scale(1.0);
+                opacity: 1.0;
+            }
+
+            100% {
+                transform: translate(-50%, 0%) scale(1.0);
+                -webkit-transform: translate(-50%, 0%) scale(1.0);
+                opacity: 0.0;
+            }
+        }
+
+        .wordsColumn {
+            width: 40%;
+            height: 100%;
+            display: inline-block;
+            background-color: #a1e4ff;
+            position: absolute;
+            left: 0%;
+        }
+
+        .typeColumn {
+            width: 12%;
+            height: 100%;
+            display: inline-block;
+            background-color: #99e2ff;
+            position: absolute;
+            left: 40%;
+        }
+
+        .colorColumn {
+            width: 14%;
+            height: 100%;
+            display: inline-block;
+            background-color: #80dbff;
+            position: absolute;
+            left: 52%;
+        }
+
+        .sizeColumn {
+            width: 13%;
+            height: 100%;
+            display: inline-block;
+            background-color: #66d4ff;
+            position: absolute;
+            left: 66%;
+        }
+
+        .timeColumn {
+            width: 13%;
+            height: 100%;
+            display: inline-block;
+            background-color: #4dccff;
+            position: absolute;
+            left: 79%;
+        }
+
+        .restartColumn {
+            width: 8%;
+            height: 100%;
+            display: inline-block;
+            background-color: #33c5ff;
+            position: absolute;
+            left: 92%;
+        }
+    </style>
+
     <script>
-        let textDescriptionValid = false;
-        let textColorValid = true;
-        let textSizeValid = true;
-        let textDescription;
-        let textColor;
-        let textSize;
+        var mapping = {};
+        var index = 0;
+        const font_scale = 25;
 
-        let timerDescriptionValid = false;
-        let timerMinutesValid = false;
-        let timerSecondsValid = false;
-        let timerColorValid = true;
-        let timerSizeValid = true;
-        let timerDescription;
-        let timerMinutes;
-        let timerSeconds;
-        let timerColor;
-        let timerSize;
+        var left_INT = 0;
+        var width_INT = 0;
+
+        var lastClickedElement;
+        var editing = false;
+
+        var validationDictionary = {};
+        const patterns = {
+            nonEmpty: /^(?!\s*$).+/,
+            hex: /^[0-9A-F]{6}$/i,
+            positiveInteger: /^[1-9]\d*$/,
+            positiveFloat: /^(?=.+)(?:[1-9]\d*|0)?(?:\.\d+)?$/
+        }
+
+        var intervalList = [];
 
 
-        window.addEventListener("load", (event) => {
-            fetch("https://apoorlywrittenbot.cc/restricted/username", {
+        function resize() {
+            let video = document.getElementById('video');
+            let html = document.getElementById('html');
+            let sidebar = document.getElementById('sidebar');
+            video.style.height = `${window.innerHeight}px`;
+
+            width_INT = (window.innerHeight / 9.0 * 16.0 | 0);
+            video.style.width = `${width_INT}px`;
+
+            left_INT = html.clientWidth - width_INT;
+            video.style.left = `${left_INT}px`;
+
+            sidebar.style.height = video.style.height;
+            sidebar.style.width = video.style.left;
+        }
+        window.onload = function () {
+            document.body.style.overflow = 'hidden';
+            resize();
+
+            let helpButton = document.getElementById("helpButton");
+            helpButton.addEventListener("click", help);
+
+            let newButton = document.getElementById("newButton");
+            newButton.addEventListener("click", create);
+
+            let editButton = document.getElementById("editButton");
+            editButton.addEventListener("click", edit);
+
+            let saveButton = document.getElementById("saveButton");
+            saveButton.addEventListener("click", save);
+
+            let clearButton = document.getElementById("clearButton");
+            clearButton.addEventListener("click", clearAll);
+
+            let jsonButton = document.getElementById("jsonButton");
+            jsonButton.addEventListener("click", showJSON);
+
+            let video = document.getElementById('video');
+
+            fetch("https://apoorlywrittenbot.cc/public/json/annaagtapp", {
                 method: 'GET'
             })
                 .then(function (response) {
@@ -43,108 +166,239 @@
                     return response.json();
                 })
                 .then(function (data) {
-                    let elem = document.getElementById("username");
-                    elem.append(data["username"]);
+                    let count = 0;
+                    for (const [key, value] of Object.entries(data)) {
+                        let element = create(null);
+                        element.style.top = `${value.top / 100.0 * window.innerHeight}px`;
+                        element.style.left = `${value.left / 100.0 * parseFloat(video.style.width) + parseFloat(video.style.left)}px`;
+                    }
+                    // Reset index
+                    for (const [key, value] of Object.entries(data)) {
+                        mapping[count.toString()] = value;
+                        count++;
+                    }
+                    deleteExpiredTimers();
+                    elementUnfocused();
+                    redraw();
                 })
 
-            const patterns = {
-                nonEmpty: /^(?!\s*$).+/,
-                hex: /^[0-9A-F]{6}$/i,
-                positiveInteger: /^[1-9]\d*$/,
-                nonNegative: /^\d+$/,
-                sixty: /^([0-5]?[0-9])$/
+            video.src = "https://player.twitch.tv/?channel=annaagtapp&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true&controls=false";
+        }
+        window.onresize = function () {
+            resize();
+        }
+
+
+        var dragging = function () {
+            return {
+                move: function (divid, xpos, ypos) {
+                    divid.style.left = xpos + 'px';
+                    divid.style.top = ypos + 'px';
+                },
+                startMoving: function (divid, container, evt) {
+                    evt = evt || window.event;
+                    let rect = divid.getBoundingClientRect();
+                    let video = document.getElementById(container);
+                    var posX = evt.clientX,
+                        posY = evt.clientY,
+                        divTop = divid.style.top,
+                        divLeft = divid.style.left,
+                        eWi = parseInt(rect.width),
+                        eHe = parseInt(rect.height),
+                        cL = parseInt(video.style.left),
+                        cWi = parseInt(video.style.width),
+                        cHe = parseInt(video.style.height);
+                    document.getElementById(container).style.cursor = 'move';
+                    divTop = divTop.replace('px', '');
+                    divLeft = divLeft.replace('px', '');
+                    var diffX = posX - divLeft,
+                        diffY = posY - divTop;
+
+                    document.onmousemove = function (evt) {
+                        evt = evt || window.event;
+                        var posX = evt.clientX,
+                            posY = evt.clientY,
+                            aX = posX - diffX,
+                            aY = posY - diffY;
+                        if (aX < cL) aX = cL;
+                        if (aY < 0) aY = 0;
+                        if (aX + eWi > (cL + cWi)) aX = cL + cWi - eWi;
+                        if (aY + eHe > cHe) aY = cHe - eHe;
+                        dragging.move(divid, aX, aY);
+                    }
+                },
+                stopMoving: function (divid, container) {
+                    let video = document.getElementById(container);
+                    video.style.cursor = 'default';
+                    mapping[divid.id]["top"] = Math.round(parseFloat(divid.style.top) * 100.0 / window.innerHeight * 1000) / 1000;
+                    mapping[divid.id]["left"] = Math.round((parseFloat(divid.style.left) - parseFloat(video.style.left)) * 100.0 / parseFloat(video.style.width) * 1000) / 1000;
+                    document.onmousemove = function () { }
+                },
+            }
+        }();
+
+        function elementUnfocused() {
+            if (lastClickedElement != null) {
+                lastClickedElement.style.border = '2px solid transparent';
+            }
+            let editButton = document.getElementById("editButton");
+            editButton.disabled = true;
+            if (!editing) {
+                let video = document.getElementById('video');
+                video.style.pointerEvents = 'auto';
+            }
+            editButton.style.background = "#d9d9d9";
+        }
+
+        document.onkeydown = function (evt) {
+            if (editing) {
+                return;
+            }
+            evt = evt || window.event;
+            var isEscape = false;
+            if ("key" in evt) {
+                isEscape = (evt.key === "Escape" || evt.key === "Esc");
+            } else {
+                isEscape = (evt.keyCode === 27);
+            }
+            if (isEscape) {
+                elementUnfocused();
+            }
+        };
+
+        function elementFocused(element, event) {
+            //Unfocus last element
+            if (lastClickedElement != null) {
+                lastClickedElement.style.border = '2px solid transparent';
             }
 
-            timerDescription = document.getElementById("timerDescription");
-            timerMinutes = document.getElementById("timerMinutes");
-            timerSeconds = document.getElementById("timerSeconds");
-            timerColor = document.getElementById("timerColor");
-            timerSize = document.getElementById("timerSize");
+            element.style.border = '2px solid #ff6600';
+            lastClickedElement = element;
 
-            timerDescription.addEventListener('keyup', (e) => {
-                if (patterns['nonEmpty'].test(timerDescription.value)) {
-                    timerDescription.classList.remove("is-invalid");
-                    timerDescriptionValid = true;
-                } else {
-                    timerDescription.classList.add("is-invalid");
-                    timerDescriptionValid = false;
-                }
-            });
+            let editButton = document.getElementById("editButton");
+            editButton.disabled = false;
+            editButton.style.background = "#6441a5";
+            let video = document.getElementById('video');
+            video.style.pointerEvents = 'none';
 
-            timerMinutes.addEventListener('keyup', (e) => {
-                if (patterns['nonNegative'].test(timerMinutes.value)) {
-                    timerMinutes.classList.remove("is-invalid");
-                    timerMinutesValid = true;
-                } else {
-                    timerMinutes.classList.add("is-invalid");
-                    timerMinutesValid = false;
-                }
-            });
+            dragging.startMoving(element, 'video', event);
+        }
 
-            timerSeconds.addEventListener('keyup', (e) => {
-                if (patterns['sixty'].test(timerSeconds.value)) {
-                    timerSeconds.classList.remove("is-invalid");
-                    timerSecondsValid = true;
-                } else {
-                    timerSeconds.classList.add("is-invalid");
-                    timerSecondsValid = false;
-                }
-            });
+        function htmlToElement(html) {
+            var template = document.createElement('template');
+            html = html.trim();
+            template.innerHTML = html;
+            return template.content.firstChild;
+        }
 
-            timerColor.addEventListener('keyup', (e) => {
-                if (patterns['hex'].test(timerColor.value)) {
-                    timerColor.classList.remove("is-invalid");
-                    timerColorValid = true;
-                } else {
-                    timerColor.classList.add("is-invalid");
-                    timerColorValid = false;
-                }
-            });
+        function help(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+            window.open('https://www.youtube.com/watch?v=6N9nNLtI9A0', '_blank').focus();
+        }
 
-            timerSize.addEventListener('keyup', (e) => {
-                if (patterns['positiveInteger'].test(timerSize.value)) {
-                    timerSize.classList.remove("is-invalid");
-                    timerSizeValid = true;
-                } else {
-                    timerSize.classList.add("is-invalid");
-                    timerSizeValid = false;
-                }
-            });
+        function create(e) {
+            if (e) {
+                e.stopPropagation();
+            }
+            if (editing) {
+                return;
+            }
+            let divString = `<div id="${index.toString()}" 
+            style="position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px; white-space: nowrap; line-height: 1.0;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -o-user-select: none;
+            -ms-user-select: none;
+            -khtml-user-select: none;
+            user-select: none;" 
+            onmousedown="elementFocused(this, event);" 
+            onmouseup="dragging.stopMoving(this, 'video');"></div>`;
+            let element = htmlToElement(divString);
+            element.style.border = '2px solid #ff6600';
 
-            textDescription = document.getElementById("textDescription");
-            textColor = document.getElementById("textColor");
-            textSize = document.getElementById("textSize");
+            index += 1;
+            document.getElementById('canvas').appendChild(element);
 
-            textDescription.addEventListener('keyup', (e) => {
-                if (patterns['nonEmpty'].test(textDescription.value)) {
-                    textDescription.classList.remove("is-invalid");
-                    textDescriptionValid = true;
-                } else {
-                    textDescription.classList.add("is-invalid");
-                    textDescriptionValid = false;
-                }
-            });
+            // Autofocus on new element
+            if (lastClickedElement != null) {
+                lastClickedElement.style.border = '2px solid transparent';
+            }
+            lastClickedElement = element;
+            let editButton = document.getElementById("editButton");
+            editButton.disabled = false;
+            editButton.style.background = "#6441a5";
+            let video = document.getElementById('video');
+            video.style.pointerEvents = 'none';
 
-            textColor.addEventListener('keyup', (e) => {
-                if (patterns['hex'].test(textColor.value)) {
-                    textColor.classList.remove("is-invalid");
-                    textColorValid = true;
-                } else {
-                    textColor.classList.add("is-invalid");
-                    textColorValid = false;
-                }
-            });
+            let subelement = document.createElement("div");
+            subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / font_scale}px;`;
+            subelement.textContent = "PLACEHOLDER";
+            document.getElementById(element.id).appendChild(subelement);
 
-            textSize.addEventListener('keyup', (e) => {
-                if (patterns['positiveInteger'].test(textSize.value)) {
-                    textSize.classList.remove("is-invalid");
-                    textSizeValid = true;
-                } else {
-                    textSize.classList.add("is-invalid");
-                    textSizeValid = false;
-                }
-            });
-        });
+            element_json = {
+                top: 50,
+                left: 50,
+                now: ((Date.now() / 1000) | 0),
+                elements: [
+                    {
+                        category: 'text',
+                        content: 'PLACEHOLDER',
+                        color: 'FFFFFF',
+                        size: '100'
+                    }
+                ]
+            };
+            mapping[element.id] = element_json;
+
+            return element;
+        }
+
+        function selectTrigger(select) {
+            let type = select.value;
+            let id = (select.id).substring(6);
+            let time = document.getElementById(`time${id}`);
+            let restart = document.getElementById(`restart${id}`);
+            if (type == "Timer") {
+                time.disabled = false;
+                time.value = "";
+                time.style.color = "black";
+                restart.disabled = true;
+                restart.checked = true;
+                validationDictionary[`time${id}`] = false;
+                time.classList.add("is-invalid");
+            }
+            else {
+                time.disabled = true;
+                time.value = "-";
+                time.style.color = "black";
+                restart.disabled = true;
+                restart.checked = false;
+                validationDictionary[`time${id}`] = true;
+                time.classList.remove("is-invalid");
+            }
+        }
+
+        function checkboxTrigger(checkbox) {
+            let id = (checkbox.id).substring(7);
+            let time = document.getElementById(`time${id}`);
+            if (checkbox.checked) {
+                time.value = "";
+                time.style.color = "black";
+                time.disabled = false;
+                validationDictionary[`time${id}`] = false;
+                time.classList.add("is-invalid");
+            }
+            else {
+                time.value = "ACTIVE";
+                time.style.color = "red";
+                time.disabled = true;
+                validationDictionary[`time${id}`] = true;
+                time.classList.remove("is-invalid");
+            }
+        }
 
         const alert = (message, type) => {
             const wrapper = document.createElement('div')
@@ -157,72 +411,303 @@
 
             let alertPlaceholder = document.getElementById('liveAlertPlaceholder');
             alertPlaceholder.append(wrapper);
+            setTimeout(() => {
+                wrapper.remove();
+            }, 3000);
         }
 
-        function submitTimerForm() {
-            event.preventDefault();
-            if (!timerDescriptionValid || !timerMinutesValid || !timerSecondsValid || !timerColorValid || !timerSizeValid) {
-                alert("The form contains invalid values", "warning");
-                return false;
+        function validateInput(input, pattern) {
+            if (patterns[pattern].test(input.value)) {
+                input.classList.remove("is-invalid");
+                validationDictionary[input.id] = true;
+            } else {
+                input.classList.add("is-invalid");
+                validationDictionary[input.id] = false;
+            }
+        }
+
+        function edit(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+            editing = true;
+            let menu = document.getElementById("menu");
+            let mask = document.getElementById("mask");
+            let tableBody = document.getElementById("tableBody");
+            let canvas = document.getElementById("canvas");
+            canvas.style.pointerEvents = "none";
+            tableBody.textContent = '';
+            validationDictionary = {};
+
+            let element_json = mapping[lastClickedElement.id];
+
+            let index = 0;
+
+            for (const ele of element_json.elements) {
+                let timeString = "-";
+                if (ele.expiration) {
+                    if (ele.active) {
+                        timeString = "ACTIVE";
+                    }
+                    else {
+                        timeString = `${ele.expiration}`;
+                    }
+                }
+
+                let divString = `<div class="tableRow mb-2" style="height: 12%">
+                <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
+                    <input type="text" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER" value="${ele.content}"
+                    onkeyup="validateInput(this, 'nonEmpty');">
+                </div>
+                <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
+                    <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
+                        <option ${ele.category == 'text' ? 'selected' : ''} value="Text">Text</option>
+                        <option ${ele.category == 'timer' ? 'selected' : ''} value="Timer">Timer</option>
+                        <option value="DELETE">DELETE</option>
+                      </select>
+                </div>
+                <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <span class="input-group-text rounded-0" id="color${index}Prepend">#</span>
+                        <input type="text" class="form-control needs-validation rounded-0" id="color${index}"
+                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="${ele.color}"
+                            onkeyup="validateInput(this, 'hex');">
+                    </div>
+                </div>
+                <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="size${index}"
+                            aria-describedby="size${index}Postpend" placeholder="100" value="${ele.size}"
+                            onkeyup="validateInput(this, 'positiveFloat');">
+                        <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
+                    </div>
+                </div>
+                <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
+                            aria-describedby="time${index}Postpend" style="color:${ele.active ? 'red' : 'black'}"
+                            placeholder="300" value=${timeString} ${ele.category == 'timer' && ele.active == false ? '' : 'disabled'}
+                            onkeyup="validateInput(this, 'positiveInteger');">
+                        <span class="input-group-text rounded-0" id="time${index}Postpend">s</span>
+                    </div>
+                </div>
+                <div class="restartColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
+                    <input type="checkbox" class="form-check-input form-control needs-validation rounded-0" id="restart${index}" 
+                        style="width: 100%; height: 100%; margin: 0px;" onchange="checkboxTrigger(this);"
+                        ${ele.category == 'timer' && ele.active ? '' : 'disabled'} ${ele.category == 'timer' && ele.active == false ? 'checked' : ''}>
+                </div>
+            </div>`;
+
+
+                let tableRow = htmlToElement(divString);
+                tableBody.appendChild(tableRow);
+                validationDictionary[`words${index}`] = true;
+                validationDictionary[`color${index}`] = true;
+                validationDictionary[`size${index}`] = true;
+                validationDictionary[`time${index}`] = true;
+                index += 1;
             }
 
-            let payload = {
-                content: timerDescription.value,
-                duration: (parseInt(timerMinutes.value)*60+parseInt(timerSeconds.value)) | 0,
-                color: timerColor.value,
-                size: timerSize.value
-            };
-
-            fetch("https://apoorlywrittenbot.cc/restricted/annaagtapp/timer", {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        alert(`Error: Status ${String(response.status)}`, 'danger');
-                        throw new Error("HTTP status " + response.status);
-                    }
-                    return response.json();
-                })
-                .then(function (data) {
-                    alert("Submitted successfully", "success");
-                })
+            mask.style.display = "block";
+            menu.style.display = "flex";
+            menu.style.animation = "menuAnimation 0.5s";
         }
 
-        function submitTextForm() {
-            event.preventDefault();
-            if (!textDescriptionValid || !textColorValid || !textSizeValid) {
-                alert("The form contains invalid values", "warning");
-                return false;
+        function subelement(e) {
+            e.stopPropagation();
+            let tableBody = document.getElementById("tableBody");
+            let index = tableBody.childElementCount;
+
+            let divString = `<div class="tableRow mb-2" style="height: 12%">
+                <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
+                    <input type="text" class="form-control needs-validation rounded-0 is-invalid" id="words${index}" placeholder="PLACEHOLDER"
+                    onkeyup="validateInput(this, 'nonEmpty');">
+                </div>
+                <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
+                    <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
+                        <option selected value="Text">Text</option>
+                        <option value="Timer">Timer</option>
+                        <option value="DELETE">DELETE</option>
+                      </select>
+                </div>
+                <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <span class="input-group-text rounded-0" id="color${index}Prepend">#</span>
+                        <input type="text" class="form-control needs-validation rounded-0" id="color${index}"
+                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="FFFFFF"
+                            onkeyup="validateInput(this, 'hex');">
+                    </div>
+                </div>
+                <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="size${index}"
+                            aria-describedby="size${index}Postpend" placeholder="100" value="100"
+                            onkeyup="validateInput(this, 'positiveFloat');">
+                        <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
+                    </div>
+                </div>
+                <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
+                    <div class="input-group">
+                        <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
+                            aria-describedby="time${index}Postpend" style="color:black"
+                            placeholder="300" value="-" disabled
+                            onkeyup="validateInput(this, 'positiveInteger');">
+                        <span class="input-group-text rounded-0" id="time${index}Postpend">s</span>
+                    </div>
+                </div>
+                <div class="restartColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
+                    <input type="checkbox" class="form-check-input form-control needs-validation rounded-0" id="restart${index}" 
+                        style="width: 100%; height: 100%; margin: 0px;" onchange="checkboxTrigger(this);"
+                        disabled>
+                </div>
+            </div>`;
+
+            let tableRow = htmlToElement(divString);
+            tableBody.appendChild(tableRow);
+            validationDictionary[`words${index}`] = false;
+            validationDictionary[`color${index}`] = true;
+            validationDictionary[`size${index}`] = true;
+            validationDictionary[`time${index}`] = true;
+        }
+
+        function redraw() {
+            // Cancel all timers
+            for (const interval of intervalList) {
+                clearInterval(interval);
+            }
+            intervalList = [];
+            // Draw new elements
+            for (var element of document.getElementById("canvas").children) {
+                element.innerHTML = '';
+                parentNode = mapping[element.id]["elements"];
+                if (parentNode.length == 0) {
+                    delete mapping[element.id];
+                    element.remove();
+                    continue;
+                }
+                for (const childNode of parentNode) {
+                    let subelement = document.createElement("div");
+                    subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px;`;
+                    subelement.textContent = childNode["content"];
+                    if (childNode["category"] == "timer") {
+                        subelement.id = crypto.randomUUID();
+                        if (childNode["active"]) {
+                            startTimer(childNode["content"], childNode["expiration"], subelement);
+                        }
+                        else {
+                            let seconds = childNode["expiration"];
+                            minutes = (seconds / 60) | 0;
+                            seconds = (seconds % 60) | 0;
+                            minutes = minutes < 10 ? "0" + minutes : minutes;
+                            seconds = seconds < 10 ? "0" + seconds : seconds;
+                            subelement.textContent += `: ${minutes}:${seconds}`;
+                        }
+                    }
+                    element.appendChild(subelement);
+                }
+            }
+        }
+
+        function closemenu(e) {
+            e.stopPropagation();
+            for (const [key, value] of Object.entries(validationDictionary)) {
+                if (!value) {
+                    alert("Please fix the invalid value(s)", "warning");
+                    return;
+                }
+            }
+            // Write to mapping dictionary
+            let index = lastClickedElement.id;
+            let reference = mapping[index]["elements"];
+            let words, type, color, size, time, restart;
+            let parentNode = [];
+            for (let i = 0; i < tableBody.childElementCount; i++) {  // row iteration
+                words = document.getElementById(`words${i}`).value;
+                type = document.getElementById(`select${i}`).value;
+                color = document.getElementById(`color${i}`).value;
+                size = document.getElementById(`size${i}`).value;
+                time = document.getElementById(`time${i}`).value;
+                restart = document.getElementById(`restart${i}`).checked;
+                if (type == "DELETE") {
+                    continue;
+                }
+                let childNode = {};
+                childNode["category"] = type.toLowerCase();
+                childNode["content"] = words;
+                childNode["color"] = color.toUpperCase();
+                childNode["size"] = size;
+                if (type == "Timer") {
+                    childNode["active"] = !restart;
+                    if (restart) {
+                        childNode["expiration"] = parseInt(time);
+                    }
+                    else {// Active timer, check reference
+                        childNode["expiration"] = reference[i]["expiration"];
+                    }
+                }
+                parentNode.push(childNode);
+            }
+            // Remove element if empty
+            if (parentNode.length == 0) {
+                delete mapping[index];
+                lastClickedElement.remove();
+                lastClickedElement = null;
+                elementUnfocused();
+            }
+            else {
+                mapping[index]["elements"] = parentNode;
+                redraw();
             }
 
-            let payload = {
-                content: textDescription.value,
-                color: textColor.value,
-                size: textSize.value
-            };
-
-            fetch("https://apoorlywrittenbot.cc/restricted/annaagtapp/text", {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        alert(`Error: Status ${String(response.status)}`, 'danger');
-                        throw new Error("HTTP status " + response.status);
-                    }
-                    return response.json();
-                })
-                .then(function (data) {
-                    alert("Submitted successfully", "success");
-                })
-
+            let menu = document.getElementById("menu");
+            let mask = document.getElementById("mask");
+            let canvas = document.getElementById("canvas");
+            canvas.style.pointerEvents = "auto";
+            menu.style.animation = "menuAnimationReversed 0.2s";
+            mask.style.display = "none";
+            alert("Successfully validated all input values", "success");
+            setTimeout(() => {
+                menu.style.display = "none";
+                editing = false;
+            }, 200);
         }
 
-        function clearAll() {
-            fetch("https://apoorlywrittenbot.cc/restricted/annaagtapp/clearall", {
+        function deleteExpiredTimers() {
+            // Activate timers and throw out expired ones
+            for (var [index, element] of Object.entries(mapping)) {
+                let j = (element.elements).length;
+                let now = ((Date.now() / 1000) | 0);
+                element.now = now;
+                for (let i = 0; i < j; i++) {
+                    if ((element.elements)[i]["expiration"] != null) {
+                        if ((element.elements)[i]["active"]) {
+                            if ((element.elements)[i]["expiration"] - 30 <= now) {
+                                (element.elements).splice(i, 1);
+                                i--;
+                                j--;
+                            }
+                        }
+                        else {
+                            (element.elements)[i]["active"] = true;
+                            (element.elements)[i]["expiration"] += (30 + now);
+                        }
+                    }
+                }
+            }
+        }
+
+        function save(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+
+            deleteExpiredTimers();
+
+            fetch("https://apoorlywrittenbot.cc/restricted/annaagtapp/json", {
                 method: 'POST',
-                body: JSON.stringify({})
+                body: JSON.stringify(mapping)
             })
                 .then(function (response) {
                     if (!response.ok) {
@@ -234,86 +719,190 @@
                 .then(function (data) {
                     alert("Submitted successfully", "success");
                 })
+
+            elementUnfocused();
+            lastClickedElement = null;
+            redraw();
+        }
+
+        function clearAll(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+            mapping = {};
+            document.getElementById("canvas").textContent = '';
+            for (const interval of intervalList) {
+                clearInterval(interval);
+            }
+            intervalList = [];
+            elementUnfocused();
+        }
+
+        function showJSON(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+            editing = true;
+            let menu = document.getElementById("JSONmenu");
+            let mask = document.getElementById("mask");
+            let canvas = document.getElementById("canvas");
+            canvas.style.pointerEvents = "none";
+
+            document.getElementById("JSONPRE").textContent = JSON.stringify(mapping, undefined, 2);
+
+            mask.style.display = "block";
+            menu.style.display = "flex";
+            menu.style.animation = "menuAnimation 0.5s";
+        }
+
+        function closeJSON(e) {
+            e.stopPropagation();
+            let menu = document.getElementById("JSONmenu");
+            let mask = document.getElementById("mask");
+            let canvas = document.getElementById("canvas");
+            canvas.style.pointerEvents = "auto";
+            menu.style.animation = "menuAnimationReversed 0.2s";
+            mask.style.display = "none";
+            setTimeout(() => {
+                menu.style.display = "none";
+                editing = false;
+            }, 200);
+        }
+
+        function startTimer(timerText, expiration, element) {
+            var diff, TTL, minutes, seconds, timerIntervalID;
+            function timer() {
+                TTL = expiration - ((Date.now() / 1000) | 0);
+                diff = TTL - 30;
+
+                minutes = (diff / 60) | 0;
+                seconds = (diff % 60) | 0;
+
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                if (diff <= 0) {
+                    element.textContent = `${timerText}: DONE`;
+                    clearInterval(timerIntervalID);
+                }
+                else {
+                    element.textContent = `${timerText}: ${minutes}:${seconds}`;
+                }
+            };
+            timer();
+            timerIntervalID = setInterval(timer, 1000);
+            intervalList.push(timerIntervalID);
         }
     </script>
-    <div id="liveAlertPlaceholder" style="position:fixed; top: 0px; width: 100%;"></div>
-    <div class="container-fluid p-5">
-        <h1 class="display-2 text-center" style="font-family: 'Kalam', cursive;">Anna's Mod Interface</h1>
-        <h6 class="display-9 text-center" style="font-family: 'Kalam', cursive;" id="username">Logged in as: </h6>
 
-        <form class="row g-3" id="timerForm" onsubmit="submitTimerForm(); return false">
-            <div class="col-12">
-                <label for="timerDescription" class="form-label">Add Timer Text</label>
-                <input type="text" class="form-control needs-validation" id="timerDescription" placeholder="Wig">
-                <small id="timerDescriptionValid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+    <div id="liveAlertPlaceholder" style="position:fixed; top: 0px; width: 100%; z-index: 100;"></div>
+    <div id="menu" class="container" style="font-family: 'Kalam', cursive; display: none;
+        position: absolute; z-index: 10; 
+        width: 75%; height: 70%; 
+        top: 50%; left:50%; transform: translate(-50%, -50%); 
+        background-color: white;">
+        <div id="tableHeader" class="container pe-1" style="
+            position: absolute; z-index: 11; 
+            width: 100%; height: 10%; 
+            top: 0%; left:50%; transform: translate(-50%, 0%);">
+            <div class="wordsColumn d-flex align-items-center justify-content-center">
+                Words
             </div>
-            <div class="col-md-6">
-                <label for="timerMinutes" class="form-label">Minutes</label>
-                <input type="text" class="form-control needs-validation" id="timerMinutes" placeholder="5">
-                <small id="timerMinutesValid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+            <div class="typeColumn d-flex align-items-center justify-content-center">
+                Type
             </div>
-            <div class="col-md-6">
-                <label for="timerSeconds" class="form-label">Seconds</label>
-                <input type="text" class="form-control needs-validation" id="timerSeconds" placeholder="0">
-                <small id="timerSecondsValid" class="form-text text-danger invalid-feedback">Invalid Input</small>
+            <div class="colorColumn d-flex align-items-center justify-content-center">
+                Font Color
             </div>
-            <div class="col-md-4">
-                <label for="timerColor" class="form-label">Font Color</label>
-                <div class="input-group">
-                    <span class="input-group-text" id="inputGroupPrepend">#</span>
-                    <input type="text" class="form-control needs-validation" id="timerColor"
-                        aria-describedby="inputGroupPrepend" placeholder="FFFFFF" value="FFFFFF">
-                    <small id="timerColorValid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-                </div>
+            <div class="sizeColumn d-flex align-items-center justify-content-center">
+                Font Size
             </div>
-            <div class="col-md-4">
-                <label for="timerSize" class="form-label">Font Size</label>
-                <div class="input-group">
-                    <input type="text" class="form-control needs-validation" id="timerSize"
-                        aria-describedby="inputGroupPostpend" placeholder="30" value="30">
-                    <span class="input-group-text" id="inputGroupPostpend">px</span>
-                    <small id="timerSizeValid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-                </div>
+            <div class="timeColumn d-flex align-items-center justify-content-center">
+                Time
             </div>
-            <div class="col-12">
-                <button type="submit" class="btn btn-primary" id="timerSubmitButton">Create Timer</button>
+            <div class="restartColumn d-flex align-items-center justify-content-center">
+                Restart?
             </div>
-        </form>
+        </div>
+        <div id="tableBody" class="container" style="
+            position: absolute; z-index: 11; 
+            width: 100%; height: 80%; 
+            top: 50%; left:50%; transform: translate(-50%, -50%); overflow: auto; overflow-y: overlay;">
 
-        <form id="textForm" class="row g-3" novalidate onsubmit="submitTextForm();">
-            <div class="mb-3">
-                <label for="textDescription" class="form-label">Add Plain Text</label>
-                <input type="text" class="form-control needs-validation" id="textDescription"
-                    placeholder="Plain text to be added">
-                <small id="textDescriptionValid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-            </div>
-            <div class="col-md-4">
-                <label for="textColor" class="form-label">Font Color</label>
-                <div class="input-group">
-                    <span class="input-group-text" id="inputGroupPrepend">#</span>
-                    <input type="text" class="form-control needs-validation" id="textColor"
-                        aria-describedby="inputGroupPrepend" placeholder="FFFFFF" value="FFFFFF">
-                    <small id="textColorValid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <label for="textSize" class="form-label">Font Size</label>
-                <div class="input-group">
-                    <input type="text" class="form-control needs-validation" id="textSize"
-                        aria-describedby="inputGroupPostpend" placeholder="30" value="30">
-                    <span class="input-group-text" id="inputGroupPostpend">px</span>
-                    <small id="textSizeValid" class="form-text text-danger invalid-feedback">Invalid Input</small>
-                </div>
-            </div>
-            <div class="col-12">
-                <button type="submit" class="btn btn-primary" id="textSubmitButton">Add Text</button>
-            </div>
-        </form>
+        </div>
+        <div id="tableFooter" class="container" style="
+            position: absolute; z-index: 12; 
+            width: 100%; height: 10%; 
+            top: 90%; left:50%; transform: translate(-50%, 0%);">
+            <button type="button" class="btn btn-primary mb-1 ms-1" onclick="subelement(event);"
+                style="display: inline-block; position: absolute; left: 0%; height: 90%;">Add Sub-Element</button>
+
+            <button type="button" class="btn btn-success mb-1 me-1" onclick="closemenu(event);"
+                style="display: inline-block; position: absolute; right: 0%; height: 90%;">Close Menu</button>
+        </div>
     </div>
-    <div class="d-grid gap-2">
-        <button type="button" class="btn btn-primary rounded-0" onclick="clearAll();"
-            style="color: white; background-color: #078448; font-family: 'Kalam', cursive; font-size: 30px; position:fixed; bottom: 0px; width: 100%; z-index: 999;">
-            Clear All</button>
+
+    <div id="JSONmenu" class="container" style="font-family: 'Kalam', cursive; display: none;
+        position: absolute; z-index: 10; 
+        width: 50%; height: 90%; 
+        top: 50%; left:50%; transform: translate(-50%, -50%); 
+        background-color: white;">
+
+        <div class="container" style="
+            position: absolute; z-index: 11; 
+            width: 70%; height: 100%; 
+            top: 50%; left:45%; transform: translate(-50%, -50%); overflow: auto;">
+            <pre id="JSONPRE" style="overflow: auto;">
+            </pre>
+        </div>
+
+
+        <div id="JSONFooter" class="container" style="
+            position: absolute; z-index: 12; 
+            width: 100%; height: 10%; 
+            top: 90%; left:50%; transform: translate(-50%, 0%);">
+            <button type="button" class="btn btn-success mb-1 me-1" onclick="closeJSON(event);"
+                style="display: inline-block; position: absolute; right: 0%; height: 90%;">Close Menu</button>
+        </div>
+    </div>
+
+    <div id="mask" style="position: absolute; z-index: 9; 
+    width: 100%; height: 100%; pointer-events: none; opacity: 0.7; background-color: black; display: none"></div>
+
+    <div id="sidebar" class="d-grid"
+        style="position: absolute; top: 0px; left: 0px; z-index: 2; font-family: 'Kalam', cursive;">
+        <button type="button" id="helpButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#6699ff'"
+            onmouseleave="this.style.background = '#6441a5'">Help</button>
+
+        <button type="button" id="newButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#ffe066'" onmouseleave="this.style.background = '#6441a5'">New
+            Element</button>
+
+        <button disabled type="button" id="editButton" class="btn btn-primary rounded-0"
+            style="background-color: #d9d9d9;" onmouseover="if(!this.disabled){this.style.background = '#ff9966';}"
+            onmouseleave="if(this.disabled){this.style.background = '#d9d9d9'}else{this.style.background = '#6441a5'}">Edit
+            This Element</button>
+
+        <button type="button" id="saveButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#99ff99'"
+            onmouseleave="this.style.background = '#6441a5'">Save</button>
+
+        <button type="button" id="clearButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#ff6666'" onmouseleave="this.style.background = '#6441a5'">Clear
+            All</button>
+
+        <button type="button" id="jsonButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#ff99cc'" onmouseleave="this.style.background = '#6441a5'">Show
+            JSON</button>
+    </div>
+
+    <iframe id="video" src="" style="position: absolute; top: 0px; pointer-events: auto; border: none; z-index: 0;"
+        preload="auto"></iframe>
+
+    <div id="canvas" style="font-family: 'Kalam', cursive; position: absolute; z-index: 1;">
     </div>
 </body>
 
