@@ -669,9 +669,11 @@
                     childNode["active"] = !restart;
                     if (restart) {
                         childNode["expiration"] = parseInt(time);
+                        childNode["UUID"] = crypto.randomUUID();
                     }
-                    else {// Active timer, check reference
+                    else {// Active timer, retain expiration and UUID
                         childNode["expiration"] = reference[i]["expiration"];
+                        childNode["UUID"] = reference[i]["UUID"];
                     }
                 }
                 parentNode.push(childNode);

@@ -12,6 +12,7 @@
 <body>
   <script>
     var intervalList = [];
+    var latency = {};
     const font_scale = 25;
     var emotes = {};
 
@@ -68,6 +69,7 @@
         };
         timer();
         timerIntervalID = setInterval(timer, 1000);
+        intervalList.push(timerIntervalID);
       }
 
       async function getImg(emoteName, size) {
@@ -108,6 +110,7 @@
           clearInterval(interval);
         }
         intervalList = [];
+        newLatency = {};
         document.getElementById('canvas').innerHTML = '';
         for (const [index, cor] of Object.entries(coordinates)) {
           let element = document.createElement("div");
@@ -130,11 +133,18 @@
               subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
               element.appendChild(subelement);
               if (ele.active) {
-                startTimer(content, ele.expiration + diff, subelement);
+                if (latency[ele.UUID]){
+                  newLatency[ele.UUID] = latency[ele.UUID]
+                }
+                else{
+                  newLatency[ele.UUID] = diff;
+                }
+                startTimer(content, ele.expiration + newLatency[ele.UUID], subelement);
               }
             }
           }
         }
+        latency = newLatency;
       }
 
       window.onload = async function () {
