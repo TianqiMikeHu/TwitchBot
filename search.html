@@ -13,12 +13,12 @@
 
 <body>
     <script>
-        window.addEventListener("load", (event) =>{
+        window.addEventListener("load", (event) => {
             fetch("https://apoorlywrittenbot.cc/restricted/username", {
                 method: 'GET'
             })
                 .then(function (response) {
-                    if(!response.ok){
+                    if (!response.ok) {
                         throw new Error("HTTP status " + response.status);
                     }
                     return response.json();
@@ -26,18 +26,25 @@
                 .then(function (data) {
                     let elem = document.getElementById("username");
                     elem.append(data["username"]);
+                    return fetch(`https://apoorlywrittenbot.cc/restricted/emote-loader?user=${data["username"]}`);
+                })
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error("HTTP status " + response.status);
+                    }
+                    return response.json();
                 })
         });
-        
-        function submitForm(){
+
+        function submitForm() {
             let searchBar = document.getElementById("searchBar");
             let searchBarHelp = document.getElementById("searchBarHelp");
-            if (searchBar.value==""){
+            if (searchBar.value == "") {
                 searchBarHelp.textContent = "Search bar cannot be empty.";
                 searchBarHelp.style.color = "red";
                 return;
             }
-            
+
             window.location.href = `https://apoorlywrittenbot.cc/restricted/moderator?channel=${searchBar.value.toLowerCase()}`;
         }
     </script>
@@ -45,12 +52,12 @@
         <h1 class="display-2 text-center" id="username" style="font-family: 'Kalam', cursive;">Hello, </h1>
         <form id="formElement" onsubmit="submitForm(); return false">
             <div class="mb-3">
-              <label for="searchBar" class="form-label">Channel Name</label>
-              <input type="text" class="form-control" id="searchBar" aria-describedby="searchBarHelp">
-              <div id="searchBarHelp" class="form-text">Enter a channel name where you have moderator access.</div>
+                <label for="searchBar" class="form-label">Channel Name</label>
+                <input type="text" class="form-control" id="searchBar" aria-describedby="searchBarHelp">
+                <div id="searchBarHelp" class="form-text">Enter a channel name where you have moderator access.</div>
             </div>
             <button type="submit" class="btn btn-primary" id="searchButton">Submit</button>
-          </form>
+        </form>
     </div>
 </body>
 

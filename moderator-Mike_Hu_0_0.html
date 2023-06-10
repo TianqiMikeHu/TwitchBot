@@ -115,6 +115,7 @@
         }
 
         var intervalList = [];
+        var emotes = {};
 
 
         function resize() {
@@ -132,7 +133,7 @@
             sidebar.style.height = video.style.height;
             sidebar.style.width = video.style.left;
         }
-        window.onload = function () {
+        window.onload = async function () {
             document.body.style.overflow = 'hidden';
             resize();
 
@@ -156,33 +157,26 @@
 
             let video = document.getElementById('video');
 
-            fetch("https://apoorlywrittenbot.cc/public/json/mike_hu_0_0", {
-                method: 'GET'
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error("HTTP status " + response.status);
-                    }
-                    return response.json();
-                })
-                .then(function (data) {
-                    let count = 0;
-                    for (const [key, value] of Object.entries(data)) {
-                        let element = create(null);
-                        element.style.top = `${value.top / 100.0 * window.innerHeight}px`;
-                        element.style.left = `${value.left / 100.0 * parseFloat(video.style.width) + parseFloat(video.style.left)}px`;
-                    }
-                    // Reset index
-                    for (const [key, value] of Object.entries(data)) {
-                        mapping[count.toString()] = value;
-                        count++;
-                    }
-                    deleteExpiredTimers();
-                    elementUnfocused();
-                    redraw();
-                })
-
+            let response = await fetch("https://apoorlywrittenbot.cc/public/json/mike_hu_0_0");
+            if (!response.ok) {
+                throw new Error("HTTP status " + response.status);
+            }
+            let data = await response.json();
+            let count = 0;
+            for (const [key, value] of Object.entries(data)) {
+                let element = create(null);
+                element.style.top = `${value.top / 100.0 * window.innerHeight}px`;
+                element.style.left = `${value.left / 100.0 * parseFloat(video.style.width) + parseFloat(video.style.left)}px`;
+            }
+            // Reset index
+            for (const [key, value] of Object.entries(data)) {
+                mapping[count.toString()] = value;
+                count++;
+            }
+            deleteExpiredTimers();
+            elementUnfocused();
             video.src = "https://player.twitch.tv/?channel=mike_hu_0_0&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true&controls=false";
+            await redraw();
         }
         window.onresize = function () {
             resize();
@@ -571,7 +565,40 @@
             validationDictionary[`time${index}`] = true;
         }
 
-        function redraw() {
+        async function getImg(emoteName, size) {
+            if (emotes[emoteName]) {
+                return new Promise((res, rej) => {
+                    res(`<img src="https://static-cdn.jtvnw.net/emoticons/v2/${emotes[emoteName]}/dark/3.0" 
+                                style="pointer-events: none; height: ${(window.innerHeight / font_scale) / 50 * size}px;">`);
+                });
+            }
+            else {
+                let response = await fetch(`https://apoorlywrittenbot.cc/public/emote?name=${emoteName}`);
+                if (!response.ok) {
+                    return new Promise((res, rej) => {
+                        res(emoteName);
+                    });
+                }
+                let data = await response.json();
+                emotes[emoteName] = data.id;
+                return new Promise((res, rej) => {
+                    res(`<img src="https://static-cdn.jtvnw.net/emoticons/v2/${emotes[emoteName]}/dark/3.0" 
+                                style="pointer-events: none; height: ${(window.innerHeight / font_scale) / 50 * size}px;">`);
+                });
+            }
+        }
+
+        async function replaceAsync(str, regex, size) {
+            const promises = [];
+            str.replace(regex, (match, key) => {
+                const promise = getImg(key, size);
+                promises.push(promise);
+            });
+            const data = await Promise.all(promises);
+            return str.replace(regex, () => data.shift());
+        }
+
+        async function redraw() {
             // Cancel all timers
             for (const interval of intervalList) {
                 clearInterval(interval);
@@ -589,11 +616,12 @@
                 for (const childNode of parentNode) {
                     let subelement = document.createElement("div");
                     subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px;`;
-                    subelement.textContent = childNode["content"];
+                    subelement.innerHTML = await replaceAsync(childNode["content"], /:([^\s:]+):/g, childNode["size"]);
+
                     if (childNode["category"] == "timer") {
                         subelement.id = crypto.randomUUID();
                         if (childNode["active"]) {
-                            startTimer(childNode["content"], childNode["expiration"], subelement);
+                            startTimer(subelement.innerHTML, childNode["expiration"], subelement);
                         }
                         else {
                             let seconds = childNode["expiration"];
@@ -601,7 +629,7 @@
                             seconds = (seconds % 60) | 0;
                             minutes = minutes < 10 ? "0" + minutes : minutes;
                             seconds = seconds < 10 ? "0" + seconds : seconds;
-                            subelement.textContent += `: ${minutes}:${seconds}`;
+                            subelement.innerHTML += `: ${minutes}:${seconds}`;
                         }
                     }
                     element.appendChild(subelement);
@@ -609,7 +637,7 @@
             }
         }
 
-        function closemenu(e) {
+        async function closemenu(e) {
             e.stopPropagation();
             for (const [key, value] of Object.entries(validationDictionary)) {
                 if (!value) {
@@ -648,17 +676,6 @@
                 }
                 parentNode.push(childNode);
             }
-            // Remove element if empty
-            if (parentNode.length == 0) {
-                delete mapping[index];
-                lastClickedElement.remove();
-                lastClickedElement = null;
-                elementUnfocused();
-            }
-            else {
-                mapping[index]["elements"] = parentNode;
-                redraw();
-            }
 
             let menu = document.getElementById("menu");
             let mask = document.getElementById("mask");
@@ -671,6 +688,18 @@
                 menu.style.display = "none";
                 editing = false;
             }, 200);
+
+            // Remove element if empty
+            if (parentNode.length == 0) {
+                delete mapping[index];
+                lastClickedElement.remove();
+                lastClickedElement = null;
+                elementUnfocused();
+            }
+            else {
+                mapping[index]["elements"] = parentNode;
+                await redraw();
+            }
         }
 
         function deleteExpiredTimers() {
@@ -697,7 +726,7 @@
             }
         }
 
-        function save(e) {
+        async function save(e) {
             e.stopPropagation();
             if (editing) {
                 return;
@@ -722,7 +751,7 @@
 
             elementUnfocused();
             lastClickedElement = null;
-            redraw();
+            await redraw();
         }
 
         function clearAll(e) {
@@ -784,11 +813,11 @@
                 seconds = seconds < 10 ? "0" + seconds : seconds;
 
                 if (diff <= 0) {
-                    element.textContent = `${timerText}: DONE`;
+                    element.innerHTML = `${timerText}: DONE`;
                     clearInterval(timerIntervalID);
                 }
                 else {
-                    element.textContent = `${timerText}: ${minutes}:${seconds}`;
+                    element.innerHTML = `${timerText}: ${minutes}:${seconds}`;
                 }
             };
             timer();
