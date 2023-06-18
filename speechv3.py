@@ -188,7 +188,7 @@ class audio_transcript():
                             print(f"\nKeyword \"{item[0]}\" was throttled: delta={timestamp-item['timestamp']['N']}\n")
                             continue
                         item['timestamp']['N'] = timestamp
-                        if not item['count']:
+                        if 'count' not in item:
                             print(f"{item['response']['S']}")
                             q.put(f"{item['response']['S']}")
                             continue
