@@ -1,0 +1,4 @@
+twitchio
+twitchrealtimehandler
+pydub
+boto3
