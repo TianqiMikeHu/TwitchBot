@@ -14,7 +14,7 @@ import queue
 from twitchio.ext import routines
 import boto3
 
-COOLDOWN = 60
+COOLDOWN = 90
 q = queue.Queue()
 
 class Bot(commands.Bot):
