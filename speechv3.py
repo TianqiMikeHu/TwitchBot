@@ -10,6 +10,7 @@ import threading
 import argparse
 from twitchio.ext import commands
 import time
+import datetime
 import queue
 from twitchio.ext import routines
 import boto3
@@ -67,6 +68,7 @@ class audio_transcript():
         self.twitch_url = f'https://twitch.tv/{channel}'
         self.audio_grabber = None
         self.audio_grabber_2 = None
+        self.writer = = open(f"{datetime.datetime.utcnow().replace(microsecond=0).isoformat()}-{channel}.txt", "a")
 
         self.exit_event = threading.Event()
         self.debug = debug
@@ -186,7 +188,7 @@ class audio_transcript():
                     if transcript is None:
                         continue 
                     if self.debug:
-                        print(f"Source {source_id}: {transcript}")      
+                        self.writer.write(f"Source {source_id}: {transcript}\n")      
 
                     transcript = transcript.lower()
 
