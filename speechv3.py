@@ -183,10 +183,10 @@ class audio_transcript():
                     data = raw_flac.read()
                     transcript = self.api_speech(data)
                     
-                    if self.debug:
-                        print(f"Source {source_id}: {transcript}")
                     if transcript is None:
-                        continue       
+                        continue 
+                    if self.debug:
+                        print(f"Source {source_id}: {transcript}")      
 
                     transcript = transcript.lower()
 
