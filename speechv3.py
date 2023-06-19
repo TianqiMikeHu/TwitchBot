@@ -30,7 +30,7 @@ class Bot(commands.Bot):
 
     async def event_ready(self):
         print("CONNECTED TO TWITCH IRC")
-        await self.connected_channels[0].send("bot is online")
+        # await self.connected_channels[0].send("bot is online")
         self.poll.start(stop_on_error=False)
         print("POLL STARTED")
         
@@ -66,6 +66,7 @@ class audio_transcript():
         self.channel = channel
         self.twitch_url = f'https://twitch.tv/{channel}'
         self.audio_grabber = None
+        self.audio_grabber_2 = None
 
         self.exit_event = threading.Event()
         self.debug = debug
@@ -79,6 +80,11 @@ class audio_transcript():
             self.audio_grabber = TwitchAudioGrabber(twitch_url=self.twitch_url,
                                        dtype=np.int16,
                                        segment_length=5,
+                                       channels=1,
+                                       rate=16000)
+            self.audio_grabber_2 = TwitchAudioGrabber(twitch_url=self.twitch_url,
+                                       dtype=np.int16,
+                                       segment_length=9,
                                        channels=1,
                                        rate=16000)
         except ValueError:
@@ -160,61 +166,64 @@ class audio_transcript():
     def transcribe(self):
         while True:
             # we want the raw data not the numpy array to send it to google api
-            audio_segment = self.audio_grabber.grab_raw()
-            if audio_segment:
-                raw = BytesIO(audio_segment)
-                try:
-                    raw_wav = AudioSegment.from_raw(
-                        raw, sample_width=2, frame_rate=16000, channels=1)
-                except CouldntEncodeError:
-                    print("could not decode")
-                    continue
-                raw_flac = BytesIO()
-                raw_wav.export(raw_flac, format='flac')
-                data = raw_flac.read()
-                transcript = self.api_speech(data)
-                
-                if self.debug:
-                    print(transcript)
-                if transcript is None:
-                    continue       
+            source_id = -1
+            for source in [self.audio_grabber, self.audio_grabber_2]:
+                source_id+=1
+                audio_segment = source.grab_raw()
+                if audio_segment:
+                    raw = BytesIO(audio_segment)
+                    try:
+                        raw_wav = AudioSegment.from_raw(
+                            raw, sample_width=2, frame_rate=16000, channels=1)
+                    except CouldntEncodeError:
+                        print("could not decode")
+                        continue
+                    raw_flac = BytesIO()
+                    raw_wav.export(raw_flac, format='flac')
+                    data = raw_flac.read()
+                    transcript = self.api_speech(data)
+                    
+                    if self.debug:
+                        print(f"Source {source_id}: {transcript}")
+                    if transcript is None:
+                        continue       
 
-                transcript = transcript.lower()
+                    transcript = transcript.lower()
 
-                for item in self.keywords:
-                    if item['keyword']['S'] in transcript:
-                        timestamp = time.time()
-                        if timestamp-item['timestamp']['N']<COOLDOWN:
-                            print(f"\nKeyword \"{item[0]}\" was throttled: delta={timestamp-item['timestamp']['N']}\n")
-                            continue
-                        item['timestamp']['N'] = timestamp
-                        if 'count' not in item:
-                            print(f"{item['response']['S']}")
-                            q.put(f"{item['response']['S']}")
-                            continue
-                        count = int(item['count']['N'])+1
-                        item['count']['N'] = str(count)
-                        print(f"{item['response']['S']} (x{item['count']['N']})")
-                        q.put(f"{item['response']['S']} (x{item['count']['N']})")
-                        ddb = boto3.client('dynamodb', region_name='us-west-2')
-                        response = ddb.update_item(
-                            TableName=f'Speech-{self.channel.lower()}',
-                            ExpressionAttributeNames={
-                                '#C': 'count',
-                            },
-                            ExpressionAttributeValues={
-                                ':c': {
-                                    'N': item['count']['N'],
-                                }
-                            },
-                            Key={
-                                'keyword': {
-                                    'S': item['keyword']['S'],
-                                }
-                            },
-                            ReturnValues='ALL_NEW',
-                            UpdateExpression='SET #C = :c'
-                        )
+                    for item in self.keywords:
+                        if item['keyword']['S'] in transcript:
+                            timestamp = time.time()
+                            if timestamp-item['timestamp']['N']<COOLDOWN:
+                                print(f"\nKeyword \"{item['keyword']['S']}\" was throttled: delta={timestamp-item['timestamp']['N']}\n")
+                                continue
+                            item['timestamp']['N'] = timestamp
+                            if 'count' not in item:
+                                print(f"{item['response']['S']}")
+                                q.put(f"{item['response']['S']}")
+                                continue
+                            count = int(item['count']['N'])+1
+                            item['count']['N'] = str(count)
+                            print(f"{item['response']['S']} (x{item['count']['N']})")
+                            q.put(f"{item['response']['S']} (x{item['count']['N']})")
+                            ddb = boto3.client('dynamodb', region_name='us-west-2')
+                            response = ddb.update_item(
+                                TableName=f'Speech-{self.channel.lower()}',
+                                ExpressionAttributeNames={
+                                    '#C': 'count',
+                                },
+                                ExpressionAttributeValues={
+                                    ':c': {
+                                        'N': item['count']['N'],
+                                    }
+                                },
+                                Key={
+                                    'keyword': {
+                                        'S': item['keyword']['S'],
+                                    }
+                                },
+                                ReturnValues='ALL_NEW',
+                                UpdateExpression='SET #C = :c'
+                            )
 
 
 parser = argparse.ArgumentParser()
