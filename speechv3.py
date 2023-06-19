@@ -68,7 +68,7 @@ class audio_transcript():
         self.twitch_url = f'https://twitch.tv/{channel}'
         self.audio_grabber = None
         self.audio_grabber_2 = None
-        self.writer = = open(f"{datetime.datetime.utcnow().replace(microsecond=0).isoformat()}-{channel}.txt", "a")
+        self.writer = open(f"{datetime.datetime.utcnow().replace(microsecond=0).isoformat()}-{channel}.txt", "a")
 
         self.exit_event = threading.Event()
         self.debug = debug
