@@ -188,7 +188,8 @@ class audio_transcript():
                     if transcript is None:
                         continue 
                     if self.debug:
-                        self.writer.write(f"Source {source_id}: {transcript}\n")      
+                        self.writer.write(f"Source {source_id}: {transcript}\n")    
+                        self.writer.flush()  
 
                     transcript = transcript.lower()
 
