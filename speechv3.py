@@ -36,6 +36,21 @@ class Bot(commands.Bot):
         print("POLL STARTED")
         
 
+    async def save_to_s3(self):
+        f = open("output.txt", "r")
+        text = f.read().encode("utf-8")
+        s3 = boto3.client('s3', region_name='us-west-2')
+        title = datetime.datetime.utcnow().replace(microsecond=0).isoformat()
+        title = title.replace(':',"-")
+        response = s3.put_object(
+            ACL='bucket-owner-full-control',
+            Body=text,
+            Bucket='inabot',
+            ContentType='text/plain',
+            Key=f'transcribe-new/{self.channel}-{title}.txt'
+        )
+        return response, f'transcribe-new/{self.channel}-{title}.txt'
+
     async def event_message(self, msg):
         if msg.author is None:
             return
@@ -43,13 +58,26 @@ class Bot(commands.Bot):
         if name == self.channel or name == 'mike_hu_0_0':
             if msg.content.lower() == "!restart":
                 await msg.channel.send("Terminating instance...")
+                response, key = self.save_to_s3()
+                if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                    await msg.channel.send(f"Transcript: {key}")
                 r = requests.get(url="http://169.254.169.254/latest/meta-data/instance-id")
-                import boto3
-                client = boto3.client('ec2', region_name='us-west-2')
-                response = client.terminate_instances(
+                ec2 = boto3.client('ec2', region_name='us-west-2')
+                response = ec2.terminate_instances(
                     InstanceIds=[
                         r.text,
                     ]
+                )
+        elif name == 'a_poorly_written_bot':
+            if msg.content == "Stream is offline. Autoscaling in...":
+                response, key = self.save_to_s3()
+                if response['ResponseMetadata']['HTTPStatusCode'] == 200:
+                    await msg.channel.send(f"Transcript: {key}")
+                autoscaling = boto3.client('autoscaling')
+                response = autoscaling.set_desired_capacity(
+                    AutoScalingGroupName=f'AutoScaling-{self.channel}',
+                    DesiredCapacity=capacity,
+                    HonorCooldown=False
                 )
         return
     
@@ -68,7 +96,7 @@ class audio_transcript():
         self.twitch_url = f'https://twitch.tv/{channel}'
         self.audio_grabber = None
         self.audio_grabber_2 = None
-        self.writer = open(f"{datetime.datetime.utcnow().replace(microsecond=0).isoformat()}-{channel}.txt", "a")
+        self.writer = open("output.txt", "w")
 
         self.exit_event = threading.Event()
         self.debug = debug
