@@ -26,7 +26,7 @@ function getSignedCookie(publicKey, privateKey) {
 
 function getExpirationTime() {
     const date = new Date();
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours() + 2, date.getMinutes(), date.getSeconds());
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours() + 3, date.getMinutes(), date.getSeconds());
 }
 
 function getExpiryTime() {
@@ -95,28 +95,26 @@ async function getDisplayName(login) {
     }
 }
 
-exports.handler = async (event, context) => {
+function forbidden() {
+    return {
+        isBase64Encoded: false,
+        statusCode: '403',
+        body: ''
+    };
+}
 
+exports.handler = async (event, context) => {
+    if (event.httpMethod != "GET"){
+        return forbidden();
+    }
     if (event.headers == null) {
-        return {
-            isBase64Encoded: false,
-            statusCode: '403',
-            body: ''
-        };
+        return forbidden();
     }
     if (event.headers["cf-env"] != process.env.CF_ENV) {
-        return {
-            isBase64Encoded: false,
-            statusCode: '403',
-            body: ''
-        };
+        return forbidden();
     }
     if (event.queryStringParameters["code"] == null) {
-        return {
-            isBase64Encoded: false,
-            statusCode: '400',
-            body: ''
-        };
+        return forbidden();
     }
 
     let token_request = `https://id.twitch.tv/oauth2/token?client_id=6yz6w1tnl13svb5ligch31aa5hf4ty&client_secret=${process.env.CLIENT_SECRET}&grant_type=authorization_code&code=${event.queryStringParameters["code"]}&redirect_uri=https://apoorlywrittenbot.cc`;
@@ -127,11 +125,7 @@ exports.handler = async (event, context) => {
             access_token = response.data.access_token;
         })
         .catch(function (error) {
-            return {
-                isBase64Encoded: false,
-                statusCode: '403',
-                body: ''
-            };
+            return forbidden();
         });
     await axios.get("https://id.twitch.tv/oauth2/validate", {
         headers: {
@@ -142,11 +136,7 @@ exports.handler = async (event, context) => {
             login = response.data.login;
         })
         .catch(function (error) {
-            return {
-                isBase64Encoded: false,
-                statusCode: '403',
-                body: ''
-            };
+            return forbidden();
         });
 
 
@@ -156,6 +146,14 @@ exports.handler = async (event, context) => {
         display_name = login;
     }
 
+    let pushover = {
+        'token': process.env.PUSHOVER_APP_TOKEN,
+        'user': process.env.PUSHOVER_USER_TOKEN,
+        'device': 'mike-iphone',
+        'title': 'LOGIN',
+        'message': `${display_name}`
+    };
+    await axios.post('https://api.pushover.net/1/messages.json', pushover);
 
     if (cache.publicKey == null) cache.publicKey = await loadParameter('CF-PUBLIC-KEY-ID');
     if (cache.privateKey == null) cache.privateKey = await loadParameter('CF-PRIVATE-KEY', true);

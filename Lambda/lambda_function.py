@@ -7,7 +7,7 @@ import socket
 from twitchio.ext import commands
 import boto3
 import time
-# import asyncio
+from websocket import create_connection
 
 
 HOST = 'irc.chat.twitch.tv'
@@ -17,15 +17,15 @@ NICK = 'a_poorly_written_bot'
 cold_start = True
 
 
-def send_twitchio(message):
+def send_twitchio(message, chan="mike_hu_0_0"):
     global cold_start
     if not cold_start:
-        send_socket(message)
+        send_socket(message, chan)
         return
     
     class Bot(commands.Bot):
         def __init__(self):
-            channel = 'mike_hu_0_0'
+            channel = chan
             super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=[channel])
             self.channel = channel
     
@@ -49,10 +49,10 @@ def send_twitchio(message):
         pass
 
 
-def send_socket(message):
+def send_socket(message, chan="mike_hu_0_0"):
     password = os.getenv('TWITCH_OAUTH_TOKEN')
     # print(password)
-    channel =  "mike_hu_0_0"
+    channel =  chan
     try:
         s = socket.socket()
     except:
@@ -81,10 +81,15 @@ def send_socket(message):
 
 
 def lambda_handler(event, context):
-    # print(event)
+    print(event['headers'])
+    if event.get('headers') is None:
+        return  {
+            'statusCode': 403,
+            'body': ''
+        }
     body = json.loads(event['body'])
     # print(body)
-    if event['headers']['twitch-eventsub-message-type']=='webhook_callback_verification':
+    if event['headers'].get('twitch-eventsub-message-type') =='webhook_callback_verification':
         challenge = body.get('challenge')
         print(f"Challenge is: {challenge}")
         if challenge is not None:
@@ -98,6 +103,9 @@ def lambda_handler(event, context):
                 'statusCode': 400,
                 'body': ''
             }
+    
+    if event['headers'].get('invoke-eventsub') == os.getenv("INVOKE_EVENTSUB"):
+        return API.restricted_control(body)
 
     ID = event['headers']['twitch-eventsub-message-id']
     timestamp = event['headers']['twitch-eventsub-message-timestamp']
@@ -181,31 +189,100 @@ def lambda_handler(event, context):
 
     elif event_type == 'channel.poll.begin':
         title = body.get('event', {}).get('title')
+        broadcaster_user_login = body.get('event', {}).get('broadcaster_user_login')
         choices = body.get('event', {}).get('choices')
         if title is not None and choices is not None:
-            message = f"PopCorn We have a new poll about...*checks notes*...\"{title}\". The options are:"
-            try:
-                for i in range(len(choices)):
-                    option = choices[i].get("title")
-                    message = message + " " + str(i+1) + ") " + option
-            except:
-                raise Exception("Error assembling message")
-            send_twitchio(message)
+            if broadcaster_user_login=='annaagtapp' and title=="Next Stipulation?":
+                
+                ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
+        
+                payload = {
+                    "route": "sendmessage",
+                    "action": "pollstart",
+                    "channel": "polloverlay",
+                    "timestamp": str(time.time())
+                }
+                
+                payload_string = json.dumps(payload, separators=(',', ':'))
+        
+                signature = hmac.new(secret.encode('utf-8'), msg=payload_string.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
+        
+                payload['signature'] = signature
+                
+                ws.send(json.dumps(payload))
+                ws.close()
+                
+            elif broadcaster_user_login=='mike_hu_0_0':
+                message = f"PopCorn We have a new poll about...*checks notes*...\"{title}\". The options are:"
+                try:
+                    for i in range(len(choices)):
+                        option = choices[i].get("title")
+                        message = message + " " + str(i+1) + ") " + option
+                except:
+                    raise Exception("Error assembling message")
+                send_twitchio(message)
+
+    elif event_type == 'channel.poll.end':
+        title = body.get('event', {}).get('title')
+        broadcaster_user_login = body.get('event', {}).get('broadcaster_user_login')
+        choices = body.get('event', {}).get('choices')
+        status = body.get('event', {}).get('status')
+        if broadcaster_user_login=='annaagtapp' and title=="Next Stipulation?" and status=="completed":
+            
+            stipulation = choices[0]["title"]
+            votes = choices[0]["votes"]
+            
+            for item in choices:
+                if item["votes"]>votes:
+                    stipulation = item["title"]
+            
+            ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
+            
+            payload = {
+                "route": "sendmessage",
+                "action": "pollend",
+                "channel": "polloverlay",
+                "stipulation": stipulation,
+                "timestamp": str(time.time())
+            }
+            
+            payload_string = json.dumps(payload, separators=(',', ':'))
+    
+            signature = hmac.new(secret.encode('utf-8'), msg=payload_string.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
+    
+            payload['signature'] = signature
+            
+            ws.send(json.dumps(payload))
+            ws.close()
             
     elif event_type == 'channel.channel_points_custom_reward_redemption.add':
-        response = API.redeem(body)
+        broadcaster_user_login = body.get('event', {}).get("broadcaster_user_login")
+        response= API.redeem(body)
         if response!="":
-            send_twitchio(response)
+            send_twitchio(response, broadcaster_user_login)
             
     elif event_type == 'stream.online':
         username = body.get('event', {}).get('broadcaster_user_name')
         if username == "AnnaAgtapp":
-            API.start_ec2()
-            
+            API.autoscale(username.lower(), 1)
+        elif username == "buritters":
+            response = "Good morning Cheese"
+            send_twitchio(response, username)
+            API.autoscale(username.lower(), 1)
+            API.pushover("ONLINE EVENT", "Britt is online", True)
+        elif username == "Mike_Hu_0_0":
+            API.autoscale(username.lower(), 1)
+
     elif event_type == 'stream.offline':
+        offline_msg = "Stream is offline. Autoscaling in..."
         username = body.get('event', {}).get('broadcaster_user_name')
+        API.pushover("AUTOSCALING", f"AutoScaling-{username.lower()} capacity set to 0")
         if username == "AnnaAgtapp":
-            API.stop_ec2()
+            send_twitchio(offline_msg, username)
+        elif username == "buritters":
+            send_twitchio(offline_msg, username)
+        elif username == "Mike_Hu_0_0":
+            send_twitchio(offline_msg, username)
 
     else:
         send_twitchio("This is an error message")

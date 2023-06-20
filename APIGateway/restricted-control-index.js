@@ -3,6 +3,7 @@ const axios = require('axios');
 const { createHash } = require('crypto');
 const ddb = new AWS.DynamoDB.DocumentClient();
 const s3 = new AWS.S3();
+const parameterStore = new AWS.SSM();
 
 const SIGNATURE = "CloudFront-Signature=";
 
@@ -45,6 +46,32 @@ async function getS3File(bucket, key) {
         body: objectData
     };
 }
+
+
+const putParam = (param, value) => {
+  return new Promise((res, rej) => {
+    parameterStore.putParameter({
+      Name: param, Value: value, Overwrite: true
+    }, (err, data) => {
+        if (err) {
+          return rej(err);
+        }
+        return res(data);
+    });
+  });
+};
+
+const getEmotesLambda = (params) => {
+    const lambda = new AWS.Lambda();
+    return new Promise((res, rej) => {
+        lambda.invoke(params, function(err, data) {
+            if (err) {
+              return rej(err);
+            }
+            return res(data);
+        });
+    });
+};
 
 async function validation(event) {
     if (event.headers == null) {
@@ -93,7 +120,7 @@ async function validation(event) {
         return forbidden();
     }
 
-    let result;
+    let result, user_id;
     await axios.get("https://id.twitch.tv/oauth2/validate", {
         headers: {
             Authorization: 'Bearer ' + access_token
@@ -101,6 +128,7 @@ async function validation(event) {
     })
         .then(function (response) {
             result = true;
+            user_id = response.data.user_id;
         })
         .catch(function (error) {
             result = false;
@@ -109,7 +137,11 @@ async function validation(event) {
         return {
             isBase64Encoded: false,
             statusCode: '200',
-            body: display_name
+            body: {
+                'display_name': display_name,
+                'access_token': access_token,
+                'user_id': user_id
+            }
         };
     }
     else {
@@ -122,13 +154,15 @@ exports.handler = async (event) => {
 
     console.log(event);
 
-    let display_name;
+    let display_name, access_token, user_id;
     let validation_result = await validation(event);
 
     if (validation_result.statusCode != 200) {
         return validation_result;
     }
-    display_name = validation_result.body;
+    display_name = validation_result.body.display_name;
+    access_token = validation_result.body.access_token;
+    user_id = validation_result.body.user_id;
 
     if (event.httpMethod == "GET") {
         if (event.path == "/restricted/search.html") {
@@ -140,6 +174,16 @@ exports.handler = async (event) => {
                 statusCode: '200',
                 body: JSON.stringify({ username: display_name })
             };
+        }
+        else if (event.path == "/restricted/emote-loader") {
+            let payload = {'access_token': access_token, 'user_id': user_id};
+            var params = {
+              FunctionName: 'GetEmotes',
+              InvocationType: 'Event',
+              Payload: JSON.stringify(payload),
+            };
+            await getEmotesLambda(params);
+            return success();
         }
         else if (event.path == "/restricted/moderator") {
             if (event.queryStringParameters == null) {
@@ -161,6 +205,15 @@ exports.handler = async (event) => {
                     return forbidden();
                 }
             }
+            else if(chan == "mike_hu_0_0"){
+                if (mods.modListMike_Hu_0_0.includes(display_name.toLowerCase())) {
+                    // Approved
+                    return await getS3File("a-poorly-written-bot", "restricted/moderator-Mike_Hu_0_0.html");
+                }
+                else {
+                    return forbidden();
+                }
+            }
             else {
                 return forbidden();
             }
@@ -173,21 +226,21 @@ exports.handler = async (event) => {
         let mods = require("./modList.js");
         let body = JSON.parse(event.body);
         let payload;
-        if (event.path == "/restricted/annaagtapp/text") {
-            if (mods.modListAnnaAgtapp.includes(display_name.toLowerCase())==false){
+
+        if (event.path == "/restricted/mike_hu_0_0/json") {
+            if (mods.modListMike_Hu_0_0.includes(display_name.toLowerCase())==false){
                 return forbidden();
             }
             payload = {
                 route: "sendmessage",
                 action: "modaction",
-                channel: "annaagtapp",
-                category: "text",
-                content: body.content,
-                color: body.color,
-                size: body.size
+                channel: "mike_hu_0_0",
+                category: "json",
+                coordinates: body
             };
+            await putParam('JSON_MIKE_HU_0_0', event.body);
         }
-        else if (event.path == "/restricted/annaagtapp/timer") {
+        else if (event.path == "/restricted/annaagtapp/json") {
             if (mods.modListAnnaAgtapp.includes(display_name.toLowerCase())==false){
                 return forbidden();
             }
@@ -195,23 +248,10 @@ exports.handler = async (event) => {
                 route: "sendmessage",
                 action: "modaction",
                 channel: "annaagtapp",
-                category: "timer",
-                content: body.content,
-                duration: body.duration,
-                color: body.color,
-                size: body.size
+                category: "json",
+                coordinates: body
             };
-        }
-        else if (event.path == "/restricted/annaagtapp/clearall") {
-            if (mods.modListAnnaAgtapp.includes(display_name.toLowerCase())==false){
-                return forbidden();
-            }
-            payload = {
-                route: "sendmessage",
-                action: "modaction",
-                channel: "annaagtapp",
-                category: "clearAll",
-            };
+            await putParam('JSON_ANNAAGTAPP', event.body);
         }
         else {
             return forbidden();

@@ -7,12 +7,15 @@ import json
 import hmac
 import hashlib
 import time
+import allowlist_anna
 
-def get_header_user(bot=False):
+def get_header_user(bot=False, user='Mike_Hu_0_0'):
     ssm = boto3.client('ssm', 'us-west-2')
     
     if bot:
         key = 'ACCESSTOKEN_BOT'
+    elif user=='AnnaAgtapp':
+        key = 'ACCESSTOKEN_ANNA'
     else:
         key = 'ACCESSTOKEN'
     
@@ -27,12 +30,15 @@ def get_header_user(bot=False):
                 "Content-Type":"application/json"}
     return header
 
-def refresh_token(bot=False):
+def refresh_token(bot=False, user='Mike_Hu_0_0'):
     ssm = boto3.client('ssm', 'us-west-2')
     
     if bot:
         refresh_key = 'REFRESH_BOT'
         access_key = 'ACCESSTOKEN_BOT'
+    elif user=='AnnaAgtapp':
+        refresh_key = 'REFRESH_ANNA'
+        access_key = 'ACCESSTOKEN_ANNA'
     else:
         refresh_key = 'REFRESH'
         access_key = 'ACCESSTOKEN'
@@ -110,7 +116,7 @@ def announcement(message):
     return ""
 
     
-def pushover(title, message):
+def pushover(title, message, critical=False):
     body = {
         'token': os.getenv('PUSHOVER_APP_TOKEN'),
         'user': os.getenv('PUSHOVER_USER_TOKEN'),
@@ -118,11 +124,16 @@ def pushover(title, message):
         'title': title,
         'message': message
     }
+    
+    if critical:
+        body["priority"] = 2
+        body["retry"] = 30
+        body["expire"] = 300
 
     r = requests.post('https://api.pushover.net/1/messages.json', json=body)
 
     if r.status_code!=200:
-        print(r.status_code)
+        print(r.text)
     return
 
     
@@ -138,7 +149,7 @@ def start_ec2():
     for instance in response['StartingInstances']:
         id = instance['InstanceId']
         state = instance['CurrentState']['Name']
-        pushover("STARTING INSTANCE", f"Instance {id} is now {state}")
+        pushover("STARTING INSTANCE", f"Instance {id} is now {state}", True)
     return
 
 
@@ -157,17 +168,31 @@ def stop_ec2():
         pushover("STOPPING INSTANCE", f"Instance {id} is now {state}")
     return
 
+def autoscale(name, capacity):
+    client = boto3.client('autoscaling')
+    
+    response = client.set_desired_capacity(
+        AutoScalingGroupName=f'AutoScaling-{name}',
+        DesiredCapacity=capacity,
+        HonorCooldown=False
+    )
+    
+    pushover("AUTOSCALING", f"AutoScaling-{name} capacity set to {capacity}")
+    return
+
 
 def redeem(body):
     user_id = body.get('event', {}).get("user_id")
     user_name = body.get('event', {}).get("user_name")
     user_input = body.get('event', {}).get("user_input")
+    broadcaster_user_login = body.get('event', {}).get("broadcaster_user_login")
     reward = body.get('event', {}).get("reward")
     if reward is None:
         return "[Error] The reward body is empty"
     # else:
     #     print(reward)
     title = reward.get("title")
+    reward_id = reward.get("id")
     if title is None:
         return "[Error] Required field missing"
     
@@ -218,9 +243,44 @@ def redeem(body):
     elif title == "make an announcement":
         return announcement(f"{user_name}: {user_input}")
         
-    elif title == "speech recognition key word":
-        return f"<AddAudioKey> {user_input}"
-    elif title == "play a clip":
+    elif reward_id == "a2bcb4ff-7b78-41ec-ab20-d5f1c11e087a":
+        args = user_input.split(';')
+        if len(args)<3:
+            return "[ERROR]: Too few arguments"
+            
+        title = args[0].strip()
+        if len(title)>60:
+            return "[ERROR]: Title may not be longer than 60 characters."
+        
+        body = {
+            "broadcaster_id":"598261113", 
+            "title":title, 
+            "choices":[],
+            "duration": 120
+        }
+        
+        for i in range(1, len(args)):
+            if i>5:
+                break
+            option = args[i].strip()
+            if len(option)>25:
+                return "[ERROR]: An option may not be longer than 25 characters."
+            body["choices"].append({"title": option})
+            
+        r = requests.post(url="https://api.twitch.tv/helix/polls/", headers=get_header_user(user='AnnaAgtapp'), json=body)
+
+        if r.status_code==401:
+            print("[ERROR]: status code is 401. Getting new access token...")
+            refresh_token(user='AnnaAgtapp')
+            r = requests.post(url="https://api.twitch.tv/helix/polls/", headers=get_header_user(user='AnnaAgtapp'), json=body)
+    
+        if r.status_code!=200:
+            return f'[ERROR]: status code is {str(r.status_code)}'
+        else:
+            return ""
+        
+        
+    elif reward_id == "22ad9f2a-fbe5-42a5-9b96-1999a0ed5f86" or reward_id=="cf9e9e23-7a07-4e14-80d6-4f1072067818":
         secret = os.getenv('SECRET')
         link = user_input
         
@@ -232,6 +292,8 @@ def redeem(body):
             id = link[index1+1:index2]
         elif index2==-1:
             id = link[index1+1:]
+        elif index1==-1:
+            id = link[:index2]
         else:
             return "[ERROR]: Could not interpret URL."
         src = ''
@@ -256,13 +318,17 @@ def redeem(body):
         else:
             src = f"https://clips.twitch.tv/embed?clip={id}&parent=apoorlywrittenbot.cc&autoplay=true&controls=false"
             duration = data['data'][0]['duration']*1000
+            broadcaster_name = data['data'][0]['broadcaster_name']
+            
+        if reward_id=='cf9e9e23-7a07-4e14-80d6-4f1072067818' and broadcaster_name not in allowlist_anna.ALLOWLIST:
+            return "[ERROR]: Please ask the mods which clips are allowed."
         
         ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
         
         payload = {
             "route": "sendmessage",
             "action": "newclip",
-            "channel": "mike_hu_0_0",
+            "channel": broadcaster_user_login,
             "src": src,
             "duration": int(duration),
             "timestamp": str(time.time())
@@ -278,4 +344,17 @@ def redeem(body):
         ws.close()
         return "Request processed successfully."
     
+    return ""
+    
+def restricted_control(payload):
+    ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
+    payload_string = json.dumps(payload, separators=(',', ':'))
+
+    secret = os.getenv('SECRET')
+    signature = hmac.new(secret.encode('utf-8'), msg=payload_string.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
+
+    payload['signature'] = signature
+
+    ws.send(json.dumps(payload))
+    ws.close()
     return ""
