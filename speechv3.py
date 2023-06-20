@@ -49,7 +49,7 @@ class Bot(commands.Bot):
             ContentType='text/plain',
             Key=f'transcribe-new/{self.channel}-{title}.txt'
         )
-        return response, f'transcribe-new/{self.channel}-{title}.txt'
+        return response, f'{self.channel}-{title}'
 
     async def event_message(self, msg):
         if msg.author is None:
@@ -60,7 +60,7 @@ class Bot(commands.Bot):
                 await msg.channel.send("Terminating instance...")
                 response, key = self.save_to_s3()
                 if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                    await msg.channel.send(f"Transcript: {key}")
+                    await msg.channel.send(f"Transcript Key: {key}")
                 r = requests.get(url="http://169.254.169.254/latest/meta-data/instance-id")
                 ec2 = boto3.client('ec2', region_name='us-west-2')
                 response = ec2.terminate_instances(
@@ -72,7 +72,7 @@ class Bot(commands.Bot):
             if msg.content == "Stream is offline. Autoscaling in...":
                 response, key = self.save_to_s3()
                 if response['ResponseMetadata']['HTTPStatusCode'] == 200:
-                    await msg.channel.send(f"Transcript: {key}")
+                    await msg.channel.send(f"Transcript Key: {key}")
                 autoscaling = boto3.client('autoscaling')
                 response = autoscaling.set_desired_capacity(
                     AutoScalingGroupName=f'AutoScaling-{self.channel}',
