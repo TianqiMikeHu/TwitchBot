@@ -73,10 +73,10 @@ class Bot(commands.Bot):
                 response, key = self.save_to_s3()
                 if response['ResponseMetadata']['HTTPStatusCode'] == 200:
                     await msg.channel.send(f"Transcript Key: {key}")
-                autoscaling = boto3.client('autoscaling')
+                autoscaling = boto3.client('autoscaling', region_name='us-west-2')
                 response = autoscaling.set_desired_capacity(
                     AutoScalingGroupName=f'AutoScaling-{self.channel}',
-                    DesiredCapacity=capacity,
+                    DesiredCapacity=0,
                     HonorCooldown=False
                 )
         return
