@@ -36,7 +36,7 @@ class Bot(commands.Bot):
         print("POLL STARTED")
         
 
-    async def save_to_s3(self):
+    def save_to_s3(self):
         f = open("output.txt", "r")
         text = f.read().encode("utf-8")
         s3 = boto3.client('s3', region_name='us-west-2')
