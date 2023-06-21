@@ -47,9 +47,9 @@ class Bot(commands.Bot):
             Body=text,
             Bucket='inabot',
             ContentType='text/plain',
-            Key=f'transcribe-new/{self.channel}-{title}.txt'
+            Key=f'transcribe-new/{self.channel}/{title}.txt'
         )
-        return response, f'{self.channel}-{title}'
+        return response, f'{self.channel}/{title}'
 
     async def event_message(self, msg):
         if msg.author is None:
