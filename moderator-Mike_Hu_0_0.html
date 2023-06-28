@@ -250,12 +250,17 @@
             }
             evt = evt || window.event;
             var isEscape = false;
-            if ("key" in evt) {
-                isEscape = (evt.key === "Escape" || evt.key === "Esc");
-            } else {
-                isEscape = (evt.keyCode === 27);
-            }
+            var isDelete = false;
+            isEscape = (evt.keyCode === 27);
+            isDelete = (evt.keyCode === 46);
             if (isEscape) {
+                elementUnfocused();
+            }
+            else if (isDelete && lastClickedElement != null) {
+                let index = lastClickedElement.id;
+                delete mapping[index];
+                lastClickedElement.remove();
+                lastClickedElement = null;
                 elementUnfocused();
             }
         };

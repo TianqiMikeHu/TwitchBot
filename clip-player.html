@@ -62,37 +62,6 @@
         socket.send(JSON.stringify(payload));
       };
 
-      let timers = {};
-
-      function startTimer(timerText, duration, element) {
-        var start = Date.now(),
-          diff,
-          minutes,
-          seconds, timerIntervalID;
-        function timer() {
-          diff = duration - (((Date.now() - start) / 1000) | 0);
-
-          minutes = (diff / 60) | 0;
-          seconds = (diff % 60) | 0;
-
-          minutes = minutes < 10 ? "0" + minutes : minutes;
-          seconds = seconds < 10 ? "0" + seconds : seconds;
-
-          if (diff <= 0) {
-            element.textContent = `${timerText}: DONE`;
-            clearInterval(timerIntervalID);
-            setTimeout(function () {
-              element.remove();
-            }, 30000);
-          }
-          else {
-            element.textContent = `${timerText}: ${minutes}:${seconds}`;
-          }
-        };
-        timer();
-        timerIntervalID = setInterval(timer, 1000);
-      }
-
       socket.onmessage = function (event) {
         const data = JSON.parse(event.data);
         // console.log(data);
@@ -100,23 +69,6 @@
           video.duration = data.duration;
           video.src = data.src + "&muted=true";
           url = data.src;
-        }
-        else if (data.action == "modaction") {
-          if (data.category == "text") {
-            let element = document.createElement("div");
-            element.style = `font-family: 'Kalam', cursive; color: ${data.color}; font-size: ${data.size}px`;
-            element.textContent = data.content;
-            document.getElementById('over').appendChild(element);
-          }
-          else if (data.category == "timer") {
-            let element = document.createElement("div");
-            element.style = `font-family: 'Kalam', cursive; color: ${data.color}; font-size: ${data.size}px`;
-            document.getElementById('over').appendChild(element);
-            startTimer(data.content, data.duration, element);
-          }
-          else if (data.category == "clearAll") {
-            document.getElementById('over').textContent = '';
-          }
         }
       };
 
@@ -142,7 +94,6 @@
   </script>
 
 
-  <div id="over" style="position: absolute; top: 15px; left: 15px;"></div>
   <iframe id="video" src="" style="position: absolute;width:0;height:0;border:0;" preload="auto">
   </iframe>
 
