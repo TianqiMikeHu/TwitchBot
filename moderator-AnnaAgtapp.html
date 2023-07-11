@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+    <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
 </head>
 
 <body style="background-color: black; height: 100vh;">
@@ -41,7 +42,7 @@
         }
 
         .wordsColumn {
-            width: 40%;
+            width: 30%;
             height: 100%;
             display: inline-block;
             background-color: #a1e4ff;
@@ -50,12 +51,12 @@
         }
 
         .typeColumn {
-            width: 12%;
+            width: 10%;
             height: 100%;
             display: inline-block;
             background-color: #99e2ff;
             position: absolute;
-            left: 40%;
+            left: 30%;
         }
 
         .colorColumn {
@@ -64,7 +65,7 @@
             display: inline-block;
             background-color: #80dbff;
             position: absolute;
-            left: 52%;
+            left: 40%;
         }
 
         .sizeColumn {
@@ -73,14 +74,23 @@
             display: inline-block;
             background-color: #66d4ff;
             position: absolute;
-            left: 66%;
+            left: 54%;
+        }
+
+        .fontColumn {
+            width: 12%;
+            height: 100%;
+            display: inline-block;
+            background-color: #4dccff;
+            position: absolute;
+            left: 67%;
         }
 
         .timeColumn {
             width: 13%;
             height: 100%;
             display: inline-block;
-            background-color: #4dccff;
+            background-color: #33c5ff;
             position: absolute;
             left: 79%;
         }
@@ -89,13 +99,28 @@
             width: 8%;
             height: 100%;
             display: inline-block;
-            background-color: #33c5ff;
+            background-color: #1abeff;
             position: absolute;
             left: 92%;
         }
     </style>
 
     <script>
+        var fonts = [];
+        var WebFontConfig = {
+            google: {
+                families: fonts
+            },
+            fontactive: function (familyName, fvd) {
+                // alert(`Successfully loaded "${familyName}"`, "success");
+            },
+            fontinactive: function (familyName, fvd) {
+                alert(`Cannot load "${familyName}"`, "warning");
+                fonts = fonts.filter(e => e !== familyName)
+            },
+            timeout: 1500
+        }
+
         var mapping = {};
         var index = 0;
         const font_scale = 25;
@@ -117,6 +142,12 @@
         var intervalList = [];
         var emotes = {};
 
+        function WebFontLoad() {
+            document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
+            if (WebFontConfig.google.families.length){
+                WebFont.load(WebFontConfig);
+            }
+        }
 
         function resize() {
             let video = document.getElementById('video');
@@ -155,6 +186,9 @@
             let jsonButton = document.getElementById("jsonButton");
             jsonButton.addEventListener("click", showJSON);
 
+            let fontsButton = document.getElementById("fontsButton");
+            fontsButton.addEventListener("click", loadFonts);
+
             let video = document.getElementById('video');
 
             let response = await fetch("https://apoorlywrittenbot.cc/public/json/annaagtapp");
@@ -163,13 +197,16 @@
             }
             let data = await response.json();
             let count = 0;
-            for (const [key, value] of Object.entries(data)) {
+            for (const [key, value] of Object.entries(data.coordinates)) {
                 let element = create(null);
                 element.style.top = `${value.top / 100.0 * window.innerHeight}px`;
                 element.style.left = `${value.left / 100.0 * parseFloat(video.style.width) + parseFloat(video.style.left)}px`;
             }
+            fonts = data.fonts;
+            WebFontConfig.google.families = fonts;
+            WebFontLoad();
             // Reset index
-            for (const [key, value] of Object.entries(data)) {
+            for (const [key, value] of Object.entries(data.coordinates)) {
                 mapping[count.toString()] = value;
                 count++;
             }
@@ -346,7 +383,8 @@
                         category: 'text',
                         content: 'PLACEHOLDER',
                         color: 'FFFFFF',
-                        size: '100'
+                        size: '100',
+                        font: 'Kalam'
                     }
                 ]
             };
@@ -442,6 +480,7 @@
             let element_json = mapping[lastClickedElement.id];
 
             let index = 0;
+            fonts.unshift("Kalam");
 
             for (const ele of element_json.elements) {
                 let timeString = "-";
@@ -452,6 +491,11 @@
                     else {
                         timeString = `${ele.expiration}`;
                     }
+                }
+
+                let fontString = "";
+                for (const f of fonts) {
+                    fontString += `<option ${ele.font == f ? 'selected' : ''} value="${f}">${f}</option>\n`;
                 }
 
                 let divString = `<div class="tableRow mb-2" style="height: 12%">
@@ -482,6 +526,11 @@
                         <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
                     </div>
                 </div>
+                <div class="fontColumn d-flex justify-content-center" style="height: 12%;">
+                    <select class="form-select rounded-0" id="selectFont${index}"">
+                        ${fontString}
+                      </select>
+                </div>
                 <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
@@ -507,6 +556,7 @@
                 validationDictionary[`time${index}`] = true;
                 index += 1;
             }
+            fonts.shift();
 
             mask.style.display = "block";
             menu.style.display = "flex";
@@ -517,6 +567,11 @@
             e.stopPropagation();
             let tableBody = document.getElementById("tableBody");
             let index = tableBody.childElementCount;
+            fonts.unshift("Kalam");
+            let fontString = "";
+            for (const f of fonts) {
+                fontString += `<option ${"Kalam" == f ? 'selected' : ''} value="${f}">${f}</option>\n`;
+            }
 
             let divString = `<div class="tableRow mb-2" style="height: 12%">
                 <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
@@ -546,6 +601,11 @@
                         <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
                     </div>
                 </div>
+                <div class="fontColumn d-flex justify-content-center" style="height: 12%;">
+                    <select class="form-select rounded-0" id="selectFont${index}"">
+                        ${fontString}
+                      </select>
+                </div>
                 <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
@@ -562,6 +622,7 @@
                 </div>
             </div>`;
 
+            fonts.shift();
             let tableRow = htmlToElement(divString);
             tableBody.appendChild(tableRow);
             validationDictionary[`words${index}`] = false;
@@ -620,7 +681,7 @@
                 }
                 for (const childNode of parentNode) {
                     let subelement = document.createElement("div");
-                    subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px;`;
+                    subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px; font-family: ${childNode["font"]}, cursive;`;
                     subelement.innerHTML = await replaceAsync(childNode["content"], /:([^\s:]+):/g, childNode["size"]);
 
                     if (childNode["category"] == "timer") {
@@ -660,6 +721,7 @@
                 type = document.getElementById(`select${i}`).value;
                 color = document.getElementById(`color${i}`).value;
                 size = document.getElementById(`size${i}`).value;
+                font = document.getElementById(`selectFont${i}`).value;
                 time = document.getElementById(`time${i}`).value;
                 restart = document.getElementById(`restart${i}`).checked;
                 if (type == "DELETE") {
@@ -670,6 +732,7 @@
                 childNode["content"] = words;
                 childNode["color"] = color.toUpperCase();
                 childNode["size"] = size;
+                childNode["font"] = font;
                 if (type == "Timer") {
                     childNode["active"] = !restart;
                     if (restart) {
@@ -740,10 +803,11 @@
             }
 
             deleteExpiredTimers();
+            let json = { "coordinates": mapping, "fonts": fonts };
 
             fetch("https://apoorlywrittenbot.cc/restricted/annaagtapp/json", {
                 method: 'POST',
-                body: JSON.stringify(mapping)
+                body: JSON.stringify(json)
             })
                 .then(function (response) {
                     if (!response.ok) {
@@ -786,7 +850,11 @@
             let canvas = document.getElementById("canvas");
             canvas.style.pointerEvents = "none";
 
-            document.getElementById("JSONPRE").textContent = JSON.stringify(mapping, undefined, 2);
+            fonts.unshift("Kalam");
+            let json = { "coordinates": mapping, "fonts": fonts };
+
+            document.getElementById("JSONPRE").textContent = JSON.stringify(json, undefined, 2);
+            fonts.shift();
 
             mask.style.display = "block";
             menu.style.display = "flex";
@@ -805,6 +873,66 @@
                 menu.style.display = "none";
                 editing = false;
             }, 200);
+        }
+
+        function loadFonts(e) {
+            e.stopPropagation();
+            if (editing) {
+                return;
+            }
+            editing = true;
+            let menu = document.getElementById("fontsMenu");
+            let mask = document.getElementById("mask");
+            let canvas = document.getElementById("canvas");
+            canvas.style.pointerEvents = "none";
+
+            let textbox = document.getElementById("textarea-fonts");
+            let fontString = "";
+            for (const f of fonts) {
+                fontString += `${f}\n`;
+            }
+            textbox.value = fontString;
+
+            mask.style.display = "block";
+            menu.style.display = "flex";
+            menu.style.animation = "menuAnimation 0.5s";
+        }
+
+        async function applyFonts(e) {
+            e.stopPropagation();
+            let menu = document.getElementById("fontsMenu");
+            let mask = document.getElementById("mask");
+            let canvas = document.getElementById("canvas");
+
+            fonts = document.getElementById("textarea-fonts").value.split("\n");
+            fonts = fonts.filter(item => item);
+            fonts = fonts.map(s => s.trim());
+
+            WebFontConfig.google.families = fonts;
+            WebFontLoad();
+
+            // Get rid of fonts that no longer exist
+            fonts.unshift("Kalam");
+            let mapping_copy = {};
+            for (let [key, value] of Object.entries(mapping)) {
+                for (let i=0; i<value.elements.length; i++){
+                    if (!fonts.includes((value.elements)[i].font)){
+                        (value.elements)[i].font = "Kalam";
+                    }
+                }
+                mapping_copy[key] = value;
+            }
+            mapping = mapping_copy;
+            fonts.shift();
+
+            canvas.style.pointerEvents = "auto";
+            menu.style.animation = "menuAnimationReversed 0.2s";
+            mask.style.display = "none";
+            setTimeout(() => {
+                menu.style.display = "none";
+                editing = false;
+            }, 200);
+            await redraw();
         }
 
         function startTimer(timerText, expiration, element) {
@@ -855,6 +983,9 @@
             <div class="sizeColumn d-flex align-items-center justify-content-center">
                 Font Size
             </div>
+            <div class="fontColumn d-flex align-items-center justify-content-center">
+                Font Family
+            </div>
             <div class="timeColumn d-flex align-items-center justify-content-center">
                 Time
             </div>
@@ -904,6 +1035,29 @@
         </div>
     </div>
 
+    <div id="fontsMenu" class="container" style="font-family: 'Kalam', cursive; display: none;
+        position: absolute; z-index: 10; 
+        width: 50%; height: 50%; 
+        top: 50%; left:50%; transform: translate(-50%, -50%); 
+        background-color: white;">
+
+        <div class="container" style="
+            position: absolute; z-index: 11; 
+            width: 100%; height: 90%; 
+            top: 50%; left:50%; transform: translate(-50%, -50%); overflow: auto;">
+            <textarea id="textarea-fonts" style="resize: none; width: 80%; height: 90%;"
+                placeholder="Enter the list of fonts:&#10;*One line per font family*&#10;*Case Sensitive*"></textarea>
+        </div>
+
+        <div id="fontsFooter" class="container" style="
+            position: absolute; z-index: 12; 
+            width: 100%; height: 15%; 
+            top: 85%; left:50%; transform: translate(-50%, 0%);">
+            <button type="button" class="btn btn-success mb-1 me-1" onclick="applyFonts(event);"
+                style="display: inline-block; position: absolute; right: 0%; height: 90%;">Load Fonts</button>
+        </div>
+    </div>
+
     <div id="mask" style="position: absolute; z-index: 9; 
     width: 100%; height: 100%; pointer-events: none; opacity: 0.7; background-color: black; display: none"></div>
 
@@ -933,6 +1087,10 @@
         <button type="button" id="jsonButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
             onmouseover="this.style.background = '#ff99cc'" onmouseleave="this.style.background = '#6441a5'">Show
             JSON</button>
+
+        <button type="button" id="fontsButton" class="btn btn-primary rounded-0" style="background-color: #6441a5;"
+            onmouseover="this.style.background = '#00ffff'" onmouseleave="this.style.background = '#6441a5'">Load
+            Fonts</button>
     </div>
 
     <iframe id="video" src="" style="position: absolute; top: 0px; pointer-events: auto; border: none; z-index: 0;"

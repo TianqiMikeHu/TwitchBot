@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com" rel="preconnect" />
   <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
   <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+  <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
 </head>
 
 <body>
@@ -15,6 +16,19 @@
     var latency = {};
     const font_scale = 25;
     var emotes = {};
+
+    var WebFontConfig = {
+      google: {
+        families: []
+      },
+      timeout: 1500
+    }
+
+    function WebFontLoad() {
+      if (WebFontConfig.google.families.length) {
+        WebFont.load(WebFontConfig);
+      }
+    }
 
     function isOpen(ws) {
       return ws.readyState === ws.OPEN;
@@ -105,14 +119,16 @@
         return str.replace(regex, () => data.shift());
       }
 
-      async function redraw(coordinates) {
+      async function redraw(json) { // {"coordinates": {...}, "fonts": [...]}
+        WebFontConfig.google.families = json.fonts;
+        WebFontLoad();
         for (const interval of intervalList) {
           clearInterval(interval);
         }
         intervalList = [];
         newLatency = {};
         document.getElementById('canvas').innerHTML = '';
-        for (const [index, cor] of Object.entries(coordinates)) {
+        for (const [index, cor] of Object.entries(json.coordinates)) {
           let element = document.createElement("div");
           document.getElementById('canvas').appendChild(element);
           element.style = `font-family: 'Kalam', cursive; position: absolute; top: ${cor.top}%; left: ${cor.left}%; white-space: nowrap; line-height: 1.0;`;
@@ -124,19 +140,19 @@
 
             if (ele.category == 'text') {
               let subelement = document.createElement("div");
-              subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
+              subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px; font-family: ${ele.font}, cursive;`;
               subelement.innerHTML = content;
               element.appendChild(subelement);
             }
             else if (ele.category == 'timer') {
               let subelement = document.createElement("div");
-              subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px`;
+              subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px; font-family: ${ele.font}, cursive;`;
               element.appendChild(subelement);
               if (ele.active) {
-                if (latency[ele.UUID]){
+                if (latency[ele.UUID]) {
                   newLatency[ele.UUID] = latency[ele.UUID]
                 }
-                else{
+                else {
                   newLatency[ele.UUID] = diff;
                 }
                 startTimer(content, ele.expiration + newLatency[ele.UUID], subelement);
@@ -162,7 +178,7 @@
 
       socket.onmessage = async function (event) {
         const data = JSON.parse(event.data);
-        // console.log(data);
+        document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
         if (data.action == "modaction") {
           if (data.category == "json") {
             await redraw(data.coordinates);
