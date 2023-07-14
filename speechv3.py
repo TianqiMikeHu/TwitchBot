@@ -101,7 +101,6 @@ class audio_transcript():
         self.exit_event = threading.Event()
         self.debug = debug
         self.keywords = [] 
-        self.refresh = time.time()
         self.load_audio_keywords()
         self.start_listening()
 
@@ -196,17 +195,9 @@ class audio_transcript():
         
     def transcribe(self):
         while True:
-            if time.time()-self.refresh>3600:
-                self.refresh = time.time()
-                print("1 hour")
-                self.audio_grabber = None
-                self.audio_grabber_2 = None
-                self.start_listening()
             # we want the raw data not the numpy array to send it to google api
             source_id = -1
             for source in [self.audio_grabber, self.audio_grabber_2]:
-                if source is None:
-                    self.start_listening()
                 source_id+=1
                 audio_segment = source.grab_raw()
                 if audio_segment:
