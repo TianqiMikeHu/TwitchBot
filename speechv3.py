@@ -14,6 +14,7 @@ import datetime
 import queue
 from twitchio.ext import routines
 import boto3
+import sys
 
 COOLDOWN = 90
 q = queue.Queue()
@@ -263,6 +264,7 @@ parser.add_argument('--listen', default='mike_hu_0_0', help='channel to listen t
 parser.add_argument('--write', default='mike_hu_0_0', help='channel to send message to', required=True)
 parser.set_defaults(debug=False)
 opt = parser.parse_args()
+sys.stderr = open('error.txt', 'w')
 
 audio = audio_transcript(opt.listen, opt.debug)
 threading.Thread(target=audio.transcribe, daemon=True).start()
