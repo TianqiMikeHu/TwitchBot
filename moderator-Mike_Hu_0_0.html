@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css" charset="utf-8" />
     <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
 </head>
 
@@ -480,6 +481,7 @@
             let element_json = mapping[lastClickedElement.id];
 
             let index = 0;
+            fonts.unshift("FoxyMist");
             fonts.unshift("Kalam");
 
             for (const ele of element_json.elements) {
@@ -557,6 +559,7 @@
                 index += 1;
             }
             fonts.shift();
+            fonts.shift();
 
             mask.style.display = "block";
             menu.style.display = "flex";
@@ -567,6 +570,7 @@
             e.stopPropagation();
             let tableBody = document.getElementById("tableBody");
             let index = tableBody.childElementCount;
+            fonts.unshift("FoxyMist");
             fonts.unshift("Kalam");
             let fontString = "";
             for (const f of fonts) {
@@ -622,6 +626,7 @@
                 </div>
             </div>`;
 
+            fonts.shift();
             fonts.shift();
             let tableRow = htmlToElement(divString);
             tableBody.appendChild(tableRow);
@@ -850,10 +855,12 @@
             let canvas = document.getElementById("canvas");
             canvas.style.pointerEvents = "none";
 
+            fonts.unshift("FoxyMist");
             fonts.unshift("Kalam");
             let json = { "coordinates": mapping, "fonts": fonts };
 
             document.getElementById("JSONPRE").textContent = JSON.stringify(json, undefined, 2);
+            fonts.shift();
             fonts.shift();
 
             mask.style.display = "block";
@@ -912,6 +919,7 @@
             WebFontLoad();
 
             // Get rid of fonts that no longer exist
+            fonts.unshift("FoxyMist");
             fonts.unshift("Kalam");
             let mapping_copy = {};
             for (let [key, value] of Object.entries(mapping)) {
@@ -923,6 +931,7 @@
                 mapping_copy[key] = value;
             }
             mapping = mapping_copy;
+            fonts.shift();
             fonts.shift();
 
             canvas.style.pointerEvents = "auto";
