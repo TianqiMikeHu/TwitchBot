@@ -122,6 +122,7 @@
       async function redraw(json) { // {"coordinates": {...}, "fonts": [...]}
         WebFontConfig.google.families = json.fonts;
         WebFontLoad();
+        await new Promise(r => setTimeout(r, 300)); // race condition?
         for (const interval of intervalList) {
           clearInterval(interval);
         }
@@ -178,9 +179,9 @@
 
       socket.onmessage = async function (event) {
         const data = JSON.parse(event.data);
-        document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
         if (data.action == "modaction") {
           if (data.category == "json") {
+            document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
             await redraw(data.coordinates);
           }
         }
