@@ -101,28 +101,25 @@ class audio_transcript():
 
         self.exit_event = threading.Event()
         self.debug = debug
-        self.refresh = time.time()
         self.keywords = [] 
         self.load_audio_keywords()
         self.start_listening()
 
 
     def start_listening(self):
-        while True:
-            try:
-                self.audio_grabber = TwitchAudioGrabber(twitch_url=self.twitch_url,
-                                        dtype=np.int16,
-                                        segment_length=5,
-                                        channels=1,
-                                        rate=16000)
-                self.audio_grabber_2 = TwitchAudioGrabber(twitch_url=self.twitch_url,
-                                        dtype=np.int16,
-                                        segment_length=9,
-                                        channels=1,
-                                        rate=16000)
-                break
-            except ValueError:
-                print("Could not connect to stream")
+        try:
+            self.audio_grabber = TwitchAudioGrabber(twitch_url=self.twitch_url,
+                                    dtype=np.int16,
+                                    segment_length=5,
+                                    channels=1,
+                                    rate=16000)
+            self.audio_grabber_2 = TwitchAudioGrabber(twitch_url=self.twitch_url,
+                                    dtype=np.int16,
+                                    segment_length=9,
+                                    channels=1,
+                                    rate=16000)
+        except ValueError:
+            print("Could not connect to stream")
 
 
     def load_audio_keywords(self):
@@ -198,15 +195,8 @@ class audio_transcript():
         
     def transcribe(self):
         while True:
-            if time.time()-self.refresh>900:
-                self.refresh = time.time()
-                self.audio_grabber = None
-                self.audio_grabber_2 = None
-                self.start_listening()
             source_id = -1
             for source in [self.audio_grabber, self.audio_grabber_2]:
-                if source is None:
-                    self.start_listening()
                 source_id+=1
                 audio_segment = source.grab_raw()
                 if audio_segment:
