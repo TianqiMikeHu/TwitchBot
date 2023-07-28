@@ -15,6 +15,7 @@ import queue
 from twitchio.ext import routines
 import boto3
 import sys
+from collections import deque
 
 COOLDOWN = 90
 q = queue.Queue()
@@ -31,10 +32,10 @@ class Bot(commands.Bot):
 
 
     async def event_ready(self):
-        print("CONNECTED TO TWITCH IRC")
+        print("CONNECTED TO TWITCH IRC", flush=True)
         # await self.connected_channels[0].send("bot is online")
         self.poll.start(stop_on_error=False)
-        print("POLL STARTED")
+        print("POLL STARTED", flush=True)
         
 
     def save_to_s3(self):
@@ -101,7 +102,14 @@ class audio_transcript():
 
         self.exit_event = threading.Event()
         self.debug = debug
-        self.keywords = [] 
+        self.keywords = []
+
+        self.deque = deque(maxlen=3)
+        self.deque_duplicate = deque(maxlen=2)
+
+        self.item_lock = threading.Lock()
+        self.write_lock = threading.Lock()
+
         self.load_audio_keywords()
         self.start_listening()
 
@@ -119,7 +127,7 @@ class audio_transcript():
                                     channels=1,
                                     rate=16000)
         except ValueError:
-            print("Could not connect to stream")
+            print("Could not connect to stream", flush=True)
 
 
     def load_audio_keywords(self):
@@ -183,59 +191,130 @@ class audio_transcript():
                                     params=params,
                                     data=data)
         except Exception as inst:
-            print(inst)
+            print(inst, flush=True)
 
         # Parse api response
         try:
             transcript = self.extract_transcript(response.text)
             return transcript
         except Exception as inst:
-            print(inst)
+            print(inst, flush=True)
             return
+
+    def pull_audio_segments(self):
+        while True:
+            audio_segment = self.audio_grabber.grab_raw()
+            if audio_segment:
+                self.deque.append(audio_segment)
+            audio_segment = self.audio_grabber_2.grab_raw()
+            if audio_segment:
+                self.deque_duplicate.append(audio_segment)
         
     def transcribe(self):
+        source_id = 0
         while True:
-            source_id = -1
-            for source in [self.audio_grabber, self.audio_grabber_2]:
-                source_id+=1
-                audio_segment = source.grab_raw()
-                if audio_segment:
-                    raw = BytesIO(audio_segment)
-                    try:
-                        raw_wav = AudioSegment.from_raw(
-                            raw, sample_width=2, frame_rate=16000, channels=1)
-                    except CouldntEncodeError:
-                        print("could not decode")
-                        continue
-                    raw_flac = BytesIO()
-                    raw_wav.export(raw_flac, format='flac')
-                    data = raw_flac.read()
-                    transcript = self.api_speech(data)
-                    
-                    if transcript is None:
-                        continue 
-                    if self.debug:
+            if self.deque:
+                raw = BytesIO(self.deque.popleft())
+                try:
+                    raw_wav = AudioSegment.from_raw(
+                        raw, sample_width=2, frame_rate=16000, channels=1)
+                except CouldntEncodeError:
+                    print("could not decode", flush=True)
+                    continue
+                raw_flac = BytesIO()
+                raw_wav.export(raw_flac, format='flac')
+                data = raw_flac.read()
+                transcript = self.api_speech(data)
+                
+                if transcript is None:
+                    continue 
+                if self.debug:
+                    with self.write_lock:
                         self.writer.write(f"Source {source_id}: {transcript}\n")    
                         self.writer.flush()  
 
-                    transcript = transcript.lower()
+                transcript = transcript.lower()
 
-                    for item in self.keywords:
-                        if item['keyword']['S'] in transcript:
-                            timestamp = time.time()
+                for item in self.keywords:
+                    if item['keyword']['S'] in transcript:
+                        timestamp = time.time()
+                        with self.item_lock:
                             if timestamp-item['timestamp']['N']<COOLDOWN:
-                                print(f"\nKeyword \"{item['keyword']['S']}\" was throttled: delta={timestamp-item['timestamp']['N']}\n")
+                                print(f"\nKeyword \"{item['keyword']['S']}\" was throttled: delta={timestamp-item['timestamp']['N']}\n", flush=True)
                                 continue
                             item['timestamp']['N'] = timestamp
-                            if 'count' not in item:
-                                print(f"{item['response']['S']}")
-                                q.put(f"{item['response']['S']}")
-                                continue
+                        if 'count' not in item:
+                            print(f"{item['response']['S']}", flush=True)
+                            q.put(f"{item['response']['S']}")
+                            continue
+                        ddb = boto3.client('dynamodb', region_name='us-west-2')
+                        with self.item_lock:
                             count = int(item['count']['N'])+1
                             item['count']['N'] = str(count)
-                            print(f"{item['response']['S']} (x{item['count']['N']})")
+                            print(f"{item['response']['S']} (x{item['count']['N']})", flush=True)
                             q.put(f"{item['response']['S']} (x{item['count']['N']})")
-                            ddb = boto3.client('dynamodb', region_name='us-west-2')
+                            response = ddb.update_item(
+                                TableName=f'Speech-{self.channel.lower()}',
+                                ExpressionAttributeNames={
+                                    '#C': 'count',
+                                },
+                                ExpressionAttributeValues={
+                                    ':c': {
+                                        'N': item['count']['N'],
+                                    }
+                                },
+                                Key={
+                                    'keyword': {
+                                        'S': item['keyword']['S'],
+                                    }
+                                },
+                                ReturnValues='ALL_NEW',
+                                UpdateExpression='SET #C = :c'
+                            )
+
+    def transcribe_duplicate(self):
+        source_id = 1
+        while True:
+            if self.deque_duplicate:
+                raw = BytesIO(self.deque_duplicate.popleft())
+                try:
+                    raw_wav = AudioSegment.from_raw(
+                        raw, sample_width=2, frame_rate=16000, channels=1)
+                except CouldntEncodeError:
+                    print("could not decode", flush=True)
+                    continue
+                raw_flac = BytesIO()
+                raw_wav.export(raw_flac, format='flac')
+                data = raw_flac.read()
+                transcript = self.api_speech(data)
+                
+                if transcript is None:
+                    continue 
+                if self.debug:
+                    with self.write_lock:
+                        self.writer.write(f"Source {source_id}: {transcript}\n")    
+                        self.writer.flush()  
+
+                transcript = transcript.lower()
+
+                for item in self.keywords:
+                    if item['keyword']['S'] in transcript:
+                        timestamp = time.time()
+                        with self.item_lock:
+                            if timestamp-item['timestamp']['N']<COOLDOWN:
+                                print(f"\nKeyword \"{item['keyword']['S']}\" was throttled: delta={timestamp-item['timestamp']['N']}\n", flush=True)
+                                continue
+                            item['timestamp']['N'] = timestamp
+                        if 'count' not in item:
+                            print(f"{item['response']['S']}", flush=True)
+                            q.put(f"{item['response']['S']}")
+                            continue
+                        ddb = boto3.client('dynamodb', region_name='us-west-2')
+                        with self.item_lock:
+                            count = int(item['count']['N'])+1
+                            item['count']['N'] = str(count)
+                            print(f"{item['response']['S']} (x{item['count']['N']})", flush=True)
+                            q.put(f"{item['response']['S']} (x{item['count']['N']})")
                             response = ddb.update_item(
                                 TableName=f'Speech-{self.channel.lower()}',
                                 ExpressionAttributeNames={
@@ -265,8 +344,9 @@ opt = parser.parse_args()
 sys.stderr = open('error.txt', 'w')
 
 audio = audio_transcript(opt.listen, opt.debug)
+threading.Thread(target=audio.pull_audio_segments, daemon=True).start()
 threading.Thread(target=audio.transcribe, daemon=True).start()
-
+threading.Thread(target=audio.transcribe_duplicate, daemon=True).start()
 
 
 bot = Bot(opt.write)
