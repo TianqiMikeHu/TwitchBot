@@ -10,7 +10,8 @@
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css" charset="utf-8" />
+    <link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css"
+        charset="utf-8" />
     <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
 </head>
 
@@ -133,6 +134,8 @@
         var editing = false;
 
         var validationDictionary = {};
+        var imagesDictionary = {};
+        var imagesInMenu = [];
         const patterns = {
             nonEmpty: /^(?!\s*$).+/,
             hex: /^[0-9A-F]{6}$/i,
@@ -145,7 +148,7 @@
 
         function WebFontLoad() {
             document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
-            if (WebFontConfig.google.families.length){
+            if (WebFontConfig.google.families.length) {
                 WebFont.load(WebFontConfig);
             }
         }
@@ -165,6 +168,36 @@
             sidebar.style.height = video.style.height;
             sidebar.style.width = video.style.left;
         }
+
+        function pasteImage(words) {
+            // use event.originalEvent.clipboard for newer chrome versions
+            var items = (event.clipboardData || event.originalEvent.clipboardData).items;
+            // find pasted image among pasted items
+            var blob = null;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf("image") === 0) {
+                    blob = items[i].getAsFile();
+                }
+            }
+            // load image if there is a pasted image
+            if (blob !== null) {
+                var reader = new FileReader();
+                reader.onload = function (event) {
+                    let id = (words.id).substring(5);
+                    document.getElementById(`img${id}`).src = event.target.result;
+                    words.disabled = true;
+                    words.value = "*Size is % of Window Height*";
+                    words.classList.remove("is-invalid");
+                    validationDictionary[words.id] = true;
+                    let select = document.getElementById(`select${id}`);
+                    select.options[3].removeAttribute("hidden");
+                    select.options[3].setAttribute('selected', 'true');
+                    select.value = "Image";
+                };
+                reader.readAsDataURL(blob);
+            }
+        }
+
         window.onload = async function () {
             document.body.style.overflow = 'hidden';
             resize();
@@ -211,6 +244,7 @@
                 mapping[count.toString()] = value;
                 count++;
             }
+            imagesDictionary = data.images;
             deleteExpiredTimers();
             elementUnfocused();
             video.src = "https://player.twitch.tv/?channel=mike_hu_0_0&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true&controls=false";
@@ -296,6 +330,17 @@
             }
             else if (isDelete && lastClickedElement != null) {
                 let index = lastClickedElement.id;
+                let element_json = mapping[index];
+                // Clean up unused images
+                for (const ele of element_json.elements) {
+                    if (ele.category == 'image') {
+                        imagesInMenu.push(ele.content);
+                    }
+                }
+                for (const id of imagesInMenu) {
+                    delete imagesDictionary[id];
+                }
+                imagesInMenu = [];
                 delete mapping[index];
                 lastClickedElement.remove();
                 lastClickedElement = null;
@@ -399,6 +444,11 @@
             let id = (select.id).substring(6);
             let time = document.getElementById(`time${id}`);
             let restart = document.getElementById(`restart${id}`);
+            let img = document.getElementById(`img${id}`);
+            let words = document.getElementById(`words${id}`);
+            words.disabled = false;
+            document.getElementById(`select${id}`).options[3].setAttribute('hidden', 'true');
+            img.src = "";
             if (type == "Timer") {
                 time.disabled = false;
                 time.value = "";
@@ -438,7 +488,7 @@
             }
         }
 
-        const alert = (message, type) => {
+        const alert = (message, type, permanent = false) => {
             const wrapper = document.createElement('div')
             wrapper.innerHTML = [
                 `<div class="alert alert-${type} alert-dismissible" role="alert" style="z-index:99;">`,
@@ -449,9 +499,11 @@
 
             let alertPlaceholder = document.getElementById('liveAlertPlaceholder');
             alertPlaceholder.append(wrapper);
-            setTimeout(() => {
-                wrapper.remove();
-            }, 3000);
+            if (permanent == false) {
+                setTimeout(() => {
+                    wrapper.remove();
+                }, 3000);
+            }
         }
 
         function validateInput(input, pattern) {
@@ -496,27 +548,39 @@
                 }
 
                 let fontString = "";
+                let selectedFont = "";
+                // Image type does not have a font, use default
+                if (ele.category == 'image') {
+                    selectedFont = "Kalam";
+                    // Add UUID to list of currently open images
+                    imagesInMenu.push(ele.content);
+                }
+                else {
+                    selectedFont = ele.font;
+                }
                 for (const f of fonts) {
-                    fontString += `<option ${ele.font == f ? 'selected' : ''} value="${f}">${f}</option>\n`;
+                    fontString += `<option ${selectedFont == f ? 'selected' : ''} value="${f}">${f}</option>\n`;
                 }
 
                 let divString = `<div class="tableRow mb-2" style="height: 12%">
                 <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
-                    <input type="text" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER" value="${ele.content}"
-                    onkeyup="validateInput(this, 'nonEmpty');">
+                    <input type="text" style="resize: none;"" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER" 
+                    value="${ele.category == 'image' ? '*Size is % of Window Height*' : ele.content}"
+                    onkeyup="validateInput(this, 'nonEmpty');" onpaste="pasteImage(this);" ${ele.category == 'image' ? 'disabled' : ''}></input>
                 </div>
                 <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
                     <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
                         <option ${ele.category == 'text' ? 'selected' : ''} value="Text">Text</option>
                         <option ${ele.category == 'timer' ? 'selected' : ''} value="Timer">Timer</option>
                         <option value="DELETE">DELETE</option>
+                        <option ${ele.category == 'image' ? 'selected' : ''} value="Image" ${ele.category == 'image' ? '' : 'hidden'}>Image</option>
                       </select>
                 </div>
                 <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
                     <div class="input-group">
                         <span class="input-group-text rounded-0" id="color${index}Prepend">#</span>
                         <input type="text" class="form-control needs-validation rounded-0" id="color${index}"
-                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="${ele.color}"
+                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="${ele.category == 'image' ? 'FFFFFF' : ele.color}"
                             onkeyup="validateInput(this, 'hex');">
                     </div>
                 </div>
@@ -552,6 +616,8 @@
 
                 let tableRow = htmlToElement(divString);
                 tableBody.appendChild(tableRow);
+                let imgPlaceholder = htmlToElement(`<img id="img${index}" style="display:block;margin-left:auto;margin-right:auto;width:100%;" src="${ele.category == 'image' ? imagesDictionary[ele.content] : ''}"></img>`);
+                tableBody.appendChild(imgPlaceholder);
                 validationDictionary[`words${index}`] = true;
                 validationDictionary[`color${index}`] = true;
                 validationDictionary[`size${index}`] = true;
@@ -569,7 +635,7 @@
         function subelement(e) {
             e.stopPropagation();
             let tableBody = document.getElementById("tableBody");
-            let index = tableBody.childElementCount;
+            let index = (tableBody.childElementCount) / 2;
             fonts.unshift("FoxyMist");
             fonts.unshift("Kalam");
             let fontString = "";
@@ -579,14 +645,15 @@
 
             let divString = `<div class="tableRow mb-2" style="height: 12%">
                 <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
-                    <input type="text" class="form-control needs-validation rounded-0 is-invalid" id="words${index}" placeholder="PLACEHOLDER"
-                    onkeyup="validateInput(this, 'nonEmpty');">
+                    <input type="text" style="resize: none;"" class="form-control needs-validation rounded-0 is-invalid" id="words${index}" placeholder="PLACEHOLDER"
+                    onkeyup="validateInput(this, 'nonEmpty');" onpaste="pasteImage(this);"></input>
                 </div>
                 <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
                     <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
                         <option selected value="Text">Text</option>
                         <option value="Timer">Timer</option>
                         <option value="DELETE">DELETE</option>
+                        <option value="Image" hidden>Image</option>
                       </select>
                 </div>
                 <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
@@ -630,6 +697,8 @@
             fonts.shift();
             let tableRow = htmlToElement(divString);
             tableBody.appendChild(tableRow);
+            let imgPlaceholder = htmlToElement(`<img id="img${index}" style="display:block;margin-left:auto;margin-right:auto;width:100%;"></img>`);
+            tableBody.appendChild(imgPlaceholder);
             validationDictionary[`words${index}`] = false;
             validationDictionary[`color${index}`] = true;
             validationDictionary[`size${index}`] = true;
@@ -686,21 +755,26 @@
                 }
                 for (const childNode of parentNode) {
                     let subelement = document.createElement("div");
-                    subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px; font-family: ${childNode["font"]}, cursive;`;
-                    subelement.innerHTML = await replaceAsync(childNode["content"], /:([^\s:]+):/g, childNode["size"]);
+                    if (childNode["category"] == "image") {
+                        subelement.innerHTML = `<img src="${imagesDictionary[childNode["content"]]}" height="${window.innerHeight / 100 * childNode["size"]}px" style="pointer-events:none;"></img>`;
+                    }
+                    else {
+                        subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px; font-family: ${childNode["font"]}, cursive;`;
+                        subelement.innerHTML = await replaceAsync(childNode["content"], /:([^\s:]+):/g, childNode["size"]);
 
-                    if (childNode["category"] == "timer") {
-                        subelement.id = crypto.randomUUID();
-                        if (childNode["active"]) {
-                            startTimer(subelement.innerHTML, childNode["expiration"], subelement);
-                        }
-                        else {
-                            let seconds = childNode["expiration"];
-                            minutes = (seconds / 60) | 0;
-                            seconds = (seconds % 60) | 0;
-                            minutes = minutes < 10 ? "0" + minutes : minutes;
-                            seconds = seconds < 10 ? "0" + seconds : seconds;
-                            subelement.innerHTML += `: ${minutes}:${seconds}`;
+                        if (childNode["category"] == "timer") {
+                            subelement.id = crypto.randomUUID();
+                            if (childNode["active"]) {
+                                startTimer(subelement.innerHTML, childNode["expiration"], subelement);
+                            }
+                            else {
+                                let seconds = childNode["expiration"];
+                                minutes = (seconds / 60) | 0;
+                                seconds = (seconds % 60) | 0;
+                                minutes = minutes < 10 ? "0" + minutes : minutes;
+                                seconds = seconds < 10 ? "0" + seconds : seconds;
+                                subelement.innerHTML += `: ${minutes}:${seconds}`;
+                            }
                         }
                     }
                     element.appendChild(subelement);
@@ -716,12 +790,17 @@
                     return;
                 }
             }
+            // Remove all UUIDs of open images from imagesDictionary
+            for (const id of imagesInMenu) {
+                delete imagesDictionary[id];
+            }
+            imagesInMenu = [];
             // Write to mapping dictionary
             let index = lastClickedElement.id;
             let reference = mapping[index]["elements"];
-            let words, type, color, size, time, restart;
+            let words, type, color, size, time, restart, img;
             let parentNode = [];
-            for (let i = 0; i < tableBody.childElementCount; i++) {  // row iteration
+            for (let i = 0; i < (tableBody.childElementCount) / 2; i++) {  // row iteration
                 words = document.getElementById(`words${i}`).value;
                 type = document.getElementById(`select${i}`).value;
                 color = document.getElementById(`color${i}`).value;
@@ -729,15 +808,23 @@
                 font = document.getElementById(`selectFont${i}`).value;
                 time = document.getElementById(`time${i}`).value;
                 restart = document.getElementById(`restart${i}`).checked;
+                img = document.getElementById(`img${i}`).src;
                 if (type == "DELETE") {
                     continue;
                 }
                 let childNode = {};
                 childNode["category"] = type.toLowerCase();
-                childNode["content"] = words;
-                childNode["color"] = color.toUpperCase();
+                if (type == "Image") {
+                    childNode["content"] = crypto.randomUUID();
+                    // Don't directly link the entire base64 string to avoid JSON menu lag
+                    imagesDictionary[childNode["content"]] = img;
+                }
+                else {
+                    childNode["content"] = words;
+                    childNode["color"] = color.toUpperCase();
+                    childNode["font"] = font;
+                }
                 childNode["size"] = size;
-                childNode["font"] = font;
                 if (type == "Timer") {
                     childNode["active"] = !restart;
                     if (restart) {
@@ -808,7 +895,8 @@
             }
 
             deleteExpiredTimers();
-            let json = { "coordinates": mapping, "fonts": fonts };
+            let json = { "coordinates": mapping, "fonts": fonts, "images": imagesDictionary };
+            alert("Please wait...", "info", true);
 
             fetch("https://apoorlywrittenbot.cc/restricted/mike_hu_0_0/json", {
                 method: 'POST',
@@ -816,12 +904,15 @@
             })
                 .then(function (response) {
                     if (!response.ok) {
+                        document.querySelectorAll('.alert-info').forEach(e => e.remove());
                         alert(`Error: Status ${String(response.status)}`, 'danger');
                         throw new Error("HTTP status " + response.status);
                     }
                     return response.json();
                 })
                 .then(function (data) {
+                    imagesDictionary = data.images;
+                    document.querySelectorAll('.alert-info').forEach(e => e.remove());
                     alert("Submitted successfully", "success");
                 })
 
@@ -857,7 +948,7 @@
 
             fonts.unshift("FoxyMist");
             fonts.unshift("Kalam");
-            let json = { "coordinates": mapping, "fonts": fonts };
+            let json = { "coordinates": mapping, "fonts": fonts};
 
             document.getElementById("JSONPRE").textContent = JSON.stringify(json, undefined, 2);
             fonts.shift();
@@ -923,8 +1014,8 @@
             fonts.unshift("Kalam");
             let mapping_copy = {};
             for (let [key, value] of Object.entries(mapping)) {
-                for (let i=0; i<value.elements.length; i++){
-                    if (!fonts.includes((value.elements)[i].font)){
+                for (let i = 0; i < value.elements.length; i++) {
+                    if (!fonts.includes((value.elements)[i].font)) {
                         (value.elements)[i].font = "Kalam";
                     }
                 }
@@ -990,7 +1081,7 @@
                 Font Color
             </div>
             <div class="sizeColumn d-flex align-items-center justify-content-center">
-                Font Size
+                Size
             </div>
             <div class="fontColumn d-flex align-items-center justify-content-center">
                 Font Family

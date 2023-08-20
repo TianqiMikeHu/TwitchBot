@@ -7,7 +7,8 @@
   <link href="https://fonts.googleapis.com" rel="preconnect" />
   <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
   <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css" charset="utf-8" />
+  <link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css"
+    charset="utf-8" />
   <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
 </head>
 
@@ -120,7 +121,8 @@
         return str.replace(regex, () => data.shift());
       }
 
-      async function redraw(json) { // {"coordinates": {...}, "fonts": [...]}
+      async function redraw(json) { // {"coordinates": {...}, "fonts": [...], "images": {...}}
+        console.log(json);
         WebFontConfig.google.families = json.fonts;
         WebFontLoad();
         await new Promise(r => setTimeout(r, 300)); // race condition?
@@ -138,26 +140,32 @@
           // Latency adjustment
           let diff = ((Date.now() / 1000) | 0) - cor.now;
           for (const ele of cor.elements) {
-            let content = await replaceAsync(ele.content, /:([^\s:]+):/g, ele.size);
-
-            if (ele.category == 'text') {
+            if (ele.category == 'image') {
               let subelement = document.createElement("div");
-              subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px; font-family: ${ele.font}, cursive;`;
-              subelement.innerHTML = content;
+              subelement.innerHTML = `<img src="${json.images[ele.content]}" height="${1080 / 100 * ele.size}px"></img>`;
               element.appendChild(subelement);
             }
-            else if (ele.category == 'timer') {
-              let subelement = document.createElement("div");
-              subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px; font-family: ${ele.font}, cursive;`;
-              element.appendChild(subelement);
-              if (ele.active) {
-                if (latency[ele.UUID]) {
-                  newLatency[ele.UUID] = latency[ele.UUID]
+            else {
+              let content = await replaceAsync(ele.content, /:([^\s:]+):/g, ele.size);
+              if (ele.category == 'text') {
+                let subelement = document.createElement("div");
+                subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px; font-family: ${ele.font}, cursive;`;
+                subelement.innerHTML = content;
+                element.appendChild(subelement);
+              }
+              else if (ele.category == 'timer') {
+                let subelement = document.createElement("div");
+                subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px; font-family: ${ele.font}, cursive;`;
+                element.appendChild(subelement);
+                if (ele.active) {
+                  if (latency[ele.UUID]) { // Not a new timer
+                    newLatency[ele.UUID] = latency[ele.UUID]
+                  }
+                  else {
+                    newLatency[ele.UUID] = diff;
+                  }
+                  startTimer(content, ele.expiration + newLatency[ele.UUID], subelement);
                 }
-                else {
-                  newLatency[ele.UUID] = diff;
-                }
-                startTimer(content, ele.expiration + newLatency[ele.UUID], subelement);
               }
             }
           }
@@ -183,7 +191,7 @@
         if (data.action == "modaction") {
           if (data.category == "json") {
             document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
-            await redraw(data.coordinates);
+            await redraw(data.message);
           }
         }
       };
