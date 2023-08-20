@@ -15,16 +15,19 @@
       window.location.href = `https://apoorlywrittenbot.cc/login.html`;
     }
   </script>
-  <h1 class="display-2 text-center" style="font-family: 'Kalam', cursive;">Access Denied</h1>
-  <h4 class="display-9 text-center" style="font-family: 'Kalam', cursive;" id="username">You do not have access to this
-    page. If you were previously logged in, it is possible that your session expired.</h4>
-  <div style="display: flex; justify-content: center; align-items: center;">
-    <button class="btn btn-danger" action="action" onclick="window.history.go(-1); return false;" type="submit"
-      value="Cancel">Back to Previous Page</button><br>
+  <div class="container-fluid p-5 aligns-items-center"
+    style="height: 100vh; display: flex; align-items: center; justify-content: center;">
+    <div class="display-2 text-center" style="font-family: 'Kalam', cursive;">Access Denied</div>
   </div>
-  <div style="display: flex; justify-content: center; align-items: center;">
-    <button class="btn btn-warning" type="submit" onclick="login();">Login Page</button>
+  <div class="d-grid gap-2">
+    <button type="button" class="btn btn-danger rounded-0" onclick="window.history.go(-1); return false;"
+      style="font-family: 'Kalam', cursive;font-size: 30px; position:fixed; bottom: 0px; width: 50%;">
+      Back to Previous Page</button>
+    <button type="button" class="btn btn-warning rounded-0" onclick="login();"
+      style="font-family: 'Kalam', cursive;font-size: 30px; position:fixed; bottom: 0px;right: 0px; width: 50%;">
+      Login Page</button>
   </div>
+
 </body>
 
 </html>
