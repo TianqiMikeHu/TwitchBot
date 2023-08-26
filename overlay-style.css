@@ -1,0 +1,223 @@
+body {
+    background-color: black;
+    height: 100vh;
+}
+
+@keyframes menuAnimation {
+    0% {
+        transform: translate(-50%, -50%) scale(0.0);
+        -webkit-transform: translate(-50%, -50%) scale(0.0);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1.0);
+        -webkit-transform: translate(-50%, -50%) scale(1.0);
+    }
+}
+
+@keyframes menuAnimationReversed {
+    0% {
+        transform: translate(-50%, -50%) scale(1.0);
+        -webkit-transform: translate(-50%, -50%) scale(1.0);
+        opacity: 1.0;
+    }
+
+    100% {
+        transform: translate(-50%, 0%) scale(1.0);
+        -webkit-transform: translate(-50%, 0%) scale(1.0);
+        opacity: 0.0;
+    }
+}
+
+.wordsColumn {
+    width: 30%;
+    height: 100%;
+    display: inline-block;
+    background-color: #a1e4ff;
+    position: absolute;
+    left: 0%;
+}
+
+.typeColumn {
+    width: 10%;
+    height: 100%;
+    display: inline-block;
+    background-color: #99e2ff;
+    position: absolute;
+    left: 30%;
+}
+
+.colorColumn {
+    width: 14%;
+    height: 100%;
+    display: inline-block;
+    background-color: #80dbff;
+    position: absolute;
+    left: 40%;
+}
+
+.sizeColumn {
+    width: 13%;
+    height: 100%;
+    display: inline-block;
+    background-color: #66d4ff;
+    position: absolute;
+    left: 54%;
+}
+
+.fontColumn {
+    width: 12%;
+    height: 100%;
+    display: inline-block;
+    background-color: #4dccff;
+    position: absolute;
+    left: 67%;
+}
+
+.timeColumn {
+    width: 13%;
+    height: 100%;
+    display: inline-block;
+    background-color: #33c5ff;
+    position: absolute;
+    left: 79%;
+}
+
+.restartColumn {
+    width: 8%;
+    height: 100%;
+    display: inline-block;
+    background-color: #1abeff;
+    position: absolute;
+    left: 92%;
+}
+
+#liveAlertPlaceholder {
+    position: fixed;
+    top: 0px;
+    width: 100%;
+    z-index: 100;
+}
+
+.menu {
+    font-family: 'Kalam', cursive;
+    display: none;
+    position: absolute;
+    z-index: 10;
+    width: 85%;
+    height: 80%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+}
+
+#tableHeader {
+    position: absolute;
+    z-index: 11;
+    width: 100%;
+    height: 10%;
+    top: 0%;
+    left: 50%;
+    transform: translate(-50%, 0%);
+}
+
+#tableBody {
+    position: absolute;
+    z-index: 11;
+    width: 100%;
+    height: 80%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    overflow: auto;
+}
+
+.footer {
+    position: absolute;
+    z-index: 12;
+    width: 100%;
+    height: 10%;
+    top: 90%;
+    left: 50%;
+    transform: translate(-50%, 0%);
+}
+
+.leftButton {
+    display: inline-block;
+    position: absolute;
+    left: 0%;
+    height: 90%;
+}
+
+.rightButton {
+    display: inline-block;
+    position: absolute;
+    right: 0%;
+    height: 90%;
+}
+
+#JSONmenuBody {
+    position: absolute;
+    z-index: 11;
+    width: 70%;
+    height: 100%;
+    top: 50%;
+    left: 45%;
+    transform: translate(-50%, -50%);
+    overflow: auto;
+}
+
+#JSONPRE {
+    overflow: auto;
+}
+
+#fontsMenuBody {
+    position: absolute;
+    z-index: 11;
+    width: 100%;
+    height: 90%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    overflow: auto;
+}
+
+#textarea-fonts {
+    resize: none;
+    width: 80%;
+    height: 90%;
+}
+
+#mask {
+    position: absolute;
+    z-index: 9;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.7;
+    background-color: black;
+    display: none
+}
+
+#sidebar {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    z-index: 2;
+    font-family: 'Kalam', cursive;
+}
+
+#video {
+    position: absolute;
+    top: 0px;
+    pointer-events: auto;
+    border: none;
+    z-index: 0;
+}
+
+#canvas {
+    font-family: 'Kalam', cursive;
+    position: absolute;
+    z-index: 1;
+}
