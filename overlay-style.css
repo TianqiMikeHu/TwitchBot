@@ -1,6 +1,7 @@
 body {
     background-color: black;
     height: 100vh;
+    overflow: hidden;
 }
 
 @keyframes menuAnimation {
@@ -220,4 +221,11 @@ body {
     font-family: 'Kalam', cursive;
     position: absolute;
     z-index: 1;
+}
+
+.menuImage{
+    display:block;
+    margin-left:auto;
+    margin-right:auto;
+    width:100%;
 }

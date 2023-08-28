@@ -38,7 +38,7 @@ class Bot(commands.Bot):
             "port":"3306",
             "user":"root",
             "password": os.getenv('DBPASS'),
-            "database":"quizdb",
+            "database":"bot",
         }
         self.pool = mysql.connector.pooling.MySQLConnectionPool(
             pool_name="pool1",

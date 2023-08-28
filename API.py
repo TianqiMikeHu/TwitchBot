@@ -7,7 +7,7 @@ import nltk.data
 import random
 import numpy
 
-tokenizer = nltk.data.load('./english.pickle')
+tokenizer = nltk.data.load('nltk:tokenizers/punkt/english.pickle')
 
 
 def new_access_token():
