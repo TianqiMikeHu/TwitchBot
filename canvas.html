@@ -178,7 +178,7 @@
           get: (searchParams, prop) => searchParams.get(prop),
         });
         let channel = params.channel;
-        let response = await fetch(`https://apoorlywrittenbot.cc/public/json/${channel}`);
+        let response = await fetch(`https://apoorlywrittenbot.cc/public/json?channel=${channel}`);
         if (!response.ok) {
           throw new Error("HTTP status " + response.status);
         }

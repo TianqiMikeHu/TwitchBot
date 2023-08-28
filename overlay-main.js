@@ -486,7 +486,7 @@ async function save(e) {
     let json = { "coordinates": mapping, "fonts": fonts, "images": imagesDictionary };
     alert("Please wait...", "info", true);
 
-    fetch(`https://apoorlywrittenbot.cc/restricted/${channel_name}/json`, {
+    fetch(`https://apoorlywrittenbot.cc/restricted/json?channel=${channel_name}`, {
         method: 'POST',
         body: JSON.stringify(json)
     })
