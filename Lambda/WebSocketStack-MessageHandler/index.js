@@ -43,7 +43,7 @@ exports.handler = async function (event, context) {
         endpoint:
             event.requestContext.domainName + '/' + event.requestContext.stage,
     });
-
+    
     const body = JSON.parse(event.body);
     if (body.action == 'joinchannel') {
         if (body.channel == null) {
@@ -72,32 +72,17 @@ exports.handler = async function (event, context) {
         };
     }
     else if (body.action == 'newclip' || body.action == 'modaction') {
-        console.log(body);
+        console.log(event.body);
         let signature = body['signature'];
         delete body['signature'];
 
         const hash = crypto
-            .createHmac('sha256', process.env.SECRET)
+            .createHmac('sha256', Buffer.from(process.env.SECRET, 'utf-8'))
             .update(JSON.stringify(body), "utf8")
             .digest('hex');
 
         if (signature != hash) {
             console.log(`403: ${hash}`);
-            return { statusCode: 403 };
-        }
-
-        return await broadcast(body.channel, body);
-    }
-    else if (body.action == 'pollstart' || body.action == 'pollend') {
-        let signature = body['signature'];
-        delete body['signature'];
-
-        const hash = crypto
-            .createHmac('sha256', process.env.SECRET)
-            .update(JSON.stringify(body), "utf8")
-            .digest('hex');
-
-        if (signature != hash) {
             return { statusCode: 403 };
         }
 

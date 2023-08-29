@@ -139,7 +139,7 @@ def lambda_handler(event, context):
         if title is not None and outcomes is not None:
             outcome_0 = outcomes[0].get("title")
             outcome_1 = outcomes[1].get("title")
-            message = f"Kappa What a dilemma: \"{title}\" Make your prediction between *{outcome_0}* and *{outcome_1}*, chat!"
+            message = f"Prediction: \"{title}\" Waste your points between *{outcome_0}* and *{outcome_1}*, chat!"
             #print(message)
             send_twitchio(message)
 
@@ -192,28 +192,12 @@ def lambda_handler(event, context):
         broadcaster_user_login = body.get('event', {}).get('broadcaster_user_login')
         choices = body.get('event', {}).get('choices')
         if title is not None and choices is not None:
-            if broadcaster_user_login=='annaagtapp' and title=="Next Stipulation?":
-                
-                ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
-        
-                payload = {
-                    "route": "sendmessage",
-                    "action": "pollstart",
-                    "channel": "polloverlay",
-                    "timestamp": str(time.time())
-                }
-                
-                payload_string = json.dumps(payload, separators=(',', ':'))
-        
-                signature = hmac.new(secret.encode('utf-8'), msg=payload_string.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
-        
-                payload['signature'] = signature
-                
-                ws.send(json.dumps(payload))
-                ws.close()
+            if broadcaster_user_login=='annaagtapp':
+                message = "There is a new poll agtappDisco"
+                send_twitchio(message, "AnnaAgtapp")
                 
             elif broadcaster_user_login=='mike_hu_0_0':
-                message = f"PopCorn We have a new poll about...*checks notes*...\"{title}\". The options are:"
+                message = f"PopCorn We have a new poll about...\"{title}\". The options are:"
                 try:
                     for i in range(len(choices)):
                         option = choices[i].get("title")
@@ -222,38 +206,7 @@ def lambda_handler(event, context):
                     raise Exception("Error assembling message")
                 send_twitchio(message)
 
-    elif event_type == 'channel.poll.end':
-        title = body.get('event', {}).get('title')
-        broadcaster_user_login = body.get('event', {}).get('broadcaster_user_login')
-        choices = body.get('event', {}).get('choices')
-        status = body.get('event', {}).get('status')
-        if broadcaster_user_login=='annaagtapp' and title=="Next Stipulation?" and status=="completed":
-            
-            stipulation = choices[0]["title"]
-            votes = choices[0]["votes"]
-            
-            for item in choices:
-                if item["votes"]>votes:
-                    stipulation = item["title"]
-            
-            ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
-            
-            payload = {
-                "route": "sendmessage",
-                "action": "pollend",
-                "channel": "polloverlay",
-                "stipulation": stipulation,
-                "timestamp": str(time.time())
-            }
-            
-            payload_string = json.dumps(payload, separators=(',', ':'))
-    
-            signature = hmac.new(secret.encode('utf-8'), msg=payload_string.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
-    
-            payload['signature'] = signature
-            
-            ws.send(json.dumps(payload))
-            ws.close()
+
             
     elif event_type == 'channel.channel_points_custom_reward_redemption.add':
         broadcaster_user_login = body.get('event', {}).get("broadcaster_user_login")
@@ -266,11 +219,13 @@ def lambda_handler(event, context):
         if username == "AnnaAgtapp":
             API.autoscale(username.lower(), 1)
         elif username == "buritters":
-            response = "Good morning Cheese"
+            response = "!funfact"
             send_twitchio(response, username)
             API.autoscale(username.lower(), 1)
             API.pushover("ONLINE EVENT", "Britt is online", True)
         elif username == "Mike_Hu_0_0":
+            API.autoscale(username.lower(), 1)
+        elif username == "MikkiGemu":
             API.autoscale(username.lower(), 1)
 
     elif event_type == 'stream.offline':
@@ -282,6 +237,8 @@ def lambda_handler(event, context):
         elif username == "buritters":
             send_twitchio(offline_msg, username)
         elif username == "Mike_Hu_0_0":
+            send_twitchio(offline_msg, username)
+        elif username == "MikkiGemu":
             send_twitchio(offline_msg, username)
 
     else:

@@ -26,7 +26,6 @@
                 .then(function (data) {
                     let elem = document.getElementById("username");
                     elem.append(data["username"]);
-                    return fetch(`https://apoorlywrittenbot.cc/restricted/emote-loader?user=${data["username"]}`);
                 })
                 .then(function (response) {
                     if (!response.ok) {

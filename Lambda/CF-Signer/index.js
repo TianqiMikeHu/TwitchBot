@@ -26,7 +26,7 @@ function getSignedCookie(publicKey, privateKey) {
 
 function getExpirationTime() {
     const date = new Date();
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours() + 3, date.getMinutes(), date.getSeconds());
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate()+14, date.getHours(), date.getMinutes(), date.getSeconds());
 }
 
 function getExpiryTime() {
@@ -95,6 +95,18 @@ async function getDisplayName(login) {
     }
 }
 
+function getEmotesLambda (params) {
+    const lambda = new AWS.Lambda();
+    return new Promise((res, rej) => {
+        lambda.invoke(params, function(err, data) {
+            if (err) {
+              return rej(err);
+            }
+            return res(data);
+        });
+    });
+}
+
 function forbidden() {
     return {
         isBase64Encoded: false,
@@ -118,11 +130,12 @@ exports.handler = async (event, context) => {
     }
 
     let token_request = `https://id.twitch.tv/oauth2/token?client_id=6yz6w1tnl13svb5ligch31aa5hf4ty&client_secret=${process.env.CLIENT_SECRET}&grant_type=authorization_code&code=${event.queryStringParameters["code"]}&redirect_uri=https://apoorlywrittenbot.cc`;
-    let access_token, login;
+    let access_token, refresh_token, login, user_id;
 
     await axios.post(token_request)
         .then(function (response) {
             access_token = response.data.access_token;
+            refresh_token = response.data.refresh_token;
         })
         .catch(function (error) {
             return forbidden();
@@ -134,6 +147,7 @@ exports.handler = async (event, context) => {
     })
         .then(function (response) {
             login = response.data.login;
+            user_id = response.data.user_id;
         })
         .catch(function (error) {
             return forbidden();
@@ -171,6 +185,7 @@ exports.handler = async (event, context) => {
                 Item: {
                     CookieHash: createHash('sha256').update(signedCookie['CloudFront-Signature']).digest('hex'),
                     AccessToken: access_token,
+                    RefreshToken: refresh_token,
                     TTL: getExpiryTime(),
                     DisplayName: display_name
                 },
@@ -181,6 +196,14 @@ exports.handler = async (event, context) => {
             statusCode: 500,
         };
     }
+    
+    let payload = {'access_token': access_token, 'user_id': user_id};
+    var params = {
+      FunctionName: 'GetEmotes',
+      InvocationType: 'Event',
+      Payload: JSON.stringify(payload),
+    };
+    await getEmotesLambda(params);
 
     return {
         isBase64Encoded: false,

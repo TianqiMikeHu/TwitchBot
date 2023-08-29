@@ -7,7 +7,6 @@ import json
 import hmac
 import hashlib
 import time
-import allowlist_anna
 
 def get_header_user(bot=False, user='Mike_Hu_0_0'):
     ssm = boto3.client('ssm', 'us-west-2')
@@ -136,38 +135,6 @@ def pushover(title, message, critical=False):
         print(r.text)
     return
 
-    
-def start_ec2():
-    client = boto3.client('ec2')
-    
-    response = client.start_instances(
-        InstanceIds=[
-            'i-061d8d9ee16d08713',
-        ]
-    )
-
-    for instance in response['StartingInstances']:
-        id = instance['InstanceId']
-        state = instance['CurrentState']['Name']
-        pushover("STARTING INSTANCE", f"Instance {id} is now {state}", True)
-    return
-
-
-def stop_ec2():
-    client = boto3.client('ec2')
-    
-    response = client.stop_instances(
-        InstanceIds=[
-            'i-061d8d9ee16d08713',
-        ]
-    )
-    
-    for instance in response['StoppingInstances']:
-        id = instance['InstanceId']
-        state = instance['CurrentState']['Name']
-        pushover("STOPPING INSTANCE", f"Instance {id} is now {state}")
-    return
-
 def autoscale(name, capacity):
     client = boto3.client('autoscaling')
     
@@ -184,7 +151,7 @@ def autoscale(name, capacity):
 def redeem(body):
     user_id = body.get('event', {}).get("user_id")
     user_name = body.get('event', {}).get("user_name")
-    user_input = body.get('event', {}).get("user_input")
+    user_input = body.get('event', {}).get("user_input").strip()
     broadcaster_user_login = body.get('event', {}).get("broadcaster_user_login")
     reward = body.get('event', {}).get("reward")
     if reward is None:
@@ -320,8 +287,8 @@ def redeem(body):
             duration = data['data'][0]['duration']*1000
             broadcaster_name = data['data'][0]['broadcaster_name']
             
-        if reward_id=='cf9e9e23-7a07-4e14-80d6-4f1072067818' and broadcaster_name not in allowlist_anna.ALLOWLIST:
-            return "[ERROR]: Please ask the mods which clips are allowed."
+        if reward_id=='cf9e9e23-7a07-4e14-80d6-4f1072067818' and broadcaster_name != "AnnaAgtapp":
+            return "[ERROR]: Only Anna's clips are allowed."
         
         ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
         
@@ -348,12 +315,13 @@ def redeem(body):
     
 def restricted_control(payload):
     ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
-    payload_string = json.dumps(payload, separators=(',', ':'))
+    payload_string = json.dumps(payload, separators=(',', ':'), ensure_ascii=False)
 
     secret = os.getenv('SECRET')
     signature = hmac.new(secret.encode('utf-8'), msg=payload_string.encode('utf-8'), digestmod=hashlib.sha256).hexdigest()
 
     payload['signature'] = signature
+    print(f"Sending payload_string: {payload_string}")
 
     ws.send(json.dumps(payload))
     ws.close()

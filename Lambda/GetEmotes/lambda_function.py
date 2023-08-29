@@ -14,6 +14,7 @@ def lambda_handler(event, context):
     broadcaster_list.append(event['user_id'])
     
     r = requests.get(url=f"https://api.twitch.tv/helix/channels/followed?user_id={event['user_id']}&first=100", headers=customheader)
+
     print((r.json())["total"])
     while 1:
         data = r.json()

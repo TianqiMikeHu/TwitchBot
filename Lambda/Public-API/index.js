@@ -35,21 +35,27 @@ function forbidden() {
 }
 
 async function publicHandler(event){
-    if (event.path == "/public/json/mike_hu_0_0"){
-        const param = await getParam('JSON_MIKE_HU_0_0');
-        return {
-            isBase64Encoded: false,
-            statusCode: '200',
-            body: param.Parameter.Value
-        };
+    let chan;
+    if (event.queryStringParameters != null) {
+        chan = event.queryStringParameters.channel;
     }
-    else if (event.path == "/public/json/annaagtapp"){
-        const param = await getParam('JSON_ANNAAGTAPP');
-        return {
-            isBase64Encoded: false,
-            statusCode: '200',
-            body: param.Parameter.Value
+    if (event.path == "/public/json"){
+        if (chan == null) {return forbidden();}
+        let params = {
+          TableName : 'Mod-Interface-JSON',
+          Key: {
+            channel: chan
+          }
         };
+        const data = await getItem(params);
+        if (Object.keys(data).length){
+            return {
+                isBase64Encoded: false,
+                statusCode: '200',
+                body: data.Item.json
+            };
+        }
+        return forbidden();
     }
     else if (event.path == "/public/emote"){
         if (event.queryStringParameters == null) {
@@ -59,7 +65,7 @@ async function publicHandler(event){
         if (name == null) {
             return forbidden();
         }
-        var params = {
+        let params = {
           TableName : 'Emotes',
           Key: {
             emote_name: name
