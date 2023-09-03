@@ -1,223 +1,284 @@
 <html>
 
 <head>
-  <title>Timers & Things</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
-  <link href="https://fonts.googleapis.com" rel="preconnect" />
-  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-  <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css"
-    charset="utf-8" />
-  <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
+	<title>Overlay</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+	<link href="https://fonts.googleapis.com" rel="preconnect" />
+	<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+	<link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css"
+		charset="utf-8" />
+	<link rel="preload" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist-regular-webfont.woff2" as="font"
+		type="font/woff2" crossorigin>
+	<script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
 </head>
 
 <body>
-  <script>
-    var intervalList = [];
-    var latency = {};
-    const font_scale = 25;
-    var emotes = {};
+	<style>
+		.box {
+			position: relative;
+			user-select: none;
+			white-space: nowrap;
+			transform: translate(-50%, -50%);
+		}
 
-    var WebFontConfig = {
-      google: {
-        families: []
-      },
-      timeout: 1500
-    }
+		.box-wrapper {
+			position: absolute;
+			transform-origin: top left;
+			white-space: nowrap;
+			line-height: 1.0;
+			-webkit-user-select: none;
+			-moz-user-select: none;
+			-o-user-select: none;
+			-ms-user-select: none;
+			-khtml-user-select: none;
+			user-select: none;
+		}
+	</style>
+	<script>
+		var intervalList = [];
+		var latency = {};
+		const font_scale = 25;
+		var emotes = {};
+		var elements_json = {}; // {"coordinates": {...}, "fonts": [...], "images": {...}}
 
-    function WebFontLoad() {
-      if (WebFontConfig.google.families.length) {
-        WebFont.load(WebFontConfig);
-      }
-    }
+		function startTimer(timerText, expiration, element) {
+			var diff, TTL, minutes, seconds, timerIntervalID;
+			function timer() {
+				TTL = expiration - ((Date.now() / 1000) | 0);
+				diff = TTL - 30;
 
-    function isOpen(ws) {
-      return ws.readyState === ws.OPEN;
-    }
+				minutes = (diff / 60) | 0;
+				seconds = (diff % 60) | 0;
 
-    function connectws() {
-      let socket = new WebSocket("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev");
+				minutes = minutes < 10 ? "0" + minutes : minutes;
+				seconds = seconds < 10 ? "0" + seconds : seconds;
 
-      let intervalId = window.setInterval(function () {
-        if (!isOpen(socket)) return;
-        socket.send('ping');
-      }, 300000);
+				if (TTL <= 0) {
+					clearInterval(timerIntervalID);
+					element.remove();
+				}
+				else if (diff <= 0) {
+					element.innerHTML = `${timerText}: DONE`;
+				}
+				else {
+					element.innerHTML = `${timerText}: ${minutes}:${seconds}`;
+				}
+			};
+			timer();
+			timerIntervalID = setInterval(timer, 1000);
+			intervalList.push(timerIntervalID);
+		}
 
-      socket.onopen = function (event) {
-        const params = new Proxy(new URLSearchParams(window.location.search), {
-          get: (searchParams, prop) => searchParams.get(prop),
-        });
-        let channel = params.channel;
+		function htmlToElement(html) {
+			var template = document.createElement('template');
+			html = html.trim();
+			template.innerHTML = html;
+			return template.content.firstChild;
+		}
 
-        payload = {
-          'route': "sendmessage",
-          'action': 'joinchannel',
-          'channel': params.channel
-        }
-        socket.send(JSON.stringify(payload));
-      };
+		function resizeBox(box, w, h, xScale, yScale) {
+			box.style.width = w + 'px';
+			box.style.height = h + 'px';
 
-      let timers = {};
+			for (var child of box.querySelectorAll('.box-child')) {
+				child.style.transform = `scale(${xScale}, ${yScale})`;
+			}
+		}
 
-      function startTimer(timerText, expiration, element) {
-        var diff, TTL, minutes, seconds, timerIntervalID;
-        function timer() {
-          TTL = expiration - ((Date.now() / 1000) | 0);
-          diff = TTL - 30;
+		function rotateBox(boxWrapper, deg) {
+			boxWrapper.style.transform = `rotate(${deg}deg)`;
+		}
 
-          minutes = (diff / 60) | 0;
-          seconds = (diff % 60) | 0;
+		function resizeAfterImgLoad(img) {
+			let id = img.parentNode.parentNode.parentNode.id; // img->box-child->box->boxWrapper
+			resizeBox(img.parentNode.parentNode, img.offsetWidth * elements_json.coordinates[id]["x-scaling"] + 4,
+				img.offsetHeight * elements_json.coordinates[id]["y-scaling"] + 4,
+				elements_json.coordinates[id]["x-scaling"], elements_json.coordinates[id]["y-scaling"]);
+		}
 
-          minutes = minutes < 10 ? "0" + minutes : minutes;
-          seconds = seconds < 10 ? "0" + seconds : seconds;
+		async function getImg(emoteName) {
+			if (emotes[emoteName]) {
+				return new Promise((res, rej) => {
+					res(`<img src="https://static-cdn.jtvnw.net/emoticons/v2/${emotes[emoteName]}/dark/3.0" 
+                                style="pointer-events: none; height: ${(1080 / font_scale) * 2}px;">`);
+				});
+			}
+			else {
+				let response = await fetch(`https://apoorlywrittenbot.cc/public/emote?name=${emoteName}`);
+				if (!response.ok) {
+					return new Promise((res, rej) => {
+						res(emoteName);
+					});
+				}
+				let data = await response.json();
+				emotes[emoteName] = data.id;
+				return new Promise((res, rej) => {
+					res(`<img src="https://static-cdn.jtvnw.net/emoticons/v2/${emotes[emoteName]}/dark/3.0" 
+                                style="pointer-events: none; height: ${(1080 / font_scale) * 2}px;" onload="resizeAfterImgLoad(this);">`);
+				});
+			}
+		}
 
-          if (TTL <= 0) {
-            clearInterval(timerIntervalID);
-            element.remove();
-          }
-          else if (diff <= 0) {
-            element.innerHTML = `${timerText}: DONE`;
-          }
-          else {
-            element.innerHTML = `${timerText}: ${minutes}:${seconds}`;
-          }
-        };
-        timer();
-        timerIntervalID = setInterval(timer, 1000);
-        intervalList.push(timerIntervalID);
-      }
+		async function replaceAsync(str, regex) {
+			const promises = [];
+			str.replace(regex, (match, key) => {
+				const promise = getImg(key);
+				promises.push(promise);
+			});
+			const data = await Promise.all(promises);
+			return str.replace(regex, () => data.shift());
+		}
 
-      async function getImg(emoteName, size) {
-        if (emotes[emoteName]) {
-          return new Promise((res, rej) => {
-            res(`<img src="https://static-cdn.jtvnw.net/emoticons/v2/${emotes[emoteName]}/dark/3.0" 
-                                style="pointer-events: none; height: ${(1080 / font_scale) / 50 * size}px;">`);
-          });
-        }
-        else {
-          let response = await fetch(`https://apoorlywrittenbot.cc/public/emote?name=${emoteName}`);
-          if (!response.ok) {
-            return new Promise((res, rej) => {
-              res(emoteName);
-            });
-          }
-          let data = await response.json();
-          emotes[emoteName] = data.id;
-          return new Promise((res, rej) => {
-            res(`<img src="https://static-cdn.jtvnw.net/emoticons/v2/${emotes[emoteName]}/dark/3.0" 
-                                style="pointer-events: none; height: ${(1080 / font_scale) / 50 * size}px;">`);
-          });
-        }
-      }
+		async function redraw() {
+			for (const interval of intervalList) {
+				clearInterval(interval);
+			}
+			intervalList = [];
+			newLatency = {};
+			document.getElementById('canvas').innerHTML = '';
+			for (const [index, cor] of Object.entries(elements_json.coordinates)) {
+				let divString = `<div class="box-wrapper" id="${index}" style="top: ${cor.top}%; left: ${cor.left}%;">
+            	<div class="box"></div>
+        		</div>`;
+				let boxWrapper = htmlToElement(divString);
+				document.getElementById('canvas').appendChild(boxWrapper);
+				let box = boxWrapper.querySelector('.box');
+				box.style.border = `2px solid transparent`;
 
-      async function replaceAsync(str, regex, size) {
-        const promises = [];
-        str.replace(regex, (match, key) => {
-          const promise = getImg(key, size);
-          promises.push(promise);
-        });
-        const data = await Promise.all(promises);
-        return str.replace(regex, () => data.shift());
-      }
+				// Latency adjustment
+				let diff = ((Date.now() / 1000) | 0) - cor.now;
+				for (const ele of cor.elements) {
+					let subelement = document.createElement("div");
+					subelement.classList.add("box-child");
+					if (ele.category == 'image') {
+						subelement.innerHTML = `<img src="${elements_json.images[ele.content]}" height="${1080 / 2}px" onload="resizeAfterImgLoad(this);"></img>`;
+						subelement.style = `display: inline-block; pointer-events: none; transform-origin: 0 0;`;
+					}
+					else {
+						let content = await replaceAsync(ele.content, /:([^\s:]+):/g);
+						subelement.style = `color: ${ele.color}; 
+                    font-size: ${1080 / font_scale}px; 
+                    font-family: ${ele.font}, cursive; display: inline-block;
+                    pointer-events: none; transform-origin: 0 0;`;
+						if (ele.category == 'text') {
+							subelement.innerHTML = content;
+						}
+						else if (ele.category == 'timer') {
+							if (ele.active) {
+								if (latency[ele.UUID]) { // Not a new timer
+									newLatency[ele.UUID] = latency[ele.UUID];
+								}
+								else {
+									newLatency[ele.UUID] = diff;
+								}
+								startTimer(content, ele.expiration + newLatency[ele.UUID], subelement);
+							}
+						}
+					}
+					box.appendChild(subelement);
+					resizeBox(box, subelement.offsetWidth * elements_json.coordinates[index]["x-scaling"] + 4,
+						subelement.offsetHeight * elements_json.coordinates[index]["y-scaling"] + 4,
+						elements_json.coordinates[index]["x-scaling"], elements_json.coordinates[index]["y-scaling"]);
+					rotateBox(boxWrapper, elements_json.coordinates[index]["rotation"]);
+				}
+			}
+			latency = newLatency;
+		}
 
-      async function redraw(json) { // {"coordinates": {...}, "fonts": [...], "images": {...}}
-        console.log(json);
-        WebFontConfig.google.families = json.fonts;
-        WebFontLoad();
-        await new Promise(r => setTimeout(r, 300)); // race condition?
-        for (const interval of intervalList) {
-          clearInterval(interval);
-        }
-        intervalList = [];
-        newLatency = {};
-        document.getElementById('canvas').innerHTML = '';
-        for (const [index, cor] of Object.entries(json.coordinates)) {
-          let element = document.createElement("div");
-          document.getElementById('canvas').appendChild(element);
-          element.style = `font-family: 'Kalam', cursive; position: absolute; top: ${cor.top}%; left: ${cor.left}%; white-space: nowrap; line-height: 1.0;`;
-          element.style.border = '2px solid transparent';
-          // Latency adjustment
-          let diff = ((Date.now() / 1000) | 0) - cor.now;
-          for (const ele of cor.elements) {
-            if (ele.category == 'image') {
-              let subelement = document.createElement("div");
-              subelement.innerHTML = `<img src="${json.images[ele.content]}" height="${1080 / 100 * ele.size}px"></img>`;
-              element.appendChild(subelement);
-            }
-            else {
-              let content = await replaceAsync(ele.content, /:([^\s:]+):/g, ele.size);
-              if (ele.category == 'text') {
-                let subelement = document.createElement("div");
-                subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px; font-family: ${ele.font}, cursive;`;
-                subelement.innerHTML = content;
-                element.appendChild(subelement);
-              }
-              else if (ele.category == 'timer') {
-                let subelement = document.createElement("div");
-                subelement.style = `color: ${ele.color}; font-size: ${(1080 / font_scale) / 100 * ele.size}px; font-family: ${ele.font}, cursive;`;
-                element.appendChild(subelement);
-                if (ele.active) {
-                  if (latency[ele.UUID]) { // Not a new timer
-                    newLatency[ele.UUID] = latency[ele.UUID]
-                  }
-                  else {
-                    newLatency[ele.UUID] = diff;
-                  }
-                  startTimer(content, ele.expiration + newLatency[ele.UUID], subelement);
-                }
-              }
-            }
-          }
-        }
-        latency = newLatency;
-      }
+		var WebFontConfig = {
+			google: { families: [] },
+			active: async function (familyName, fvd) {
+				await redraw();
+			},
+			inactive: async function (familyName, fvd) {
+				await redraw();
+			},
+			timeout: 1500
+		}
 
-      window.onload = async function () {
-        const params = new Proxy(new URLSearchParams(window.location.search), {
-          get: (searchParams, prop) => searchParams.get(prop),
-        });
-        let channel = params.channel;
-        let response = await fetch(`https://apoorlywrittenbot.cc/public/json?channel=${channel}`);
-        if (!response.ok) {
-          throw new Error("HTTP status " + response.status);
-        }
-        let data = await response.json();
-        await redraw(data);
-      }
+		function WebFontLoad() {
+			if (WebFontConfig.google.families.length) {
+				WebFont.load(WebFontConfig);
+			}
+		}
 
-      socket.onmessage = async function (event) {
-        const data = JSON.parse(event.data);
-        if (data.action == "modaction") {
-          if (data.category == "json") {
-            document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
-            await redraw(data.message);
-          }
-        }
-      };
+		window.onload = async function () {
+			const params = new Proxy(new URLSearchParams(window.location.search), {
+				get: (searchParams, prop) => searchParams.get(prop),
+			});
+			let channel = params.channel;
+			let response = await fetch(`https://apoorlywrittenbot.cc/public/json?channel=${channel}`);
+			if (!response.ok) {
+				throw new Error("HTTP status " + response.status);
+			}
+			let data = await response.json();
+			elements_json = data;
+			WebFontConfig.google.families = data.fonts;
+			WebFontLoad();
+		}
 
-      socket.onclose = function (event) {
-        if (event.wasClean) {
-          console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
-        } else {
-          console.log('[close] Connection died');
-        }
-        clearInterval(intervalId);
-        setTimeout(function () {
-          connectws();
-        }, 1000);
-      };
+		function isOpen(ws) {
+			return ws.readyState === ws.OPEN;
+		}
 
-      socket.onerror = function (error) {
-        console.log(`[error]`);
-      };
-    }
+		function connectws() {
+			let socket = new WebSocket("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev");
 
-    connectws();
+			let intervalId = window.setInterval(function () {
+				if (!isOpen(socket)) return;
+				socket.send('ping');
+			}, 300000);
 
-  </script>
+			socket.onopen = function (event) {
+				const params = new Proxy(new URLSearchParams(window.location.search), {
+					get: (searchParams, prop) => searchParams.get(prop),
+				});
+				let channel = params.channel;
 
-  <div id="canvas" style="width: 1920px; height: 1080px;"></div>
+				payload = {
+					'route': "sendmessage",
+					'action': 'joinchannel',
+					'channel': params.channel
+				}
+				socket.send(JSON.stringify(payload));
+			};
+
+			socket.onmessage = async function (event) {
+				const data = JSON.parse(event.data);
+				if (data.action == "modaction") {
+					if (data.category == "json") {
+						document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
+						elements_json = data.message;
+						WebFontConfig.google.families = data.message.fonts;
+						WebFontLoad();
+					}
+				}
+			};
+
+			socket.onclose = function (event) {
+				if (event.wasClean) {
+					console.log(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
+				} else {
+					console.log('[close] Connection died');
+				}
+				clearInterval(intervalId);
+				setTimeout(function () {
+					connectws();
+				}, 1000);
+			};
+
+			socket.onerror = function (error) {
+				console.log(`[error]`);
+			};
+		}
+
+		connectws();
+
+	</script>
+
+	<div id="canvas" style="width: 1920px; height: 1080px;"></div>
 
 </body>
 

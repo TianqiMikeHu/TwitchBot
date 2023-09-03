@@ -2,14 +2,15 @@ window.onload = async function () {
     resize();
     InitializeEventListeners();
     setChannel();
+    InitializeColorPicler();
 
     let video = document.getElementById('video');
-    video.src = `https://player.twitch.tv/?channel=${channel_name}&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true&controls=false`;
+    video.src = `https://player.twitch.tv/?channel=${channel_name}&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true`;
 
     await loadInitialJSON(video);
     deleteExpiredTimers();
     elementUnfocused();
-    await redraw();
+    // await redraw();
 }
 window.onresize = function () {
     resize();
@@ -28,7 +29,7 @@ document.onkeydown = function (evt) {
         elementUnfocused();
     }
     else if (isDelete && lastClickedElement != null) {
-        let index = lastClickedElement.id;
+        let index = lastClickedElement.parentNode.id;
         let element_json = mapping[index];
         // Clean up unused images
         for (const ele of element_json.elements) {
@@ -41,59 +42,11 @@ document.onkeydown = function (evt) {
         }
         imagesInMenu = [];
         delete mapping[index];
-        lastClickedElement.remove();
+        lastClickedElement.parentNode.remove();
         lastClickedElement = null;
         elementUnfocused();
     }
 };
-
-var dragging = function () {
-    return {
-        move: function (divid, xpos, ypos) {
-            divid.style.left = xpos + 'px';
-            divid.style.top = ypos + 'px';
-        },
-        startMoving: function (divid, container, evt) {
-            evt = evt || window.event;
-            let rect = divid.getBoundingClientRect();
-            let video = document.getElementById(container);
-            var posX = evt.clientX,
-                posY = evt.clientY,
-                divTop = divid.style.top,
-                divLeft = divid.style.left,
-                eWi = parseInt(rect.width),
-                eHe = parseInt(rect.height),
-                cL = parseInt(video.style.left),
-                cWi = parseInt(video.style.width),
-                cHe = parseInt(video.style.height);
-            document.getElementById(container).style.cursor = 'move';
-            divTop = divTop.replace('px', '');
-            divLeft = divLeft.replace('px', '');
-            var diffX = posX - divLeft,
-                diffY = posY - divTop;
-
-            document.onmousemove = function (evt) {
-                evt = evt || window.event;
-                var posX = evt.clientX,
-                    posY = evt.clientY,
-                    aX = posX - diffX,
-                    aY = posY - diffY;
-                if (aX < cL) aX = cL;
-                if (aY < 0) aY = 0;
-                if (aX + eWi > (cL + cWi)) aX = cL + cWi - eWi;
-                if (aY + eHe > cHe) aY = cHe - eHe;
-                dragging.move(divid, aX, aY);
-            }
-        },
-        stopMoving: function (divid, container) {
-            let video = document.getElementById(container);
-            video.style.cursor = 'default';
-            mapping[divid.id]["top"] = Math.round(parseFloat(divid.style.top) * 100.0 / window.innerHeight * 1000) / 1000;
-            mapping[divid.id]["left"] = Math.round((parseFloat(divid.style.left) - parseFloat(video.style.left)) * 100.0 / parseFloat(video.style.width) * 1000) / 1000;
-            document.onmousemove = function () { }
-        },
-    }
-}();
 
 function help(e) {
     e.stopPropagation();
@@ -110,27 +63,31 @@ function create(e) {
     if (editing) {
         return;
     }
-    let divString = `<div id="${index.toString()}" 
-            style="position: absolute; top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px; white-space: nowrap; line-height: 1.0;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -o-user-select: none;
-            -ms-user-select: none;
-            -khtml-user-select: none;
-            user-select: none;" 
-            onmousedown="elementFocused(this, event);" 
-            onmouseup="dragging.stopMoving(this, 'video');"></div>`;
+    let divString = `<div class="box-wrapper" id="${index.toString()}" style="top: ${window.innerHeight / 2}px; left: ${left_INT + width_INT / 2}px;">
+            <div class="box" id="box-${index.toString()}">
+                <div class="dot rotate" id="rotate-${index.toString()}"></div>
+                <div class="dot left-top" id="left-top-${index.toString()}"></div>
+                <div class="dot left-bottom" id="left-bottom-${index.toString()}"></div>
+                <div class="dot top-mid" id="top-mid-${index.toString()}"></div>
+                <div class="dot bottom-mid" id="bottom-mid-${index.toString()}"></div>
+                <div class="dot left-mid" id="left-mid-${index.toString()}"></div>
+                <div class="dot right-mid" id="right-mid-${index.toString()}"></div>
+                <div class="dot right-bottom" id="right-bottom-${index.toString()}"></div>
+                <div class="dot right-top" id="right-top-${index.toString()}"></div>
+                <div class="rotate-link"></div>
+            </div>
+        </div>`;
     let element = htmlToElement(divString);
-    element.style.border = '2px solid #ff6600';
-
-    index += 1;
     document.getElementById('canvas').appendChild(element);
+
+    addDotsListeners(index);
 
     // Autofocus on new element
     if (lastClickedElement != null) {
-        lastClickedElement.style.border = '2px solid transparent';
+        displayBorder(false);
     }
-    lastClickedElement = element;
+    let box = document.getElementById(`box-${index.toString()}`);
+    lastClickedElement = box;
     let editButton = document.getElementById("editButton");
     editButton.disabled = false;
     editButton.style.background = "#6441a5";
@@ -138,25 +95,33 @@ function create(e) {
     video.style.pointerEvents = 'none';
 
     let subelement = document.createElement("div");
-    subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / font_scale}px;`;
+    subelement.style = `color: #FFFFFF; font-size: ${window.innerHeight / font_scale}px; display: inline-block;
+        pointer-events: none; transform-origin: 0 0; transform: scale(1,1);`;
+    subelement.classList.add("box-child");
     subelement.textContent = "PLACEHOLDER";
-    document.getElementById(element.id).appendChild(subelement);
+    box.appendChild(subelement);
+    box.style.border = `2px solid ${borderColor}`;
+    box.style.width = `${subelement.offsetWidth}px`;
+    box.style.height = `${subelement.offsetHeight}px`;
 
     element_json = {
         top: 50,
         left: 50,
+        'x-scaling': 1,
+        'y-scaling': 1,
+        rotation: 0,
         now: ((Date.now() / 1000) | 0),
         elements: [
             {
                 category: 'text',
                 content: 'PLACEHOLDER',
-                color: 'FFFFFF',
-                size: '100',
+                color: '#FFFFFF',
                 font: 'Kalam'
             }
         ]
     };
     mapping[element.id] = element_json;
+    index += 1;
 
     return element;
 }
@@ -169,13 +134,10 @@ function edit(e) {
     editing = true;
     let menu = document.getElementById("menu");
     let mask = document.getElementById("mask");
-    let tableBody = document.getElementById("tableBody");
     let canvas = document.getElementById("canvas");
     canvas.style.pointerEvents = "none";
-    tableBody.textContent = '';
-    validationDictionary = {};
 
-    let element_json = mapping[lastClickedElement.id];
+    let element_json = mapping[lastClickedElement.parentNode.id];
 
     let index = 0;
     fonts.unshift("FoxyMist");
@@ -191,9 +153,38 @@ function edit(e) {
                 timeString = `${ele.expiration}`;
             }
         }
+        let contentBlock = document.getElementById('contentBlock');
+        let selectBlock = document.getElementById('selectBlock');
+        let colorBlock = document.getElementById('colorBlock');
+        let fontBlock = document.getElementById('fontBlock');
+        let timeBlock = document.getElementById('timeBlock');
+        let restartBlock = document.getElementById('restartBlock');
+        let imgBlock = document.getElementById('imgBlock');
 
-        let fontString = "";
-        let selectedFont = "";
+        contentBlock.value = ele.content;
+        contentBlock.disabled = false;
+        imgBlock.src = '';
+        if (ele.category == 'text') {
+            selectBlock.selectedIndex = 0;
+            selectBlock.options[3].hidden = true;
+            textMode();
+        }
+        else if (ele.category == 'timer') {
+            selectBlock.selectedIndex = 1;
+            selectBlock.options[3].hidden = true;
+            timerMode();
+        }
+        else { // images
+            selectBlock.selectedIndex = 3;
+            selectBlock.options[3].hidden = false;
+            contentBlock.disabled = true;
+            imgBlock.src = imagesDictionary[ele.content];
+            imageMode();
+        }
+        colorBlock.value = ele.color ? ele.color : '#FFFFFF';
+
+        let fontString;
+        let selectedFont;
         // Image type does not have a font, use default
         if (ele.category == 'image') {
             selectedFont = "Kalam";
@@ -201,153 +192,39 @@ function edit(e) {
             imagesInMenu.push(ele.content);
         }
         else {
-            selectedFont = ele.font;
+            selectedFont = ele.font ? ele.font : 'Kalam';
         }
+        fontBlock.innerHTML = '';
         for (const f of fonts) {
-            fontString += `<option ${selectedFont == f ? 'selected' : ''} value="${f}">${f}</option>\n`;
+            fontString = `<option ${selectedFont == f ? 'selected' : ''} value="${f}">${f}</option>\n`;
+            fontBlock.appendChild(htmlToElement(fontString));
         }
 
-        let divString = `<div class="tableRow mb-2" style="height: 12%">
-                <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
-                    <input type="text" style="resize: none;"" class="form-control needs-validation rounded-0" id="words${index}" placeholder="PLACEHOLDER" 
-                    value="${ele.category == 'image' ? '*Size is % of Window Height*' : ele.content}"
-                    onkeyup="validateInput(this, 'nonEmpty');" onpaste="pasteImage(this);" ${ele.category == 'image' ? 'disabled' : ''}></input>
-                </div>
-                <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
-                    <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
-                        <option ${ele.category == 'text' ? 'selected' : ''} value="Text">Text</option>
-                        <option ${ele.category == 'timer' ? 'selected' : ''} value="Timer">Timer</option>
-                        <option value="DELETE">DELETE</option>
-                        <option ${ele.category == 'image' ? 'selected' : ''} value="Image" ${ele.category == 'image' ? '' : 'hidden'}>Image</option>
-                      </select>
-                </div>
-                <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <span class="input-group-text rounded-0" id="color${index}Prepend">#</span>
-                        <input type="text" class="form-control needs-validation rounded-0" id="color${index}"
-                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="${ele.category == 'image' ? 'FFFFFF' : ele.color}"
-                            onkeyup="validateInput(this, 'hex');">
-                    </div>
-                </div>
-                <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <input type="text" class="form-control needs-validation rounded-0" id="size${index}"
-                            aria-describedby="size${index}Postpend" placeholder="100" value="${ele.size}"
-                            onkeyup="validateInput(this, 'positiveFloat');">
-                        <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
-                    </div>
-                </div>
-                <div class="fontColumn d-flex justify-content-center" style="height: 12%;">
-                    <select class="form-select rounded-0" id="selectFont${index}"">
-                        ${fontString}
-                      </select>
-                </div>
-                <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
-                            aria-describedby="time${index}Postpend" style="color:${ele.active ? 'red' : 'black'}"
-                            placeholder="300" value=${timeString} ${ele.category == 'timer' && ele.active == false ? '' : 'disabled'}
-                            onkeyup="validateInput(this, 'positiveInteger');">
-                        <span class="input-group-text rounded-0" id="time${index}Postpend">s</span>
-                    </div>
-                </div>
-                <div class="restartColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
-                    <input type="checkbox" class="form-check-input form-control needs-validation rounded-0" id="restart${index}" 
-                        style="width: 100%; height: 100%; margin: 0px;" onchange="checkboxTrigger(this);"
-                        ${ele.category == 'timer' && ele.active ? '' : 'disabled'} ${ele.category == 'timer' && ele.active == false ? 'checked' : ''}>
-                </div>
-            </div>`;
+        timeBlock.style.color = ele.active ? 'red' : 'black';
+        timeBlock.value = timeString;
+        if (ele.category == 'timer' && ele.active == false) {
+            timeBlock.disabled = false;
+            restartBlock.checked = true;
+        }
+        else {
+            timeBlock.disabled = true;
+            restartBlock.checked = false;
+        }
+        if (ele.category == 'timer' && ele.active) {
+            restartBlock.disabled = false;
+        }
+        else {
+            restartBlock.disabled = true;
+        }
 
-
-        let tableRow = htmlToElement(divString);
-        tableBody.appendChild(tableRow);
-        let imgPlaceholder = htmlToElement(`<img id="img${index}" class="menuImage" src="${ele.category == 'image' ? imagesDictionary[ele.content] : ''}"></img>`);
-        tableBody.appendChild(imgPlaceholder);
-        validationDictionary[`words${index}`] = true;
-        validationDictionary[`color${index}`] = true;
-        validationDictionary[`size${index}`] = true;
-        validationDictionary[`time${index}`] = true;
         index += 1;
     }
     fonts.shift();
     fonts.shift();
 
     mask.style.display = "block";
-    menu.style.display = "flex";
-    menu.style.animation = "menuAnimation 0.5s";
-}
-
-function subelement(e) {
-    e.stopPropagation();
-    let tableBody = document.getElementById("tableBody");
-    let index = (tableBody.childElementCount) / 2;
-    fonts.unshift("FoxyMist");
-    fonts.unshift("Kalam");
-    let fontString = "";
-    for (const f of fonts) {
-        fontString += `<option ${"Kalam" == f ? 'selected' : ''} value="${f}">${f}</option>\n`;
-    }
-
-    let divString = `<div class="tableRow mb-2" style="height: 12%">
-                <div class="wordsColumn d-flex justify-content-center" style="height: 12%;">
-                    <input type="text" style="resize: none;"" class="form-control needs-validation rounded-0 is-invalid" id="words${index}" placeholder="PLACEHOLDER"
-                    onkeyup="validateInput(this, 'nonEmpty');" onpaste="pasteImage(this);"></input>
-                </div>
-                <div class="typeColumn d-flex justify-content-center" style="height: 12%;">
-                    <select class="form-select rounded-0" id="select${index}" onchange="selectTrigger(this);">
-                        <option selected value="Text">Text</option>
-                        <option value="Timer">Timer</option>
-                        <option value="DELETE">DELETE</option>
-                        <option value="Image" hidden>Image</option>
-                      </select>
-                </div>
-                <div class="colorColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <span class="input-group-text rounded-0" id="color${index}Prepend">#</span>
-                        <input type="text" class="form-control needs-validation rounded-0" id="color${index}"
-                            aria-describedby="color${index}Prepend" placeholder="FFFFFF" value="FFFFFF"
-                            onkeyup="validateInput(this, 'hex');">
-                    </div>
-                </div>
-                <div class="sizeColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <input type="text" class="form-control needs-validation rounded-0" id="size${index}"
-                            aria-describedby="size${index}Postpend" placeholder="100" value="100"
-                            onkeyup="validateInput(this, 'positiveFloat');">
-                        <span class="input-group-text rounded-0" id="size${index}Postpend">%</span>
-                    </div>
-                </div>
-                <div class="fontColumn d-flex justify-content-center" style="height: 12%;">
-                    <select class="form-select rounded-0" id="selectFont${index}"">
-                        ${fontString}
-                      </select>
-                </div>
-                <div class="timeColumn d-flex justify-content-center" style="height: 12%;">
-                    <div class="input-group">
-                        <input type="text" class="form-control needs-validation rounded-0" id="time${index}"
-                            aria-describedby="time${index}Postpend" style="color:black"
-                            placeholder="300" value="-" disabled
-                            onkeyup="validateInput(this, 'positiveInteger');">
-                        <span class="input-group-text rounded-0" id="time${index}Postpend">s</span>
-                    </div>
-                </div>
-                <div class="restartColumn d-flex align-items-center justify-content-center" style="height: 12%; background-color: white;">
-                    <input type="checkbox" class="form-check-input form-control needs-validation rounded-0" id="restart${index}" 
-                        style="width: 100%; height: 100%; margin: 0px;" onchange="checkboxTrigger(this);"
-                        disabled>
-                </div>
-            </div>`;
-
-    fonts.shift();
-    fonts.shift();
-    let tableRow = htmlToElement(divString);
-    tableBody.appendChild(tableRow);
-    let imgPlaceholder = htmlToElement(`<img id="img${index}" class="menuImage"></img>`);
-    tableBody.appendChild(imgPlaceholder);
-    validationDictionary[`words${index}`] = false;
-    validationDictionary[`color${index}`] = true;
-    validationDictionary[`size${index}`] = true;
-    validationDictionary[`time${index}`] = true;
+    menu.style.display = "inline-block";
+    menu.style.animation = "menuAnimation 0.5s forwards";
 }
 
 async function redraw() {
@@ -357,22 +234,28 @@ async function redraw() {
     }
     intervalList = [];
     // Draw new elements
-    for (var element of document.getElementById("canvas").children) {
-        element.innerHTML = '';
-        parentNode = mapping[element.id]["elements"];
+    for (var boxWrapper of document.getElementById("canvas").children) {
+        box = boxWrapper.querySelector('.box');
+        box.querySelectorAll(".box-child").forEach(e => e.remove());
+        parentNode = mapping[boxWrapper.id]["elements"];
         if (parentNode.length == 0) {
-            delete mapping[element.id];
-            element.remove();
+            delete mapping[boxWrapper.id];
+            boxWrapper.remove();
             continue;
         }
         for (const childNode of parentNode) {
             let subelement = document.createElement("div");
+            subelement.classList.add("box-child");
             if (childNode["category"] == "image") {
-                subelement.innerHTML = `<img src="${imagesDictionary[childNode["content"]]}" height="${window.innerHeight / 100 * childNode["size"]}px" style="pointer-events:none;"></img>`;
+                subelement.innerHTML = `<img src="${imagesDictionary[childNode["content"]]}" height="${window.innerHeight / 2}px" onload="resizeAfterImgLoad(this);"></img>`;
+                subelement.style = `display: inline-block; pointer-events: none; transform-origin: 0 0;`;
             }
             else {
-                subelement.style = `color: #${childNode["color"]}; font-size: ${(window.innerHeight / font_scale) / 100 * childNode["size"]}px; font-family: ${childNode["font"]}, cursive;`;
-                subelement.innerHTML = await replaceAsync(childNode["content"], /:([^\s:]+):/g, childNode["size"]);
+                subelement.style = `color: ${childNode["color"]}; 
+                    font-size: ${(window.innerHeight / font_scale)}px; 
+                    font-family: ${childNode["font"]}, cursive; display: inline-block;
+                    pointer-events: none; transform-origin: 0 0;`;
+                subelement.innerHTML = await replaceAsync(childNode["content"], /:([^\s:]+):/g);
 
                 if (childNode["category"] == "timer") {
                     subelement.id = crypto.randomUUID();
@@ -389,41 +272,47 @@ async function redraw() {
                     }
                 }
             }
-            element.appendChild(subelement);
+            box.appendChild(subelement);
+            resizeBox(box, subelement.offsetWidth * mapping[boxWrapper.id]["x-scaling"] + 4, subelement.offsetHeight * mapping[boxWrapper.id]["y-scaling"] + 4, mapping[boxWrapper.id]["x-scaling"], mapping[boxWrapper.id]["y-scaling"]);
+            rotateBox(boxWrapper, mapping[boxWrapper.id]["rotation"]);
         }
     }
 }
 
-async function closemenu(e) {
+async function closeMenu(e) {
     e.stopPropagation();
-    for (const [key, value] of Object.entries(validationDictionary)) {
-        if (!value) {
-            alert("Please fix the invalid value(s)", "warning");
-            return;
-        }
-    }
     // Remove all UUIDs of open images from imagesDictionary
     for (const id of imagesInMenu) {
         delete imagesDictionary[id];
     }
     imagesInMenu = [];
     // Write to mapping dictionary
-    let index = lastClickedElement.id;
+    let index = lastClickedElement.parentNode.id;
     let reference = mapping[index]["elements"];
-    let words, type, color, size, time, restart, img;
+    let content, type, color, font, time, restart, img;
+    let warning = false;
     let parentNode = [];
-    for (let i = 0; i < (tableBody.childElementCount) / 2; i++) {  // row iteration
-        words = document.getElementById(`words${i}`).value;
-        type = document.getElementById(`select${i}`).value;
-        color = document.getElementById(`color${i}`).value;
-        size = document.getElementById(`size${i}`).value;
-        font = document.getElementById(`selectFont${i}`).value;
-        time = document.getElementById(`time${i}`).value;
-        restart = document.getElementById(`restart${i}`).checked;
-        img = document.getElementById(`img${i}`).src;
-        if (type == "DELETE") {
-            continue;
-        }
+    content = document.getElementById('contentBlock').value;
+    type = document.getElementById('selectBlock').value;
+    color = document.getElementById('colorBlock').value;
+    font = document.getElementById('fontBlock').value;
+    time = document.getElementById('timeBlock').value;
+    restart = document.getElementById('restartBlock').checked;
+    img = document.getElementById('imgBlock').src;
+
+    // Validation
+    let validateContent = validateInput(document.getElementById('contentBlock'), 'nonEmpty');
+    let validateTime = validateInput(document.getElementById('timeBlock'), 'positiveInteger');
+    if (!validateContent) {
+        content = "PLACEHOLDER";
+        document.getElementById('contentBlock').classList.remove("is-invalid");
+    }
+    if (!validateTime) {
+        time = "300";
+        document.getElementById('timeBlock').classList.remove("is-invalid");
+    }
+
+    if (type != "DELETE") {
         let childNode = {};
         childNode["category"] = type.toLowerCase();
         if (type == "Image") {
@@ -432,32 +321,39 @@ async function closemenu(e) {
             imagesDictionary[childNode["content"]] = img;
         }
         else {
-            childNode["content"] = words;
+            childNode["content"] = content;
             childNode["color"] = color.toUpperCase();
             childNode["font"] = font;
+            warning = validateContent ? false : true;
         }
-        childNode["size"] = size;
         if (type == "Timer") {
+            warning = ((validateContent && validateTime) || !restart) ? false : true;
             childNode["active"] = !restart;
             if (restart) {
                 childNode["expiration"] = parseInt(time);
                 childNode["UUID"] = crypto.randomUUID();
             }
             else {// Active timer, retain expiration and UUID
-                childNode["expiration"] = reference[i]["expiration"];
-                childNode["UUID"] = reference[i]["UUID"];
+                childNode["expiration"] = reference[0]["expiration"];
+                childNode["UUID"] = reference[0]["UUID"];
             }
         }
         parentNode.push(childNode);
     }
 
+
     let menu = document.getElementById("menu");
     let mask = document.getElementById("mask");
     let canvas = document.getElementById("canvas");
     canvas.style.pointerEvents = "auto";
-    menu.style.animation = "menuAnimationReversed 0.2s";
+    menu.style.animation = "menuAnimationReversed 0.2s forwards";
     mask.style.display = "none";
-    alert("Successfully validated all input values", "success");
+    if (warning) {
+        alert("Invalid value(s) detected, using default values", "warning");
+    }
+    else {
+        alert("Successfully validated all input values", "success");
+    }
     setTimeout(() => {
         menu.style.display = "none";
         editing = false;
@@ -466,7 +362,7 @@ async function closemenu(e) {
     // Remove element if empty
     if (parentNode.length == 0) {
         delete mapping[index];
-        lastClickedElement.remove();
+        lastClickedElement.parentNode.remove();
         lastClickedElement = null;
         elementUnfocused();
     }
@@ -544,7 +440,7 @@ function showJSON(e) {
 
     mask.style.display = "block";
     menu.style.display = "flex";
-    menu.style.animation = "menuAnimation 0.5s";
+    menu.style.animation = "menuAnimation 0.5s forwards";
 }
 
 function closeJSON(e) {
@@ -553,7 +449,7 @@ function closeJSON(e) {
     let mask = document.getElementById("mask");
     let canvas = document.getElementById("canvas");
     canvas.style.pointerEvents = "auto";
-    menu.style.animation = "menuAnimationReversed 0.2s";
+    menu.style.animation = "menuAnimationReversed 0.2s forwards";
     mask.style.display = "none";
     setTimeout(() => {
         menu.style.display = "none";
@@ -581,7 +477,7 @@ function loadFonts(e) {
 
     mask.style.display = "block";
     menu.style.display = "flex";
-    menu.style.animation = "menuAnimation 0.5s";
+    menu.style.animation = "menuAnimation 0.5s forwards";
 }
 
 async function applyFonts(e) {
@@ -614,11 +510,10 @@ async function applyFonts(e) {
     fonts.shift();
 
     canvas.style.pointerEvents = "auto";
-    menu.style.animation = "menuAnimationReversed 0.2s";
+    menu.style.animation = "menuAnimationReversed 0.2s forwards";
     mask.style.display = "none";
     setTimeout(() => {
         menu.style.display = "none";
         editing = false;
     }, 200);
-    await redraw();
 }

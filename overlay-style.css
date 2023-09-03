@@ -8,11 +8,13 @@ body {
     0% {
         transform: translate(-50%, -50%) scale(0.0);
         -webkit-transform: translate(-50%, -50%) scale(0.0);
+        opacity: 0.0;
     }
 
     100% {
         transform: translate(-50%, -50%) scale(1.0);
         -webkit-transform: translate(-50%, -50%) scale(1.0);
+        opacity: 1.0;
     }
 }
 
@@ -30,69 +32,6 @@ body {
     }
 }
 
-.wordsColumn {
-    width: 30%;
-    height: 100%;
-    display: inline-block;
-    background-color: #a1e4ff;
-    position: absolute;
-    left: 0%;
-}
-
-.typeColumn {
-    width: 10%;
-    height: 100%;
-    display: inline-block;
-    background-color: #99e2ff;
-    position: absolute;
-    left: 30%;
-}
-
-.colorColumn {
-    width: 14%;
-    height: 100%;
-    display: inline-block;
-    background-color: #80dbff;
-    position: absolute;
-    left: 40%;
-}
-
-.sizeColumn {
-    width: 13%;
-    height: 100%;
-    display: inline-block;
-    background-color: #66d4ff;
-    position: absolute;
-    left: 54%;
-}
-
-.fontColumn {
-    width: 12%;
-    height: 100%;
-    display: inline-block;
-    background-color: #4dccff;
-    position: absolute;
-    left: 67%;
-}
-
-.timeColumn {
-    width: 13%;
-    height: 100%;
-    display: inline-block;
-    background-color: #33c5ff;
-    position: absolute;
-    left: 79%;
-}
-
-.restartColumn {
-    width: 8%;
-    height: 100%;
-    display: inline-block;
-    background-color: #1abeff;
-    position: absolute;
-    left: 92%;
-}
-
 #liveAlertPlaceholder {
     position: fixed;
     top: 0px;
@@ -101,11 +40,21 @@ body {
 }
 
 .menu {
+    display: none;
+    z-index: 10;
+    font-family: 'Kalam', cursive;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.jsonMenu {
     font-family: 'Kalam', cursive;
     display: none;
     position: absolute;
     z-index: 10;
-    width: 85%;
+    width: 50%;
     height: 80%;
     top: 50%;
     left: 50%;
@@ -113,49 +62,10 @@ body {
     background-color: white;
 }
 
-#tableHeader {
+.closeButton {
     position: absolute;
-    z-index: 11;
-    width: 100%;
-    height: 10%;
-    top: 0%;
-    left: 50%;
-    transform: translate(-50%, 0%);
-}
-
-#tableBody {
-    position: absolute;
-    z-index: 11;
-    width: 100%;
-    height: 80%;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    overflow: auto;
-}
-
-.footer {
-    position: absolute;
-    z-index: 12;
-    width: 100%;
-    height: 10%;
-    top: 90%;
-    left: 50%;
-    transform: translate(-50%, 0%);
-}
-
-.leftButton {
-    display: inline-block;
-    position: absolute;
-    left: 0%;
-    height: 90%;
-}
-
-.rightButton {
-    display: inline-block;
-    position: absolute;
-    right: 0%;
-    height: 90%;
+    right: 0;
+    top: 0;
 }
 
 #JSONmenuBody {
@@ -164,7 +74,7 @@ body {
     width: 70%;
     height: 100%;
     top: 50%;
-    left: 45%;
+    left: 50%;
     transform: translate(-50%, -50%);
     overflow: auto;
 }
@@ -186,8 +96,6 @@ body {
 
 #textarea-fonts {
     resize: none;
-    width: 80%;
-    height: 90%;
 }
 
 #mask {
@@ -205,7 +113,7 @@ body {
     position: absolute;
     top: 0px;
     left: 0px;
-    z-index: 2;
+    z-index: 5;
     font-family: 'Kalam', cursive;
 }
 
@@ -223,9 +131,113 @@ body {
     z-index: 1;
 }
 
-.menuImage{
-    display:block;
-    margin-left:auto;
-    margin-right:auto;
-    width:100%;
+.menuImage {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+}
+
+.box {
+    position: relative;
+    user-select: none;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+}
+
+.box:hover {
+    cursor: grab;
+}
+
+.box-wrapper {
+    position: absolute;
+    transform-origin: top left;
+    white-space: nowrap;
+    line-height: 1.0;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    -ms-user-select: none;
+    -khtml-user-select: none;
+    user-select: none;
+    z-index: 7;
+}
+
+.dot {
+    height: 10px;
+    width: 10px;
+    background-color: #1E88E5;
+    position: absolute;
+    border-radius: 100px;
+    border: 1px solid white;
+    user-select: none;
+    z-index: 8;
+}
+
+.dot:hover {
+    background-color: #0D47A1;
+}
+
+.dot.left-top {
+    top: -6px;
+    left: -6px;
+    cursor: nw-resize;
+}
+
+.dot.left-bottom {
+    bottom: -6px;
+    left: -6px;
+    cursor: sw-resize;
+}
+
+.dot.right-top {
+    top: -6px;
+    right: -6px;
+    cursor: ne-resize;
+}
+
+.dot.right-bottom {
+    bottom: -6px;
+    right: -6px;
+    cursor: se-resize;
+}
+
+.dot.top-mid {
+    top: -6px;
+    left: calc(50% - 6px);
+    cursor: n-resize;
+}
+
+.dot.left-mid {
+    left: -6px;
+    top: calc(50% - 6px);
+    cursor: w-resize;
+}
+
+.dot.right-mid {
+    right: -6px;
+    top: calc(50% - 6px);
+    cursor: e-resize;
+}
+
+.dot.bottom-mid {
+    bottom: -6px;
+    left: calc(50% - 6px);
+    cursor: s-resize;
+}
+
+.dot.rotate {
+    top: -30px;
+    left: calc(50% - 6px);
+    cursor: url('https://findicons.com/files/icons/1620/crystal_project/16/rotate_ccw.png'), auto;
+}
+
+.rotate-link {
+    position: absolute;
+    width: 1px;
+    height: 15px;
+    background-color: #8f00ff;
+    top: -20px;
+    left: calc(50% - 1px);
+    z-index: 7;
 }
