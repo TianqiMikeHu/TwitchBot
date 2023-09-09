@@ -12,10 +12,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css"
         charset="utf-8" />
+    <link rel="preload" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist-regular-webfont.woff2" as="font"
+        type="font/woff2" crossorigin>
     <link
         href="https://static-cdn.jtvnw.net/jtv_user_pictures/b097cdc0-39e8-46e4-a899-d16a11233919-profile_image-300x300.png"
         rel="icon" type="image/x-icon">
     <link rel="stylesheet" href="../overlay-style.css" type="text/css" charset="utf-8" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css" />
+    <script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
     <script type="text/javascript" src="../overlay-variables.js"></script>
     <script type="text/javascript" src="../overlay-helper.js"></script>
@@ -24,43 +28,139 @@
 
 <body>
     <div id="liveAlertPlaceholder"></div>
-    <div id="menu" class="container menu">
-        <div id="tableHeader" class="container pe-1">
-            <div class="wordsColumn d-flex align-items-center justify-content-center">Words</div>
-            <div class="typeColumn d-flex align-items-center justify-content-center">Type</div>
-            <div class="colorColumn d-flex align-items-center justify-content-center">Font Color</div>
-            <div class="sizeColumn d-flex align-items-center justify-content-center">Size</div>
-            <div class="fontColumn d-flex align-items-center justify-content-center">Font Family</div>
-            <div class="timeColumn d-flex align-items-center justify-content-center">Time</div>
-            <div class="restartColumn d-flex align-items-center justify-content-center">Restart?</div>
+    <div id="menu" class="card menu" style="width: 30rem;">
+        <div class="card" style="width: 30rem">
+            <div class="card-body py-0">
+                <h2 class="card-title lead m-0 py-3 border-bottom border-dark">
+                    Edit This Element
+                </h2>
+                <div class="pane py-3 border-bottom">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Content</div>
+                        <p class="small m-0">
+                            &#8226; You can also copy & paste an image here
+                        </p>
+                    </div>
+                    <div class="cs-form form-lg">
+                        <input type="text" class="form-control needs-validation rounded-0" id="contentBlock"
+                            placeholder="PLACEHOLDER" onkeyup="validateInput(this, 'nonEmpty');"
+                            onpaste="pasteImage(this);">
+                    </div>
+                </div>
+
+                <img id="imgBlock" class="menuImage" src="" onload="resizeMenuImg(this);"></img>
+                <div class="pane py-3 border-bottom">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Type</div>
+                    </div>
+                    <div class="select2">
+                        <select class="form-select rounded-0" id="selectBlock" onchange="selectTrigger(this);">
+                            <option value="Text" selected>Text</option>
+                            <option value="Timer">Timer</option>
+                            <option value="DELETE">*Delete Element*</option>
+                            <option value="Image" hidden>Image</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pane py-3 border-bottom" id="colorBlockParent">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Font Color</div>
+                    </div>
+                    <div>
+                        <input type="text" data-coloris value="#FFFFFF" id="colorBlock" class="border">
+                    </div>
+                </div>
+                <div class="pane py-3 border-bottom" id="fontBlockParent">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Font Family</div>
+                    </div>
+                    <div class="select2">
+                        <select class="form-select rounded-0" id="fontBlock"></select>
+                    </div>
+                </div>
+                <div class="pane py-3 d-none border-bottom" id="timeBlockParent">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Timer</div>
+                    </div>
+                    <div class="cs-form form-lg d-flex">
+                        <input type="text" class="form-control needs-validation rounded-0" id="timeBlock"
+                            aria-describedby="timePostpend" placeholder="300"
+                            onkeyup="validateInput(this, 'positiveInteger');">
+                        <span class="input-group-text rounded-0" id="timePostpend">s</span>
+                    </div>
+                </div>
+                <div class="pane py-3 d-none" id="restartBlockParent">
+                    <div>
+                        <h2 class="card-title my-0 mb-2 h6">Restart Timer?</h2>
+                        <p class="small m-0">
+                            &#8226; This is enforced for new timers
+                        </p>
+                    </div>
+                    <div class="custom-check ms-auto">
+                        <input class="custom-check-input" type="checkbox" value="" id="restartBlock"
+                            onchange="checkboxTrigger(this);" />
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="tableBody" class="container"></div>
-        <div class="container footer">
-            <button type="button" class="btn btn-primary mb-1 ms-1 leftButton" onclick="subelement(event);">Add
-                Sub-Element</button>
-            <button type="button" class="btn btn-success mb-1 me-1 rightButton" onclick="closemenu(event);">Close
-                Menu</button>
+        <div class="closeButton" onclick="closeMenu(event);">
+            <button type="button" class="btn-close"></button>
         </div>
     </div>
 
-    <div id="JSONmenu" class="container menu">
-        <div id="JSONmenuBody" class="container">
-            <pre id="JSONPRE"></pre>
-        </div>
-        <div class="container footer">
-            <button type="button" class="btn btn-success mb-1 me-1 rightButton" onclick="closeJSON(event);">Close
-                Menu</button>
+    <div id="JSONmenu" class="card menu" style="width: 50rem;">
+        <div class="card" style="width: 50rem">
+            <div class="card-body py-0">
+                <h2 class="card-title lead m-0 py-3 border-bottom border-dark">
+                    View JSON
+                </h2>
+                <div class="pane py-3 border-bottom overflow-auto">
+                    <div>
+                        <p class="small m-0">
+                            &#8226; Full base64 encoding for images not shown
+                        </p>
+                    </div><br>
+                    <div class="cs-form form-lg">
+                        <textarea id="JSONPRE" class="form-control" rows="20" readonly disabled></textarea>
+                    </div>
+                </div>
+                <div class="closeButton" onclick="closeJSON(event);">
+                    <button type="button" class="btn-close"></button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="fontsMenu" class="container menu">
-        <div id="fontsMenuBody" class="container">
-            <textarea id="textarea-fonts"
-                placeholder="Enter the list of fonts:&#10;*One line per font family*&#10;*Case Sensitive*"></textarea>
-        </div>
-        <div class="container footer">
-            <button type="button" class="btn btn-success mb-1 me-1 rightButton" onclick="applyFonts(event);">Load
-                Fonts</button>
+    <div id="fontsMenu" class="card menu" style="width: 30rem;">
+        <div class="card" style="width: 30rem">
+            <div class="card-body py-0">
+                <h2 class="card-title lead m-0 py-3 border-bottom border-dark">
+                    Load Fonts
+                </h2>
+                <div class="pane py-3 border-bottom">
+                    <div>
+                        <p class="small m-0">
+                            &#8226; Choose from Google Fonts
+                        </p>
+                        <p class="small m-0">
+                            &#8226; Please start a new line for every font
+                        </p>
+                        <p class="small m-0">
+                            &#8226; Case Sensitive
+                        </p>
+                        <p class="small m-0">
+                            &#8226; Close this menu to apply changes
+                        </p>
+                    </div><br>
+                    <div class="cs-form form-lg">
+                        <textarea id="textarea-fonts" class="form-control" rows="8"
+                            placeholder="Enter the list of fonts:"></textarea>
+                    </div>
+                </div>
+                <div class="closeButton" onclick="applyFonts(event);">
+                    <button type="button" class="btn-close"></button>
+                </div>
+            </div>
         </div>
     </div>
 

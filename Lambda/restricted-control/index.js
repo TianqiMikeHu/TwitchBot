@@ -31,7 +31,7 @@ exports.handler = async (event) => {
             if (chan == null) {return forbidden();}
 
             let mods = require("./modList.js");
-            if (chan == "annaagtapp" || chan == "mike_hu_0_0") {
+            if (Object.keys(mods.modList).includes(chan)) {
                 if (mods.modList[chan].includes(display_name.toLowerCase())) {
                     // Approved
                     return await getS3File("a-poorly-written-bot", `restricted/overlay-${chan}.html`);
@@ -64,17 +64,11 @@ exports.handler = async (event) => {
             action: "modaction",
             channel: chan,
             category: "json",
-            coordinates: body
+            message: body
         };
-        let result = await websocketAPI(payload);
-        if (result) {
-            console.log(body);
-            console.log(JSON.stringify({'images': body.images}));
-            return success(JSON.stringify({'images': body.images}));
-        }
-        else {
-            return forbidden();
-        }
+        await websocketAPI(payload);
+        console.log(JSON.stringify({'images': body.images}));
+        return success(JSON.stringify({'images': body.images}));
     }
     else {
         return forbidden();

@@ -429,6 +429,8 @@ function showJSON(e) {
     let mask = document.getElementById("mask");
     let canvas = document.getElementById("canvas");
     canvas.style.pointerEvents = "none";
+    let video = document.getElementById('video');
+    video.style.pointerEvents = 'none';
 
     fonts.unshift("FoxyMist");
     fonts.unshift("Kalam");
@@ -449,6 +451,8 @@ function closeJSON(e) {
     let mask = document.getElementById("mask");
     let canvas = document.getElementById("canvas");
     canvas.style.pointerEvents = "auto";
+    let video = document.getElementById('video');
+    video.style.pointerEvents = 'auto';
     menu.style.animation = "menuAnimationReversed 0.2s forwards";
     mask.style.display = "none";
     setTimeout(() => {
@@ -467,6 +471,8 @@ function loadFonts(e) {
     let mask = document.getElementById("mask");
     let canvas = document.getElementById("canvas");
     canvas.style.pointerEvents = "none";
+    let video = document.getElementById('video');
+    video.style.pointerEvents = 'none';
 
     let textbox = document.getElementById("textarea-fonts");
     let fontString = "";
@@ -485,6 +491,8 @@ async function applyFonts(e) {
     let menu = document.getElementById("fontsMenu");
     let mask = document.getElementById("mask");
     let canvas = document.getElementById("canvas");
+    let video = document.getElementById('video');
+    video.style.pointerEvents = 'auto';
 
     fonts = document.getElementById("textarea-fonts").value.split("\n");
     fonts = fonts.filter(item => item);

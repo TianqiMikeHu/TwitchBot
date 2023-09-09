@@ -7,108 +7,38 @@ from bs4 import BeautifulSoup
 import pandas
 import numpy
 
-def get_header_user(bot=False):
-    ssm = boto3.client('ssm', 'us-west-2')
-    
-    if bot:
-        key = 'ACCESSTOKEN_BOT'
-    else:
-        key = 'ACCESSTOKEN'
-    
-    response = ssm.get_parameter(
-        Name=key,WithDecryption=True
+def get_header_user(user_id):
+    client = boto3.client('dynamodb', region_name='us-west-2')
+    response = client.get_item(
+        Key={
+            'CookieHash': {
+                'S': user_id,
+            }
+        },
+        TableName='CF-Cookies',
     )
-    
-    user_access_token = response['Parameter']['Value']
+    user_access_token =  response["Item"]['AccessToken']['S']
     
     header = {"Client-ID": os.getenv('CLIENTID'), 
-                "Authorization":"Bearer {0}".format(user_access_token), 
+                "Authorization":f"Bearer {user_access_token}", 
                 "Content-Type":"application/json"}
     return header
 
-def refresh_token(bot=False):
-    ssm = boto3.client('ssm', 'us-west-2')
-    
-    if bot:
-        refresh_key = 'REFRESH_BOT'
-        access_key = 'ACCESSTOKEN_BOT'
-    else:
-        refresh_key = 'REFRESH'
-        access_key = 'ACCESSTOKEN'
-    
-    response = ssm.get_parameter(
-        Name=refresh_key,WithDecryption=True
-    )
-    
-    refresh_token = response['Parameter']['Value']
-    
-    refresh = requests.utils.quote(refresh_token, safe='')
-    token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=refresh_token&refresh_token="+refresh_token
-    r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
-    print(r.json())
-    token = (r.json()).get('access_token')
-    refresh = (r.json()).get('refresh_token')
-    
-    response = ssm.put_parameter(
-        Name=access_key,
-        Value=token,
-        Type='SecureString',
-        Overwrite=True,
-        Tier='Standard',
-        DataType='text'
-    )
-    
-    response = ssm.put_parameter(
-        Name=refresh_key,
-        Value=refresh,
-        Type='SecureString',
-        Overwrite=True,
-        Tier='Standard',
-        DataType='text'
-    )
-    
-    
-    return token, refresh
 
-
-## return values: message, status code
-def broadcaster_ID(name):
-    r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header_user())
+def broadcaster_ID(name, header):
+    r = requests.get(url=f"https://api.twitch.tv/helix/users?login={name}", headers=header)
     if r.status_code!=200:
-        if r.status_code!=401:
-            return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None, None
-        else:
-            print("[ERROR]: status code is 401. Getting new access token...")
-            refresh_token()
-            # print(f'The new access token is: {token}')
-            r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=get_header_user())
-            if r.status_code!=200:
-                return f'[ERROR]: status code is {str(r.status_code)}', 2, None, None, None
+        return None, f'[ERROR]: status code is {str(r.status_code)}'
     data = r.json()
-    if len(data.get('data'))==0:
-        return "[ERROR]: User not found", 1, None, None, None
-    id = data.get('data')[0].get('id')
-    return id, 0, data.get('data')[0].get('display_name'), data.get('data')[0].get('profile_image_url'), data.get('data')[0].get('offline_image_url'), data.get('data')[0].get('description')
+    if len(data['data'])==0:
+        return None, "[ERROR]: User not found"
+    return data['data'][0], None
     
 
-def get_game_from_id(game_id):
-    r = requests.get(url=f"https://api.twitch.tv/helix/games?id={game_id}", headers=get_header_user())
+def get_game_from_id(game_id, header):
+    r = requests.get(url=f"https://api.twitch.tv/helix/games?id={game_id}", headers=header)
     if r.status_code!=200:
-        if r.status_code!=401:
-            return f'[ERROR]: status code is {str(r.status_code)}'
-        else:
-            print("[ERROR]: status code is 401. Getting new access token...")
-            refresh_token()
-            r = requests.get(url=f"https://api.twitch.tv/helix/games?id={game_id}", headers=get_header_user())
-            if r.status_code!=200:
-                return f'[ERROR]: status code is {str(r.status_code)}'
-            else:
-                data = r.json()
-                data = data.get('data')
-                if data is not None:
-                    if len(data)>0:
-                        return data[0]['name']
-                return '-'
+        return f'[ERROR]: status code is {str(r.status_code)}'
     else:
         data = r.json()
         data = data.get('data')
@@ -196,7 +126,7 @@ def fill_clips(csv, profile_image_url, offline_image_url, file_name):
     upload_to_s3(f"clips/clips-{file_name}.html", str(soup).encode('utf-8'), False)
 
 
-def listclip(user, force, max):
+def listclip(user, force, max, header):
     limit = 10      # We're only gonna search 10*100 = 1000 clips
     games = {}
 
@@ -214,9 +144,13 @@ def listclip(user, force, max):
             limit//=100
     
     # Get user ID from name
-    id, status, display_name, profile_image_url, offline_image_url, about = broadcaster_ID(user)
-    if status:      # It's an error message
-        return id
+    user, error_message = broadcaster_ID(user, header)
+    if not user:      # It's an error message
+        return error_message
+    id = user['id']
+    display_name = user['display_name']
+    profile_image_url = user['profile_image_url']
+    offline_image_url = user['offline_image_url']
 
     csv = numpy.array([[f"{display_name}'s Clips", '', '', '', ''], \
         ["Clip", "Game", "Views", "Created At", "Creator Name"]])
@@ -230,10 +164,8 @@ def listclip(user, force, max):
         else:
             return f"https://apoorlywrittenbot.cc/clips/clips-{display_name}.html"
 
-    header = get_header_user()
-
     # Get top clips
-    r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=100".format(id), headers=header)
+    r = requests.get(url=f"https://api.twitch.tv/helix/clips?broadcaster_id={id}&first=100", headers=header)
     for i in range(limit):
         if r.status_code!=200:
             return f"[ERROR]: status code is not {str(r.status_code)}"
@@ -249,7 +181,7 @@ def listclip(user, force, max):
 
             game_name = games.get(game_id)
             if game_name is None:
-                game_name = get_game_from_id(game_id)
+                game_name = get_game_from_id(game_id, header)
                 games[game_id] = game_name
             
             url = f"<a href=\"{link}\" class=\"link-dark\" target=\"_blank\" rel=\"noopener noreferrer\">{title}</a>"
@@ -260,7 +192,7 @@ def listclip(user, force, max):
         if pagination is None or pagination=='':
             break
         # Continue from pagination index
-        r = requests.get(url="https://api.twitch.tv/helix/clips?broadcaster_id={0}&first=100&after={1}".format(id, pagination), headers=header)
+        r = requests.get(url=f"https://api.twitch.tv/helix/clips?broadcaster_id={id}&first=100&after={pagination}", headers=header)
 
     fill_clips(csv, profile_image_url, offline_image_url, display_name)
     return f"https://apoorlywrittenbot.cc/clips/clips-{display_name}.html"

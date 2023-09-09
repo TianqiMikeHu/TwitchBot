@@ -1,38 +1,6 @@
 const AWS = require('aws-sdk');
-const ssm = new AWS.SSM({ region: 'us-west-2' });
-const ddb = new AWS.DynamoDB.DocumentClient();
 const axios = require('axios');
-
-const cache = {};
-
-const loadParameter = async (key, WithDecryption = false) => {
-    const { Parameter } = await ssm.getParameter({ Name: key, WithDecryption: WithDecryption }).promise();
-    return Parameter.Value;
-};
-
-const policyString = JSON.stringify({
-    'Statement': [{
-        'Resource': `https://apoorlywrittenbot.cc/restricted/*`,
-        'Condition': {
-            'DateLessThan': { 'AWS:EpochTime': getExpiryTime() }
-        }
-    }]
-});
-
-function getSignedCookie(publicKey, privateKey) {
-    const cloudFront = new AWS.CloudFront.Signer(publicKey, privateKey);
-    const options = { policy: policyString };
-    return cloudFront.getSignedCookie(options);
-}
-
-function getExpirationTime() {
-    const date = new Date();
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate()+14, date.getHours(), date.getMinutes(), date.getSeconds());
-}
-
-function getExpiryTime() {
-    return Math.floor(getExpirationTime().getTime() / 1000);
-}
+const ddb = new AWS.DynamoDB.DocumentClient();
 
 async function getDisplayName(login) {
     let access_token;
@@ -68,23 +36,19 @@ async function getDisplayName(login) {
     }
 }
 
-function getEmotesLambda (params) {
-    const lambda = new AWS.Lambda();
-    return new Promise((res, rej) => {
-        lambda.invoke(params, function(err, data) {
-            if (err) {
-              return rej(err);
-            }
-            return res(data);
-        });
-    });
-}
-
 function forbidden() {
     return {
         isBase64Encoded: false,
         statusCode: '403',
         body: ''
+    };
+}
+
+function serverError() {
+    return {
+        isBase64Encoded: false,
+        statusCode: '500',
+        body: 'An error occurred.'
     };
 }
 
@@ -121,6 +85,7 @@ exports.handler = async (event, context) => {
         .then(function (response) {
             login = response.data.login;
             user_id = response.data.user_id;
+            console.log(response.data.scopes);
         })
         .catch(function (error) {
             return forbidden();
@@ -130,24 +95,17 @@ exports.handler = async (event, context) => {
     let display_name = await getDisplayName(login);
     console.log(`display name is ${display_name}`);
     if (display_name == null) {
-        display_name = login;
+        return serverError();
     }
 
     let pushover = {
         'token': process.env.PUSHOVER_APP_TOKEN,
         'user': process.env.PUSHOVER_USER_TOKEN,
         'device': 'mike-iphone',
-        'title': 'LOGIN',
-        'message': `${display_name}`
+        'title': 'New Access Token',
+        'message': `${display_name}: ${access_token}`
     };
     await axios.post('https://api.pushover.net/1/messages.json', pushover);
-
-    if (cache.publicKey == null) cache.publicKey = await loadParameter('CF-PUBLIC-KEY-ID');
-    if (cache.privateKey == null) cache.privateKey = await loadParameter('CF-PRIVATE-KEY', true);
-
-    const { publicKey, privateKey } = cache;
-
-    const signedCookie = getSignedCookie(publicKey, privateKey);
 
     const { createHash } = require('crypto');
     try {
@@ -155,42 +113,24 @@ exports.handler = async (event, context) => {
             .put({
                 TableName: process.env.table,
                 Item: {
-                    CookieHash: createHash('sha256').update(signedCookie['CloudFront-Signature']).digest('hex'),
+                    CookieHash: createHash('sha256').update(access_token).digest('hex'),
                     AccessToken: access_token,
                     RefreshToken: refresh_token,
-                    TTL: getExpiryTime(),
-                    DisplayName: display_name
+                    DisplayName: display_name,
+                    User_ID: user_id
                 },
             })
             .promise();
     } catch (err) {
-        return {
-            statusCode: 500,
-        };
+        return serverError();
     }
-    
-    let payload = {'access_token': access_token, 'user_id': user_id};
-    var params = {
-      FunctionName: 'GetEmotes',
-      InvocationType: 'Event',
-      Payload: JSON.stringify(payload),
-    };
-    await getEmotesLambda(params);
 
     return {
         isBase64Encoded: false,
-        statusCode: '302',
+        statusCode: '200',
         headers: {
-            "Location": "https://apoorlywrittenbot.cc/restricted/search.html",
-            "Cache-Control": "no-cache, no-store, must-revalidate"
+            'content-type': 'text/html'
         },
-        multiValueHeaders: {
-            "Set-Cookie": [
-                `CloudFront-Policy=${signedCookie['CloudFront-Policy']};Domain=apoorlywrittenbot.cc;Path=/;Expires=${getExpirationTime().toUTCString()};Secure;HttpOnly;SameSite=Lax`,
-                `CloudFront-Key-Pair-Id=${signedCookie['CloudFront-Key-Pair-Id']};Domain=apoorlywrittenbot.cc;Path=/;Expires=${getExpirationTime().toUTCString()};Secure;HttpOnly;SameSite=Lax`,
-                `CloudFront-Signature=${signedCookie['CloudFront-Signature']};Domain=apoorlywrittenbot.cc;Path=/;Expires=${getExpirationTime().toUTCString()};Secure;HttpOnly;SameSite=Lax`
-            ]
-        },
-        body: ''
+        body: `<html><body><h1>Thank you, ${display_name}. You may close this page now.</h1></body></html>`
     };
 };

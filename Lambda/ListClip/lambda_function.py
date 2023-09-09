@@ -3,11 +3,6 @@ import json
 import urllib
 import API
 
-HOST = 'irc.chat.twitch.tv'
-NICK = 'a_poorly_written_bot'
-PORT = 6667
-CHAN = '#mike_hu_0_0'
-
 
 def lambda_handler(event, context):
     # print('event:', json.dumps(event))
@@ -30,7 +25,7 @@ def lambda_handler(event, context):
         
     user = urllib.parse.unquote_plus(user)
     
-    result = API.listclip(user, override, max)
+    result = API.listclip(user, override, max, API.get_header_user('160025583'))
 
     return  {
         'statusCode': 200,

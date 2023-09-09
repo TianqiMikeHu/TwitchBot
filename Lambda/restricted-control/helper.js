@@ -238,21 +238,23 @@ module.exports = function(){
         await this.updateItem(params);
         return body;
     };
-    this.websocketAPI = async function(payload){
-        let result;
-        await axios.post("https://qjds6buo76x3n5b52dhkthqyey0lfnxm.lambda-url.us-west-2.on.aws/",
-            payload,
-            {
-                headers: {
-                    "invoke-eventsub": process.env.INVOKE_EVENTSUB
+    this.wssLambda = async function (params) {
+        const lambda = new AWS.Lambda();
+        return new Promise((res, rej) => {
+            lambda.invoke(params, function(err, data) {
+                if (err) {
+                  return rej(err);
                 }
-            })
-            .then(function (response) {
-                result = true;
-            })
-            .catch(function (error) {
-                result = false;
+                return res(data);
             });
-        return result;
+        });
+    };
+    this.websocketAPI = async function(payload){
+        var params = {
+          FunctionName: 'wss',
+          InvocationType: 'Event',
+          Payload: JSON.stringify(payload),
+        };
+        await this.wssLambda(params);
     };
 };

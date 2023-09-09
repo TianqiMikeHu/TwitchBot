@@ -57,7 +57,7 @@
         payload = {
           'route': "sendmessage",
           'action': 'joinchannel',
-          'channel': params.channel
+          'channel': `${params.channel}-clip`
         }
         socket.send(JSON.stringify(payload));
       };
