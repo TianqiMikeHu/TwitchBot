@@ -1,25 +1,31 @@
 from twitchio.ext import commands
+from twitchio.ext import routines
 import random
 import re
 import pos
 import quizstruct
 import audio
+import threading
 
 from admin import *
 from quiz_functions import *
 from other import *
 from API import *
+import tools
 
 is_POSTAG = None
 appearance_list = []
 
 
 class Bot(commands.Bot):
-
     def __init__(self):
         dotenv.load_dotenv()
-        super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=[os.getenv('CHANNEL')])
-        self.probability = float(os.getenv('PROBABILITY'))
+        super().__init__(
+            token=f"oauth:{get_bot_token()}",
+            prefix="!",
+            initial_channels=[os.getenv("CHANNEL")],
+        )
+        self.probability = float(os.getenv("PROBABILITY"))
         # The following is an example of word replacement
         # self.keyword = {'JJ': 'valid',
         #                 'JJR': 'more valid',
@@ -31,38 +37,47 @@ class Bot(commands.Bot):
         #                 'VBP': 'clomp',
         #                 'VBZ': 'clomps'
         #                 }
-        self.bot = os.getenv('BOT')
+        self.bot = os.getenv("BOT")
         ### MYSQL
         dbconfig = {
-            "host":"localhost",
-            "port":"3306",
-            "user":"root",
-            "password": os.getenv('DBPASS'),
-            "database":"bot",
+            "host": "localhost",
+            "port": "3306",
+            "user": "root",
+            "password": os.getenv("DBPASS"),
+            "database": "bot",
         }
         self.pool = mysql.connector.pooling.MySQLConnectionPool(
-            pool_name="pool1",
-            pool_size=5,
-            pool_reset_session=True,
-            **dbconfig)
-        self.author = ''
+            pool_name="pool1", pool_size=5, pool_reset_session=True, **dbconfig
+        )
+        self.author = ""
         self.args = []
         self.channel = None
         self.quiz = quizstruct.Quiz()
         self.scrapper = web_scrapper.Web_Scrapper()
         # self.audio = audio.audio_transcript(os.getenv('CHANNEL'))
-        refresh_token()
+        self.invalidate.start(stop_on_error=False)
 
     async def event_ready(self):
         print("bot is ready")
 
+    async def event_token_expired():
+        print("Token expired.")
+        return f"oauth:{get_bot_token()}"
+
+    @routines.routine(minutes=60, iterations=None)
+    async def invalidate(self):
+        print("invalidate")
+        with tools.access_tokens_lock:
+            print(f"access_tokens: {tools.access_tokens}")
+            tools.access_tokens = {}
+            print(f"access_tokens: {tools.access_tokens}")
 
     # I never use this honestly
     async def word_swap(self, msg):
-        if random.random() < (1.0-self.probability):
+        if random.random() < (1.0 - self.probability):
             return
-        args = msg.content.split(' ')
-        if (len(args) > 15):
+        args = msg.content.split(" ")
+        if len(args) > 15:
             return
         pairs = pos.tag(msg.content)
         text = []
@@ -86,10 +101,9 @@ class Bot(commands.Bot):
             await self.channel.send(output)
         return
 
-    # Redirecting to the corresponding function 
+    # Redirecting to the corresponding function
     def redirect(self, function_name):
         return eval(function_name)(self.__dict__)
-
 
     ###########################################################################3
     # Main function for message processing
@@ -97,13 +111,14 @@ class Bot(commands.Bot):
     async def event_message(self, msg):
         if msg.author is None:
             return
-        
-        if msg.author.name.lower() == self.bot and msg.content[0]!='<':     # ignore self unless it's <command>
+
+        if (
+            msg.author.name.lower() == self.bot and msg.content[0] != "<"
+        ):  # ignore self unless it's <command>
             return
 
         if is_POSTAG:
             await self.word_swap(msg)
-        
 
         args = msg.content.split()
         self.args = args
@@ -114,12 +129,11 @@ class Bot(commands.Bot):
         trimmed = " ".join(self.args)
         lowered = trimmed.lower()
 
-
         # Is it a user seen before?
         if user not in appearance_list:
-            myquery = 'SELECT * FROM bot.viewers WHERE username = %s'
+            myquery = "SELECT * FROM bot.viewers WHERE username = %s"
             result = query(self.pool, myquery, False, (user,))
-            if len(result)==0:      # new user
+            if len(result) == 0:  # new user
                 # Check bot filter
                 ban = filter(lowered)
                 if ban:
@@ -127,13 +141,13 @@ class Bot(commands.Bot):
                     await self.channel.send("BOP BOP BOP")
                     return
                 # Okay not a follower bot
-                myquery = 'INSERT INTO bot.viewers(username, messages, points, greeting, shoutout, autoshoutout) VALUES(%s, 0, 0, \'NONE\', \'\', 0)'
+                myquery = "INSERT INTO bot.viewers(username, messages, points, greeting, shoutout, autoshoutout) VALUES(%s, 0, 0, 'NONE', '', 0)"
                 query(self.pool, myquery, True, (user,))
                 appearance_list.append(user)
             else:
                 # Greet user
                 greeting = result[0][3]
-                if greeting != 'NONE':
+                if greeting != "NONE":
                     await self.channel.send(greeting)
                 autoshoutout = result[0][5]
                 if autoshoutout:
@@ -143,27 +157,27 @@ class Bot(commands.Bot):
                     self.args = args_copy
                 appearance_list.append(user)
         # Increment message count
-        myquery = 'UPDATE bot.viewers SET messages = messages+1 WHERE username = %s'
+        myquery = "UPDATE bot.viewers SET messages = messages+1 WHERE username = %s"
         query(self.pool, myquery, True, (user,))
 
-
-
         # Special Cases
-        if 'nooo' in lowered or 'D:' in lowered:
+        if "nooo" in lowered or "D:" in lowered:
             await self.channel.send("D:")
             return
-        if 'good bot' in lowered:
+        if "good bot" in lowered:
             await self.channel.send(":D")
             return
 
         # Manual SQL Operation
-        if command=='!sql':
+        if command == "!sql":
             if user in ADMIN:
                 try:
-                    myquery = msg.content[5:]   # slicing off "!sql "
+                    myquery = msg.content[5:]  # slicing off "!sql "
 
                     commit = True
-                    if 'select' in myquery.lower() and 'call' not in myquery.lower():     # Set commit to false if it is a read
+                    if (
+                        "select" in myquery.lower() and "call" not in myquery.lower()
+                    ):  # Set commit to false if it is a read
                         commit = False
                     result = query(self.pool, myquery, commit)
                     if commit:
@@ -177,10 +191,10 @@ class Bot(commands.Bot):
                 await self.channel.send("You are not authorized to do this.")
             return
 
-
-
         # regex check so that it doesn't crash later
-        if not re.match('^[a-zA-Z0-9\t\n\s,.~/<>?;:\"\'`!@#$%^&*()\[\]\{\}_+=|\\-]+$', msg.content):
+        if not re.match(
+            "^[a-zA-Z0-9\t\n\s,.~/<>?;:\"'`!@#$%^&*()\[\]\{\}_+=|\\-]+$", msg.content
+        ):
             return
 
         # Some extra precautions
@@ -188,29 +202,30 @@ class Bot(commands.Bot):
             if word in lowered:
                 return
 
-
         # Now retrieve commands
-        myquery = 'SELECT response, access FROM bot.commands WHERE command_name = %s'
+        myquery = "SELECT response, access FROM bot.commands WHERE command_name = %s"
         try:
             result = query(self.pool, myquery, False, (command,))
-            if len(result)>0:
+            if len(result) > 0:
                 response = result[0][0]
                 access = result[0][1]
-                if access=='M' and user not in MODS:
+                if access == "M" and user not in MODS:
                     await self.channel.send("This action is restricted to mods only.")
-                    return 
-                
+                    return
+
                 # EVAL special case
                 index = 0
                 index2 = 0
                 while 1:
                     index = response.find(EVAL)
-                    if index!=-1:
-                        index2 = response.find(EVAL, index+1)
-                        eval1 = self.redirect(response[index+len(EVAL):index2])
-                        if eval1 is None:   # We have nothing to say
+                    if index != -1:
+                        index2 = response.find(EVAL, index + 1)
+                        eval1 = self.redirect(response[index + len(EVAL) : index2])
+                        if eval1 is None:  # We have nothing to say
                             return
-                        response = response[0:index]+eval1+response[index2+len(EVAL):]
+                        response = (
+                            response[0:index] + eval1 + response[index2 + len(EVAL) :]
+                        )
                     else:
                         break
 
@@ -219,42 +234,51 @@ class Bot(commands.Bot):
                 index2 = 0
                 while 1:
                     index = response.find(SUBQUERY, index2)
-                    if index!=-1:
+                    if index != -1:
                         query_args = [x.lower() for x in self.args[1:]]
-                        if len(query_args)==0:  # In case the user meant to target themselves
+                        if (
+                            len(query_args) == 0
+                        ):  # In case the user meant to target themselves
                             query_args.append(user)
-                        index2 = response.find(SUBQUERY, index+1)
-                        myquery = response[index+len(SUBQUERY):index2]
-                        num_args = myquery.count('%s')
-                        if num_args>0:
+                        index2 = response.find(SUBQUERY, index + 1)
+                        myquery = response[index + len(SUBQUERY) : index2]
+                        num_args = myquery.count("%s")
+                        if num_args > 0:
                             query_args = tuple(query_args[:num_args])
                         else:
                             query_args = None
 
                         commit = True
-                        if 'select' in myquery.lower() and 'call' not in myquery.lower():     # Set commit to false if it is a read
+                        if (
+                            "select" in myquery.lower()
+                            and "call" not in myquery.lower()
+                        ):  # Set commit to false if it is a read
                             commit = False
                         result = query(self.pool, myquery, commit, query_args)
-                        if not commit and len(result)>0:
-                            result = result[0][0]       # First thing in the result
+                        if not commit and len(result) > 0:
+                            result = result[0][0]  # First thing in the result
                         else:
-                            result = ''
-                        response = response[0:index]+str(result)+response[index2+len(SUBQUERY):]
-                        index2+=1
+                            result = ""
+                        response = (
+                            response[0:index]
+                            + str(result)
+                            + response[index2 + len(SUBQUERY) :]
+                        )
+                        index2 += 1
                     else:
                         break
-                
+
                 while 1:
                     index = response.find(SEPARATE)
-                    if index!=-1:
+                    if index != -1:
                         await self.channel.send(response[:index])
-                        response = response[index+len(SEPARATE):]
+                        response = response[index + len(SEPARATE) :]
                     else:
                         await self.channel.send(response)
                         return
         except mysql.connector.Error as e:
             await self.channel.send("[ERROR]: MySQL")
-        
+
         # Try to infer SE alias
         response = se_alias(self.__dict__)
         if response is not None:
@@ -262,7 +286,7 @@ class Bot(commands.Bot):
         return
 
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     # print("Do you wish to enable POS tagging function? [y/n]")
     # answer = input()
     # if answer.lower() is not "y":
