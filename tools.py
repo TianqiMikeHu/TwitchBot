@@ -53,12 +53,9 @@ def my_name(attributes):
 
 def get_header_user(user_id):
     with access_tokens_lock:
-        print(access_tokens)
         if access_tokens.get(user_id):
-            print("cache hit")
             user_access_token = access_tokens.get(user_id)
         else:
-            print("cache miss")
             client = boto3.client("dynamodb", region_name="us-west-2")
             response = client.get_item(
                 Key={

@@ -54,7 +54,15 @@ class Bot(commands.Bot):
         self.channel = None
         self.quiz = quizstruct.Quiz()
         self.scrapper = web_scrapper.Web_Scrapper()
-        # self.audio = audio.audio_transcript(os.getenv('CHANNEL'))
+        
+        # self.cooldown = {
+        #     "1min": 60,
+        #     "2min": 120,
+        #     "5min": 300
+        # }
+
+        # self.current_schedule = {}
+        # self.schedule.start(stop_on_error=False)
         self.invalidate.start(stop_on_error=False)
 
     async def event_ready(self):
@@ -66,11 +74,23 @@ class Bot(commands.Bot):
 
     @routines.routine(minutes=60, iterations=None)
     async def invalidate(self):
-        print("invalidate")
         with tools.access_tokens_lock:
-            print(f"access_tokens: {tools.access_tokens}")
             tools.access_tokens = {}
-            print(f"access_tokens: {tools.access_tokens}")
+
+    @routines.routine(seconds=15, iterations=None)
+    async def schedule(self):
+        for key, val in self.current_schedule.items():
+            if val<=0:
+                print(key)
+                self.current_schedule[key] = self.cooldown[key]+random.random()*30-15 # +-15 seconds randomness
+            else:
+                self.current_schedule[key] -= 15
+
+    @schedule.before_routine
+    async def initialize_schedule(self):
+        for key, val in self.cooldown.items():
+            self.current_schedule[key] = random.random()*val
+        print(self.current_schedule)
 
     # I never use this honestly
     async def word_swap(self, msg):

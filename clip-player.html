@@ -1,44 +1,24 @@
 <html>
 
 <head>
-  <title>Twitch Player Embed</title>
-  <link href="https://fonts.googleapis.com" rel="preconnect" />
-  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-  <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+  <title>Twitch Clip Player</title>
 </head>
 
 <body>
   <script>
 
-    var preload = true;
-    var url = "";
-
     window.onload = function () {
-      var video = document.getElementById('video');
-      video.addEventListener('load', onFrameLoad);
-      video.duration = 0;
+      document.getElementById('video').addEventListener('ended', onEnded);
     }
 
-    function onFrameLoad(event) {
-      if (preload) {
-        setTimeout(function () {
-          preload = false;
-          video.src = url;
-        }, 1000);
-      }
-      else {
-        video.style = "position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%; border:none; margin:0; padding:0; overflow:hidden; z-index:999999;";
-        setTimeout(function () {
-          video.style = "position: absolute;width:0;height:0;border:0;";
-          preload = true;
-        }, event.currentTarget.duration);
-      }
+    function onEnded(event) {
+      let video = document.getElementById('video');
+      video.style.display = "none";
     };
 
     function isOpen(ws) {
       return ws.readyState === ws.OPEN;
     }
-
 
     function connectws() {
       let socket = new WebSocket("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev");
@@ -66,9 +46,9 @@
         const data = JSON.parse(event.data);
         // console.log(data);
         if (data.action == "newclip") {
-          video.duration = data.duration;
-          video.src = data.src + "&muted=true";
-          url = data.src;
+          let video = document.getElementById('video');
+          video.style.display = "block";
+          video.setAttribute('src', data.src);
         }
       };
 
@@ -94,8 +74,10 @@
   </script>
 
 
-  <iframe id="video" src="" style="position: absolute;width:0;height:0;border:0;" preload="auto">
-  </iframe>
+<video id='video' style="position:fixed; top:0; left:0; bottom:0; right:0; width:100%; height:100%;" autoplay>
+  <source src="" type="video/mp4">
+  video not supported
+</video>
 
 
 </body>
