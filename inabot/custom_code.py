@@ -58,3 +58,7 @@ async def edit_counter(channel_read, channel_write, author, args):
 
 async def fierce(channel_read, channel_write, author, args):
     return await helper.quotes(channel_write, author, args)
+
+
+async def asdf(channel_read, channel_write, author, args):
+    return await channel_write.send("message")

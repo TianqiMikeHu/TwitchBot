@@ -49,6 +49,26 @@ body {
     transform: translate(-50%, -50%);
 }
 
+#commandsView {
+    display: none;
+    z-index: 10;
+    font-family: 'Kalam', cursive;
+    position: absolute;
+    top: 0px;
+    margin: 30px;
+    opacity: 0.8;
+}
+
+.listItem {
+    padding-top: 0.7rem;
+    padding-bottom: 0.7rem;
+    margin: 0;
+}
+
+.listItem:hover {
+    cursor: pointer;
+}
+
 .jsonMenu {
     font-family: 'Kalam', cursive;
     display: none;
@@ -117,12 +137,26 @@ body {
     font-family: 'Kalam', cursive;
 }
 
+.sidebar {
+    background-color: #6441a5; 
+    border: 1px solid #8f00ff;
+}
+
 #video {
     position: absolute;
     top: 0px;
     pointer-events: auto;
     border: none;
     z-index: 0;
+}
+
+#staticBackground {
+    position: absolute;
+    top: 0px;
+    pointer-events: auto;
+    border: none;
+    z-index: 0;
+    display: none;
 }
 
 #canvas {

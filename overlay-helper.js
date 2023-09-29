@@ -5,7 +5,11 @@ function setChannel() {
     channel_name = params.channel;
 }
 
-function InitializeColorPicler() {
+function convertRemToPixels(rem) {    
+    return rem * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}
+
+function InitializeColorPicker() {
     Coloris({
         themeMode: 'dark',
         clearButton: true
@@ -23,16 +27,36 @@ function resize() {
     let video = document.getElementById('video');
     let html = document.getElementById('html');
     let sidebar = document.getElementById('sidebar');
+    let staticBackground = document.getElementById('staticBackground');
+
     video.style.height = `${window.innerHeight}px`;
+    staticBackground.style.height = `${window.innerHeight}px`;
 
     width_INT = (window.innerHeight / 9.0 * 16.0 | 0);
     video.style.width = `${width_INT}px`;
+    staticBackground.style.width = `${width_INT}px`;
 
     left_INT = html.clientWidth - width_INT;
     video.style.left = `${left_INT}px`;
+    staticBackground.style.left = `${left_INT}px`;
 
     sidebar.style.height = video.style.height;
     sidebar.style.width = video.style.left;
+
+    // Scrollable menus
+    document.getElementById('menu').style.height = `${window.innerHeight*.75}px`;
+    document.getElementById('menuScrollable').style.height = `${window.innerHeight*.75-convertRemToPixels(4)}px`;
+
+    document.getElementById('JSONmenu').style.height = `${window.innerHeight*.9}px`;
+    document.getElementById('JSONmenuScrollable').style.height = `${window.innerHeight*.9-convertRemToPixels(4)}px`;
+
+    document.getElementById('commandsView').style.left = video.style.left;
+    document.getElementById('commandsView').style.height = `${window.innerHeight-60}px`;
+    document.getElementById('commandsList').style.height = `${window.innerHeight-60-convertRemToPixels(4)}px`;
+}
+
+function setSidebarColor(button) {
+    button.style.background = sidebarCurrentColor;
 }
 
 function textMode() {
@@ -122,8 +146,8 @@ function resizeMenuImg(img) {
 }
 
 function InitializeEventListeners() {
-    let helpButton = document.getElementById("helpButton");
-    helpButton.addEventListener("click", help);
+    let switchButton = document.getElementById("switchButton");
+    switchButton.addEventListener("click", switchView);
 
     let newButton = document.getElementById("newButton");
     newButton.addEventListener("click", create);
@@ -186,7 +210,7 @@ function elementUnfocused() {
         let video = document.getElementById('video');
         video.style.pointerEvents = 'auto';
     }
-    editButton.style.background = "#d9d9d9";
+    // editButton.style.background = "#d9d9d9";
 }
 
 function elementFocused(event, element) {
@@ -200,7 +224,7 @@ function elementFocused(event, element) {
 
     let editButton = document.getElementById("editButton");
     editButton.disabled = false;
-    editButton.style.background = "#6441a5";
+    editButton.style.background = sidebarDefaultColor;
     let video = document.getElementById('video');
     video.style.pointerEvents = 'none';
 }
@@ -589,4 +613,16 @@ function rotateHandler(event, boxWrapper, box) {
         window.removeEventListener('mousemove', eventMoveHandler, false);
         window.removeEventListener('mouseup', eventEndHandler);
     }, false);
+}
+
+function commandsList(var_name) {
+    return;
+}
+
+function listItemClicked(item){
+    if (lastClickedListItem!=null){
+        lastClickedListItem.style.background = 'white';
+    }
+    item.style.background = listItemSelectedColor;
+    lastClickedListItem = item;
 }

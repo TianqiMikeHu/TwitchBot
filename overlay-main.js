@@ -2,7 +2,7 @@ window.onload = async function () {
     resize();
     InitializeEventListeners();
     setChannel();
-    InitializeColorPicler();
+    InitializeColorPicker();
 
     let video = document.getElementById('video');
     video.src = `https://player.twitch.tv/?channel=${channel_name}&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true`;
@@ -25,10 +25,10 @@ document.onkeydown = function (evt) {
     var isDelete = false;
     isEscape = (evt.keyCode === 27);
     isDelete = (evt.keyCode === 46);
-    if (isEscape) {
+    if (isEscape && !commandsView) {
         elementUnfocused();
     }
-    else if (isDelete && lastClickedElement != null) {
+    else if (isDelete && lastClickedElement != null && !commandsView) {
         let index = lastClickedElement.parentNode.id;
         let element_json = mapping[index];
         // Clean up unused images
@@ -48,17 +48,76 @@ document.onkeydown = function (evt) {
     }
 };
 
-function help(e) {
+async function switchView(e) {
     e.stopPropagation();
     if (editing) {
         return;
     }
-    window.open('https://www.youtube.com/watch?v=6N9nNLtI9A0', '_blank').focus();
+    let video = document.getElementById('video');
+    let staticBackground = document.getElementById('staticBackground');
+    let editButton = document.getElementById("editButton");
+    if (!commandsView) {
+        // Swap background
+        video.src = "";
+        staticBackground.src = `https://apoorlywrittenbot.cc/media/${channel_name}-background.png`;
+        staticBackground.style.display = "block";
+        // Sidebar functionality
+        commandsView = true;
+        elementUnfocused();
+        editButton.disabled = false;
+        // CLean canvas and show menus
+        lastClickedElement = null;
+        document.getElementById('canvas').innerHTML = '';
+        document.getElementById('commandsView').style.display = 'block';
+        // Sidebar style
+        document.getElementById("switchButton").innerHTML = 'Switch to Overlay View';
+        document.getElementById("newButton").innerHTML = 'Commands';
+        editButton.innerHTML = 'Counters';
+        document.getElementById("saveButton").innerHTML = 'Quotes';
+        document.getElementById("clearButton").innerHTML = '-';
+        document.getElementById("jsonButton").innerHTML = '-';
+        document.getElementById("fontsButton").innerHTML = '-';
+        for (var button of document.querySelectorAll('.sidebar')) {
+            button.style = `background-color: ${sidebarAlternateColor}; border: 1px solid ${borderAlternateCOlor}`;
+        }
+        sidebarCurrentColor = sidebarAlternateColor;
+    }
+    else {
+        // Swap background
+        video.src = `https://player.twitch.tv/?channel=${channel_name}&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true`;
+        staticBackground.style.display = "none";
+        document.getElementById('commandsView').style.display = 'none';
+        // Restore functionality
+        commandsView = false;
+        mapping = {};
+        index = 0;
+        imagesDictionary = {};
+        imagesInMenu = [];
+        intervalList = [];
+        await loadInitialJSON(video);
+        deleteExpiredTimers();
+        elementUnfocused();
+        // Sidebar style
+        document.getElementById("switchButton").innerHTML = 'Switch to Commands View';
+        document.getElementById("newButton").innerHTML = 'New Element';
+        editButton.innerHTML = 'Edit This Element';
+        document.getElementById("saveButton").innerHTML = 'Save';
+        document.getElementById("clearButton").innerHTML = 'Clear All';
+        document.getElementById("jsonButton").innerHTML = 'Show JSON';
+        document.getElementById("fontsButton").innerHTML = 'Load Fonts';
+        for (var button of document.querySelectorAll('.sidebar')) {
+            button.style = `background-color: ${sidebarDefaultColor}; border: 1px solid ${borderColor}`;
+        }
+        sidebarCurrentColor = sidebarDefaultColor;
+    }
 }
 
 function create(e) {
     if (e) {
         e.stopPropagation();
+    }
+    if (commandsView) {
+        return commandsList("commands");
     }
     if (editing) {
         return;
@@ -128,6 +187,9 @@ function create(e) {
 
 function edit(e) {
     e.stopPropagation();
+    if (commandsView) {
+        return commandsList("Counters");
+    }
     if (editing) {
         return;
     }
@@ -374,6 +436,9 @@ async function closeMenu(e) {
 
 async function save(e) {
     e.stopPropagation();
+    if (commandsView) {
+        return commandsList("quotes");
+    }
     if (editing) {
         return;
     }
@@ -407,6 +472,9 @@ async function save(e) {
 
 function clearAll(e) {
     e.stopPropagation();
+    if (commandsView) {
+        return;
+    }
     if (editing) {
         return;
     }
@@ -421,6 +489,9 @@ function clearAll(e) {
 
 function showJSON(e) {
     e.stopPropagation();
+    if (commandsView) {
+        return;
+    }
     if (editing) {
         return;
     }
@@ -463,6 +534,9 @@ function closeJSON(e) {
 
 function loadFonts(e) {
     e.stopPropagation();
+    if (commandsView) {
+        return;
+    }
     if (editing) {
         return;
     }

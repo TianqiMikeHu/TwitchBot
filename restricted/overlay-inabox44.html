@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html id="html" lang="en">
+
+<head>
+    <title>Kim's Overlay Interface</title>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1" name="viewport" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css"
+        charset="utf-8" />
+    <link rel="preload" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist-regular-webfont.woff2" as="font"
+        type="font/woff2" crossorigin>
+    <link
+        href="https://static-cdn.jtvnw.net/jtv_user_pictures/69a1681f-026f-444b-90fa-8ceb2a597dec-profile_image-300x300.png"
+        rel="icon" type="image/x-icon">
+    <link rel="stylesheet" href="../overlay-style.css" type="text/css" charset="utf-8" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css" />
+    <script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
+    <script type="text/javascript" src="../overlay-variables.js"></script>
+    <script type="text/javascript" src="../overlay-helper.js"></script>
+    <script type="text/javascript" src="../overlay-main.js"></script>
+</head>
+
+<body>
+    <div id="liveAlertPlaceholder"></div>
+    <div id="menu" class="card menu overflow-hidden" style="width: 30rem;">
+        <div class="card-title lead m-0 py-3 border-bottom border-dark" style="padding-left: 1rem; height: 4rem;">
+            Edit This Element
+        </div>
+        <div id="menuScrollable" class="card rounded-0" style="width: 30rem;">
+            <div class="card-body py-0 vh-100 overflow-auto">
+                <div class="pane py-3 border-bottom">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Content</div>
+                        <p class="small m-0">
+                            &#8226; You can also copy & paste an image here
+                        </p>
+                    </div>
+                    <div class="cs-form form-lg">
+                        <input type="text" class="form-control needs-validation rounded-0" id="contentBlock"
+                            placeholder="PLACEHOLDER" onkeyup="validateInput(this, 'nonEmpty');"
+                            onpaste="pasteImage(this);">
+                    </div>
+                </div>
+
+                <img id="imgBlock" class="menuImage" src="" onload="resizeMenuImg(this);"></img>
+                <div class="pane py-3 border-bottom">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Type</div>
+                    </div>
+                    <div class="select2">
+                        <select class="form-select rounded-0" id="selectBlock" onchange="selectTrigger(this);">
+                            <option value="Text" selected>Text</option>
+                            <option value="Timer">Timer</option>
+                            <option value="DELETE">*Delete Element*</option>
+                            <option value="Image" hidden>Image</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pane py-3 border-bottom" id="colorBlockParent">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Font Color</div>
+                    </div>
+                    <div>
+                        <input type="text" data-coloris value="#FFFFFF" id="colorBlock" class="border">
+                    </div>
+                </div>
+                <div class="pane py-3 border-bottom" id="fontBlockParent">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Font Family</div>
+                    </div>
+                    <div class="select2">
+                        <select class="form-select rounded-0" id="fontBlock"></select>
+                    </div>
+                </div>
+                <div class="pane py-3 d-none border-bottom" id="timeBlockParent">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Timer</div>
+                    </div>
+                    <div class="cs-form form-lg d-flex">
+                        <input type="text" class="form-control needs-validation rounded-0" id="timeBlock"
+                            aria-describedby="timePostpend" placeholder="300"
+                            onkeyup="validateInput(this, 'positiveInteger');">
+                        <span class="input-group-text rounded-0" id="timePostpend">s</span>
+                    </div>
+                </div>
+                <div class="pane py-3 d-none" id="restartBlockParent">
+                    <div>
+                        <h2 class="card-title my-0 mb-2 h6">Restart Timer?</h2>
+                        <p class="small m-0">
+                            &#8226; This is enforced for new timers
+                        </p>
+                    </div>
+                    <div class="custom-check ms-auto">
+                        <input class="custom-check-input" type="checkbox" value="" id="restartBlock"
+                            onchange="checkboxTrigger(this);" />
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="closeButton" onclick="closeMenu(event);">
+            <button type="button" class="btn-close"></button>
+        </div>
+    </div>
+
+    <div id="JSONmenu" class="card menu overflow-hidden" style="width: 50rem;">
+        <div class="card-title lead m-0 py-3 border-bottom border-dark" style="padding-left: 1rem; height: 4rem;">
+            View JSON
+        </div>
+        <div id="JSONmenuScrollable" class="card rounded-0" style="width: 50rem;">
+            <div class="card-body py-0 vh-100 overflow-auto">
+                <div class="pane py-3 border-bottom overflow-auto">
+                    <div>
+                        <p class="small m-0">
+                            &#8226; Full base64 encoding for images not shown
+                        </p>
+                    </div><br>
+                    <div class="cs-form form-lg">
+                        <textarea id="JSONPRE" class="form-control" rows="20" readonly disabled></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="closeButton" onclick="closeJSON(event);">
+            <button type="button" class="btn-close"></button>
+        </div>
+    </div>
+
+    <div id="fontsMenu" class="card menu" style="width: 30rem;">
+        <div class="card" style="width: 30rem">
+            <div class="card-body py-0">
+                <h2 class="card-title lead m-0 py-3 border-bottom border-dark">
+                    Load Fonts
+                </h2>
+                <div class="pane py-3 border-bottom">
+                    <div>
+                        <p class="small m-0">
+                            &#8226; Choose from Google Fonts
+                        </p>
+                        <p class="small m-0">
+                            &#8226; Please start a new line for every font
+                        </p>
+                        <p class="small m-0">
+                            &#8226; Case Sensitive
+                        </p>
+                        <p class="small m-0">
+                            &#8226; Close this menu to apply changes
+                        </p>
+                    </div><br>
+                    <div class="cs-form form-lg">
+                        <textarea id="textarea-fonts" class="form-control" rows="8"
+                            placeholder="Enter the list of fonts:"></textarea>
+                    </div>
+                </div>
+                <div class="closeButton" onclick="applyFonts(event);">
+                    <button type="button" class="btn-close"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mask"></div>
+
+    <div id="commandsView" class="card overflow-hidden" style="width: 20rem;">
+        <div class="card-title lead m-0 py-3 border-bottom border-dark" style="padding-left: 1rem; height: 4rem;">
+            Commands List
+        </div>
+        <div id="commandsList" class="card rounded-0" style="width: 20rem;">
+            <div class="card-body pt-1 vh-100 overflow-auto">
+                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
+                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
+                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
+                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
+                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+                <div class="h5 listItem border-bottom">Content</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sidebar" class="d-grid">
+        <button type="button" id="switchButton" class="btn btn-primary rounded-0 sidebar"
+            onmouseover="this.style.background = '#6699ff'" onmouseleave="setSidebarColor(this);">Switch to Commands
+            View</button>
+
+        <button type="button" id="newButton" class="btn btn-primary rounded-0 sidebar"
+            onmouseover="this.style.background = '#ffe066'" onmouseleave="setSidebarColor(this);">New
+            Element</button>
+
+        <button disabled type="button" id="editButton" class="btn btn-primary rounded-0 sidebar"
+            style="background-color: #6441a5;" onmouseover="if(!this.disabled){this.style.background = '#ff9966';}"
+            onmouseleave="setSidebarColor(this);">Edit
+            This Element</button>
+
+        <button type="button" id="saveButton" class="btn btn-primary rounded-0 sidebar"
+            onmouseover="this.style.background = '#99ff99'" onmouseleave="setSidebarColor(this);">Save</button>
+
+        <button type="button" id="clearButton" class="btn btn-primary rounded-0 sidebar"
+            onmouseover="this.style.background = '#ff6666'" onmouseleave="setSidebarColor(this);">Clear
+            All</button>
+
+        <button type="button" id="jsonButton" class="btn btn-primary rounded-0 sidebar"
+            onmouseover="this.style.background = '#ff99cc'" onmouseleave="setSidebarColor(this);">Show
+            JSON</button>
+
+        <button type="button" id="fontsButton" class="btn btn-primary rounded-0 sidebar"
+            onmouseover="this.style.background = '#00ffff'" onmouseleave="setSidebarColor(this);">Load
+            Fonts</button>
+    </div>
+
+    <iframe id="video" src="" preload="auto"></iframe>
+    <img id="staticBackground" src="">
+
+    <div id="canvas"></div>
+</body>
+
+</html>

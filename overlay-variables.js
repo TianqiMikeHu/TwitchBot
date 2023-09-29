@@ -19,6 +19,11 @@ var mapping = {};
 var index = 0;
 const font_scale = 25;
 const borderColor = '#8f00ff';
+const borderAlternateCOlor = '#0dbf0d';
+const sidebarDefaultColor = '#6441a5';
+const sidebarAlternateColor = '#0a8f0b';
+var sidebarCurrentColor = sidebarDefaultColor;
+const listItemSelectedColor = '#b3e6ff';
 const minWidth = 20;
 const minHeight = 20;
 var initX, initY, mousePressX, mousePressY, initW, initH, initRotate;
@@ -27,7 +32,9 @@ var left_INT = 0;
 var width_INT = 0;
 
 var lastClickedElement;
+var lastClickedListItem;
 var editing = false;
+var commandsView = false;
 
 var imagesDictionary = {};
 var imagesInMenu = [];

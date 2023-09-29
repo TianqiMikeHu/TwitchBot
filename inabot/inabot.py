@@ -60,8 +60,8 @@ class Bot(commands.Bot):
         
         # if not access.authorization("V", msg.author):
         #     if access.url_match(msg.content):
-        #         return
-        access.url_match(msg.content)
+        #         return  # TODO
+        # access.url_match(msg.content)
 
         args = msg.content.split()
         await parse_command(

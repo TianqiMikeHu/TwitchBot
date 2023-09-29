@@ -2,6 +2,7 @@ from queue import Queue
 from lru import LRU
 
 INABOT_ID = "681131749"
+# INABOT_ID = "687759326"
 # BROADCASTER_ID = "57184879"
 BROADCASTER_ID = "160025583"
 COMMANDS_TABLE = "inabot-commands"
