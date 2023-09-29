@@ -2,6 +2,7 @@ from twitchio.ext import commands
 import dotenv
 import os
 import requests
+import boto3
 
 
 DEVICE = 'mike-iphone'
@@ -10,6 +11,7 @@ channels = ["mike_hu_0_0", "thelastofchuck", "inabox44", "breakingpointes", "bur
 key_words = ["mike"]
 exclude_key_words = ["mike and ike", "mike n ike", "mikehu4", "johnmike"]
 key_names = []
+chan_cache = {}
 
 class Bot(commands.Bot):
 
@@ -41,34 +43,30 @@ class Bot(commands.Bot):
         return
 
 
-    def get_header(self):
-        dotenv.load_dotenv(override=True)
-        header = {"Client-ID": os.getenv('CLIENTID'), 
-                    "Authorization":"Bearer {0}".format(os.getenv('ACCESSTOKEN')), 
-                    "Content-Type":"application/json"}
+    def get_header_user(self, user_id):
+        client = boto3.client("dynamodb", region_name="us-west-2")
+        response = client.get_item(
+            Key={
+                "CookieHash": {
+                    "S": user_id,
+                }
+            },
+            TableName="CF-Cookies",
+        )
+        user_access_token = response["Item"]["AccessToken"]["S"]            
+
+        header = {
+            "Client-ID": os.getenv("CLIENTID"),
+            "Authorization": f"Bearer {user_access_token}",
+            "Content-Type": "application/json",
+        }
         return header
 
 
-    def new_access_token(self):
-        token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=client_credentials"
-        r = requests.post(url=token_request)
-        token = (r.json()).get('access_token')
-        dotenv.set_key('.env', 'ACCESSTOKEN', token)
-        return token
-
-
     def channel_name(self, name):
-        r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=self.get_header())
+        r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=self.get_header_user("681131749"))
         if r.status_code!=200:
-            if r.status_code!=401:
-                return f'[ERROR]: status code is {str(r.status_code)}', 2
-            else:
-                print("[ERROR]: status code is 401. Getting new access token...")
-                token = self.new_access_token()
-                # print(f'The new access token is: {token}')
-                r = requests.get(url="https://api.twitch.tv/helix/users?login={0}".format(name), headers=self.get_header())
-                if r.status_code!=200:
-                    return f'[ERROR]: status code is {str(r.status_code)}', 2
+            return f'[ERROR]: status code is {str(r.status_code)}', 2
         data = r.json()
         if len(data.get('data'))==0:
             return "[ERROR]: User not found", 1
@@ -91,27 +89,37 @@ class Bot(commands.Bot):
 
         # if msg.author.name.lower() in key_names or msg.author.name.lower() == msg.channel.name:
         if msg.author.name.lower() in key_names:
-            chan_name, status = self.channel_name(msg.channel.name)
-            if status!=0:
-                print(chan_name)
-                self.pushover(msg.content, msg.author.display_name, msg.channel.name)
-            else:
+            if chan_cache.get(msg.channel.name):
+                chan_name = chan_cache[msg.channel.name]
                 self.pushover(msg.content, msg.author.display_name, chan_name)
-            return
-
-        for e in exclude_key_words:
-            if e in lower_case:
-                print(lower_case)
-                return
-
-        for k in key_words:
-            if k in lower_case:
+            else:
                 chan_name, status = self.channel_name(msg.channel.name)
                 if status!=0:
                     print(chan_name)
                     self.pushover(msg.content, msg.author.display_name, msg.channel.name)
                 else:
+                    chan_cache[msg.channel.name] = chan_name
                     self.pushover(msg.content, msg.author.display_name, chan_name)
+                
+            return
+
+        for e in exclude_key_words:
+            if e in lower_case:
+                return
+
+        for k in key_words:
+            if k in lower_case:
+                if chan_cache.get(msg.channel.name):
+                    chan_name = chan_cache[msg.channel.name]
+                    self.pushover(msg.content, msg.author.display_name, chan_name)
+                else:
+                    chan_name, status = self.channel_name(msg.channel.name)
+                    if status!=0:
+                        print(chan_name)
+                        self.pushover(msg.content, msg.author.display_name, msg.channel.name)
+                    else:
+                        chan_cache[msg.channel.name] = chan_name
+                        self.pushover(msg.content, msg.author.display_name, chan_name)
                 break
 
 
