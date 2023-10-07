@@ -1,50 +1,11 @@
 import boto3
-import os
 import data
 import importlib
 import json
+import API
 import random
-import requests
 import access
-
-
-def get_header_user(user_id):
-    if data.ACCESS_TOKENS.get(user_id):
-        user_access_token = data.ACCESS_TOKENS.get(user_id)
-    else:
-        client = boto3.client("dynamodb", region_name="us-west-2")
-        response = client.get_item(
-            Key={
-                "CookieHash": {
-                    "S": user_id,
-                }
-            },
-            TableName=data.TOKENS_TABLE,
-        )
-        user_access_token = response["Item"]["AccessToken"]["S"]
-        data.ACCESS_TOKENS[user_id] = user_access_token
-
-    header = {
-        "Client-ID": os.getenv("CLIENTID"),
-        "Authorization": f"Bearer {user_access_token}",
-        "Content-Type": "application/json",
-    }
-    return header
-
-
-def get_bot_token():
-    client = boto3.client("dynamodb", region_name="us-west-2")
-    response = client.get_item(
-        Key={
-            "CookieHash": {
-                "S": data.INABOT_ID,
-            }
-        },
-        TableName=data.TOKENS_TABLE,
-    )
-    user_access_token = response["Item"]["AccessToken"]["S"]
-    data.ACCESS_TOKENS[data.INABOT_ID] = user_access_token
-    return user_access_token
+import re
 
 
 def invalidate():
@@ -82,6 +43,15 @@ def check_int(s):
     if s[0] == "-":
         return s[1:].isdigit()
     return s.isdigit()
+
+def convert_to_user(arg):
+    if arg[0] == '@':
+        arg = arg[1:]
+    user = API.broadcaster_ID(arg)
+    if not user:
+        return arg
+    else:
+        return user['display_name']
 
 
 def initialize_commands():
@@ -140,7 +110,7 @@ def load_command(cmd):
 # ${args :5} -> args[:5]
 # ${args :} -> args[:]
 #
-# ${user abc} -> Interpret 'abc' as user, remove @ character if needed. Useful when needed to sanitize user input. e.g. ${user ${args 1}}
+# ${user abc} -> Interpret 'abc' as user. Converto display_name and remove @ character if needed.
 # ${escape abc} -> Escapes double quotes and backslashes
 #
 # ${random.pick ["item one", "item two", "item three"]} -> Pick random item from list
@@ -185,9 +155,7 @@ def parse_variables(message, author, args):
                     if isinstance(evaluate_this, list):
                         evaluate_this = " ".join(evaluate_this)
                 case "user":
-                    evaluate_this = evaluate_this_list[1]
-                    if evaluate_this[0] == "@":
-                        evaluate_this = evaluate_this[1:]
+                    evaluate_this = convert_to_user(evaluate_this_list[1])
                 case "escape":
                     evaluate_this = json.dumps(evaluate_this_list[1])
                     evaluate_this = evaluate_this[1:-1]
@@ -201,15 +169,15 @@ def parse_variables(message, author, args):
                         )
                     )
                 case "random.chatter":
-                    evaluate_this = get_chatters(data.BROADCASTER_ID)
+                    evaluate_this = API.get_chatters(data.BROADCASTER_ID)
                 case "count":
                     evaluate_this = count(evaluate_this_list[1])
                 case "getcount":
                     evaluate_this = get_count(evaluate_this_list[1])
                 case "game":
-                    evaluate_this = get_game(data.BROADCASTER_ID)
+                    evaluate_this = API.get_game(data.BROADCASTER_ID)
                 case "title":
-                    evaluate_this = get_title(data.BROADCASTER_ID)
+                    evaluate_this = API.get_title(data.BROADCASTER_ID)
                 case _:
                     # else we don't know what this is
                     raise ValueError
@@ -221,15 +189,6 @@ def parse_variables(message, author, args):
         else:
             break
     return message
-
-
-def get_chatters(broadcaster_id):
-    r = requests.get(
-        url=f"https://api.twitch.tv/helix/chat/chatters?broadcaster_id={broadcaster_id}&moderator_id={data.INABOT_ID}&first=1000",
-        headers=get_header_user(data.INABOT_ID),
-    )
-    chatters = r.json()["data"]
-    return random.choice(chatters)["user_name"]
 
 
 def count(counter):
@@ -265,32 +224,6 @@ def get_count(counter):
         TableName=data.VARIABLES_TABLE,
     )
     return response["Item"]["var_val"]["N"]
-
-
-def get_game(broadcaster_id):
-    r = requests.get(
-        url=f"https://api.twitch.tv/helix/channels?broadcaster_id={broadcaster_id}",
-        headers=get_header_user(data.INABOT_ID),
-    )
-    if r.status_code != 200:
-        return "[ERROR]"
-    game_name = r.json()["data"][0]["game_name"]
-    if len(game_name) < 1:
-        game_name = "[Undefined]"
-    return game_name
-
-
-def get_title(broadcaster_id):
-    r = requests.get(
-        url=f"https://api.twitch.tv/helix/channels?broadcaster_id={broadcaster_id}",
-        headers=get_header_user(data.INABOT_ID),
-    )
-    if r.status_code != 200:
-        return "[ERROR]"
-    title = r.json()["data"][0]["title"]
-    if len(title) < 1:
-        title = "[Undefined]"
-    return title
 
 
 async def cmd_add(channel_write, author, args):
@@ -870,4 +803,79 @@ async def quotes(channel_write, author, args):
     )
     return await channel_write.send(response["Item"]["quotes_val"]["S"])
 
+async def pyramid(channel_write, author, msg):
+    repetition = r"\s+\1"
+    increase = None
+    decrease = None
 
+    if data.PYRAMID_WIDTH_MAX<data.PYRAMID_WIDTH_NEXT:  # Increase phase
+        if data.PYRAMID_WIDTH_NEXT == 1:    # New pyramid
+            increase = re.match(r"^(\w+)$", msg)
+            if increase:    # Starting pyramid
+                data.PYRAMID_WORD = increase.group()
+                data.PYRAMID_WIDTH_MAX+=1
+                data.PYRAMID_WIDTH_NEXT+=1
+        else:   # Pyramid in progress
+            increase = re.match(f"^({data.PYRAMID_WORD})"+repetition*(data.PYRAMID_WIDTH_NEXT-1)+"$", msg)
+            if data.PYRAMID_WIDTH_MAX>=3:  # Can decrease (When max width >=3)
+                decrease = re.match(f"^({data.PYRAMID_WORD})"+repetition*(data.PYRAMID_WIDTH_MAX-2)+"$", msg)
+            if increase:
+                data.PYRAMID_WIDTH_MAX+=1
+                data.PYRAMID_WIDTH_NEXT+=1
+            elif decrease:
+                data.PYRAMID_WIDTH_NEXT-=3
+            else:   # Pyramid broke
+                data.PYRAMID_WIDTH_MAX=0
+                data.PYRAMID_WIDTH_NEXT=1
+                # Potential new pyramid
+                increase = re.match(r"^(\w+)$", msg)
+                if increase:    # Starting pyramid
+                    data.PYRAMID_WORD = increase.group()
+                    data.PYRAMID_WIDTH_MAX+=1
+                    data.PYRAMID_WIDTH_NEXT+=1
+    else:   # Decrease phase
+        decrease = re.match(f"^({data.PYRAMID_WORD})"+repetition*(data.PYRAMID_WIDTH_NEXT-1)+"$", msg)
+        if decrease:
+            if data.PYRAMID_WIDTH_NEXT==1:  # Success!
+                match data.PYRAMID_WIDTH_MAX:
+                    case 3:
+                        await channel_write.send(f"Nice 3-width {data.PYRAMID_WORD} myd {author.display_name} ... but is that really the best you've got? inaboxSus")
+                    case 4:
+                        await channel_write.send(f"Nice work on the best number {data.PYRAMID_WORD} myd {author.display_name} inaboxGasm inaboxGasm inaboxGasm inaboxGasm")
+                    case _:
+                        await channel_write.send(f"{author.display_name} just finished a {data.PYRAMID_WIDTH_MAX}-width {data.PYRAMID_WORD} myd. Now you've got my attention inaboxPog")
+                data.PYRAMID_WIDTH_MAX=0
+                data.PYRAMID_WIDTH_NEXT=1
+            else:   # Should decrease further
+                data.PYRAMID_WIDTH_NEXT-=1
+        else:   # Pyramid broke
+            data.PYRAMID_WIDTH_MAX=0
+            data.PYRAMID_WIDTH_NEXT=1
+            # Potential new pyramid
+            increase = re.match(r"^(\w+)$", msg)
+            if increase:    # Starting pyramid
+                data.PYRAMID_WORD = increase.group()
+                data.PYRAMID_WIDTH_MAX+=1
+                data.PYRAMID_WIDTH_NEXT+=1
+
+
+async def sub_alert(channel_write, tags):
+    months = None
+    display_name = None
+    if tags['msg-id'] == 'sub' or tags['msg-id'] == 'resub':
+        months = tags['msg-param-cumulative-months']
+        display_name = tags.get('display-name')
+        if not display_name:
+            display_name = tags['login']
+    elif tags['msg-id'] == 'subgift':
+        months = tags['msg-param-months']
+        display_name = tags.get('msg-param-recipient-display-name')
+        if not display_name:
+            display_name = tags['msg-param-recipient-user-name']
+    
+    if not months:
+        return
+    if months == '1':
+        await channel_write.send(f"{display_name} just subscribed inaboxPog Welcome to The Box!")
+    else:
+        await channel_write.send(f"Welcome back to The Box, {display_name}! inaboxPog Thanks for subscribing for {months} months in a row inaboxLove")

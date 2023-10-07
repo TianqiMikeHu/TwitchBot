@@ -33,7 +33,7 @@ def authorization(level, author):
     return True
 
 
-def cooldown_approved(cmd, author):
+def cooldown_approved(cmd, author_name):
     global_cooldown_approved = True
     user_cooldown_approved = True
     now = int(time.time())
@@ -41,14 +41,14 @@ def cooldown_approved(cmd, author):
 
     if not data.COOLDOWN.get(cmd):  # Command never invoked before, OK
         data.COOLDOWN[cmd] = {}
-        data.COOLDOWN[cmd][author.display_name] = now
+        data.COOLDOWN[cmd][author_name] = now
     else:
         # Check Global Cooldown
         difference = now - data.COOLDOWN[cmd][list(data.COOLDOWN[cmd])[-1]]
         if difference < int(cmd_data["command_cooldown_global"]["N"]):
             global_cooldown_approved = False
             print(
-                f"{author.display_name} denied due to global cooldown: {difference} seconds elapsed"
+                f"{author_name} denied due to global cooldown: {difference} seconds elapsed"
             )
         # Iterate through User Cooldown and delete expired entries
         for user in list(data.COOLDOWN[cmd]):
@@ -59,21 +59,30 @@ def cooldown_approved(cmd, author):
             else:
                 break
         # Check User Cooldown
-        if data.COOLDOWN[cmd].get(author.display_name):
+        if data.COOLDOWN[cmd].get(author_name):
             user_cooldown_approved = False
             print(
-                f"{author.display_name} denied due to user cooldown: {now-data.COOLDOWN[cmd][author.display_name]} seconds elapsed"
+                f"{author_name} denied due to user cooldown: {now-data.COOLDOWN[cmd][author_name]} seconds elapsed"
             )
 
     if not global_cooldown_approved or not user_cooldown_approved:
         return False
     else:
-        data.COOLDOWN[cmd][author.display_name] = now
+        data.COOLDOWN[cmd][author_name] = now
         return True
 
-
-def url_match(msg):
-    if re.search(r"\b((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.([a-zA-Z]){2,6}\b", msg):
-        print("link detected")
-        return True
-    return False
+# True means block
+def url_match(author, msg):
+    if authorization("M", author):
+        return False
+    matches = re.findall(r"\b((?:[a-zA-Z\d@\-]+\.)+[a-zA-Z]{2,6})\b", msg)
+    # matches = re.findall(r"\b((?:https?:\/\/(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6})|(?:(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6}[\/|?]))", msg)
+    if matches:
+        if not authorization("V", author):
+            return True
+        for m in matches:
+            if 'twitch.tv' not in m:
+                return True
+        return False
+    else:
+        return False
