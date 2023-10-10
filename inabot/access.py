@@ -75,8 +75,10 @@ def cooldown_approved(cmd, author_name):
 def url_match(author, msg):
     if authorization("M", author):
         return False
-    matches = re.findall(r"\b((?:[a-zA-Z\d@\-]+\.)+[a-zA-Z]{2,6})\b", msg)
-    # matches = re.findall(r"\b((?:https?:\/\/(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6})|(?:(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6}[\/|?]))", msg)
+    if re.match(r"([^\s]+\.(?:co|org|net))", msg):
+        return True
+    matches = re.findall(r"\b((?:https?:\/\/(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6})|(?:(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6}[\/|?]))", msg)
+    # matches = re.findall(r"\b((?:[a-zA-Z\d@\-]+\.)+[a-zA-Z]{2,6})\b", msg)
     if matches:
         if not authorization("V", author):
             return True

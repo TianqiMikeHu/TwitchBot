@@ -6,6 +6,7 @@ import API
 from command_handler import *
 import dotenv
 import access
+import json
 import threading
 
 
@@ -27,8 +28,11 @@ class Bot(commands.Bot):
         )
 
         helper.initialize_commands()
-        # self.SQS.start(stop_on_error=False)
-        initialize_schedule(self.schedule)
+        self.ingest_message.start(stop_on_error=False)
+        data.IS_LIVE = API.get_streams("inabox44")
+        if data.IS_LIVE:
+            print("Stream is online")
+            initialize_schedule(self.schedule)
         self.invalidate.start(stop_on_error=False)
 
     async def event_ready(self):
@@ -38,11 +42,59 @@ class Bot(commands.Bot):
     async def invalidate(self):
         helper.invalidate()
 
-    @routines.routine(seconds=1, iterations=None)
-    async def SQS(self):
+    @routines.routine(seconds=0.5, iterations=None)
+    async def ingest_message(self):
         try:
             msg = data.SQS_QUEUE.get_nowait()
-            helper.ingest_message(msg)
+            msg = json.loads(msg)
+            match msg["action"]:
+                case "reload":
+                    helper.hot_reload()
+                case "online":
+                    print("Stream is online")
+                    data.IS_LIVE = True
+                    initialize_schedule(self.schedule)
+                case "offline":
+                    print("Stream is offline")
+                    data.IS_LIVE = False
+                    self.schedule.cancel()
+                case "web_api_cmd":
+                    feedbacks = []
+                    for cmd in msg["cmd"]:
+                        feedback = await custom_code.web_cmd_manager(
+                            msg["display_name"], cmd.split()
+                        )
+                        feedbacks.append(feedback)
+                    helper.web_api_response(
+                        json.dumps(
+                            {
+                                "display_name": msg["display_name"],
+                                "feedbacks": feedbacks,
+                            }
+                        )
+                    )
+                case "web_api_quotes":
+                    feedbacks = []
+                    web_author = data.WebAuthor(display_name=msg["display_name"])
+                    web_context = data.WebContext(author=web_author)
+                    for cmd in msg["cmd"]:
+                        feedback = await helper.quotes(
+                            None,
+                            web_context,
+                            cmd.split(),
+                            web=True,
+                        )
+                        feedbacks.append(feedback)
+                    helper.web_api_response(
+                        json.dumps(
+                            {
+                                "display_name": msg["display_name"],
+                                "feedbacks": feedbacks,
+                            }
+                        )
+                    )
+                case _:
+                    pass
         except:
             pass
 
@@ -65,7 +117,7 @@ class Bot(commands.Bot):
         if msg.echo or msg.channel.name != self.channel_read:
             return
 
-        if access.url_match(msg.author, msg.content):  # Block
+        if access.url_match(msg.author, msg.content):  # Should block?
             # Dummy value for cooldown control
             data.COMMANDS["_permit_timeout"] = {
                 "command_cooldown_global": {"N": 1},
@@ -75,7 +127,7 @@ class Bot(commands.Bot):
                 await self.get_channel(self.channel_write).send(
                     f"@{msg.author.display_name} Hey, that looks like a link."
                 )
-                # BOP
+                API.timeout_username(data.BROADCASTER_ID, data.INABOT_ID, msg.author.name, duration=60)
                 return
             data.PERMIT.remove(msg.author.name)
             if access.cooldown_approved(
@@ -84,11 +136,13 @@ class Bot(commands.Bot):
                 await self.get_channel(self.channel_write).send(
                     f"@{msg.author.display_name} Hey, that looks like a link. (Expired permission override)"
                 )
-                # BOP
+                API.timeout_username(data.BROADCASTER_ID, data.INABOT_ID, msg.author.name, duration=60)
                 del data.COOLDOWN["_permit_timeout"][msg.author.name]
                 return
 
-        await helper.pyramid(self.get_channel(self.channel_write), msg.author, msg.content)
+        await helper.pyramid(
+            self.get_channel(self.channel_write), msg.author, msg.content
+        )
 
         args = msg.content.split()
         await parse_command(
@@ -99,6 +153,6 @@ class Bot(commands.Bot):
         )
 
 
-# threading.Thread(target=helper.read_from_SQS, daemon=True).start()
-bot = Bot(channel_read="inabox44", channel_write="inabox44")
+threading.Thread(target=helper.read_from_SQS, daemon=True).start()
+bot = Bot(channel_read="mike_hu_0_0", channel_write="mike_hu_0_0")
 bot.run()

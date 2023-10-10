@@ -7,7 +7,7 @@ import boto3
 
 DEVICE = 'mike-iphone'
 
-channels = ["mike_hu_0_0", "thelastofchuck", "inabox44", "breakingpointes", "buritters", "annaagtapp", "mikkigemu", "shadowdaze"]
+channels = ["mike_hu_0_0", "inabox44", "breakingpointes", "buritters", "annaagtapp", "mikkigemu"]
 key_words = ["mike"]
 exclude_key_words = ["mike and ike", "mike n ike", "mikehu4", "johnmike"]
 key_names = []

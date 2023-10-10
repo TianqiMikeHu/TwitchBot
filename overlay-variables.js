@@ -42,7 +42,12 @@ const patterns = {
     nonEmpty: /^(?!\s*$).+/,
     hex: /^[0-9A-F]{6}$/i,
     positiveInteger: /^[1-9]\d*$/,
-    positiveFloat: /^(?=.+)(?:[1-9]\d*|0)?(?:\.\d+)?$/
+    integer: /^-?\d+$/,
+    noWhiteSpace: /^\S+$/
 }
 var intervalList = [];
 var emotes = {};
+
+var currentCommandsView = "COMMANDS";
+
+var commandsViewVariables = {}

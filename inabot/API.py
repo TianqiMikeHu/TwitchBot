@@ -96,7 +96,6 @@ def timeout_id(broadcaster_id, moderator_id, user_id, duration=None):
         headers=get_header_user(moderator_id),
         json=payload,
     )
-    print(r.json())
 
 
 def unban(broadcaster_id, moderator_id, user_id):
@@ -140,4 +139,8 @@ def shoutout(to_broadcaster_id):
     if r.status_code != 204 or r.status_code != 429:
         print(r.json())
     return None
+
+def get_streams(user_login):
+    r = requests.get(url=f"https://api.twitch.tv/helix/streams?user_login={user_login}", headers=get_header_user(data.INABOT_ID))
+    return r.json()['data']
 

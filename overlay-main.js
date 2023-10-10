@@ -69,24 +69,27 @@ async function switchView(e) {
         lastClickedElement = null;
         document.getElementById('canvas').innerHTML = '';
         document.getElementById('commandsView').style.display = 'block';
+        document.getElementById('commandsDetails').style.display = 'block';
         // Sidebar style
         document.getElementById("switchButton").innerHTML = 'Switch to Overlay View';
         document.getElementById("newButton").innerHTML = 'Commands';
         editButton.innerHTML = 'Counters';
-        document.getElementById("saveButton").innerHTML = 'Quotes';
-        document.getElementById("clearButton").innerHTML = '-';
+        document.getElementById("saveButton").innerHTML = '!kimexplains';
+        document.getElementById("clearButton").innerHTML = '!fierce';
         document.getElementById("jsonButton").innerHTML = '-';
         document.getElementById("fontsButton").innerHTML = '-';
         for (var button of document.querySelectorAll('.sidebar')) {
             button.style = `background-color: ${sidebarAlternateColor}; border: 1px solid ${borderAlternateCOlor}`;
         }
         sidebarCurrentColor = sidebarAlternateColor;
+        commandsList("COMMANDS");
     }
     else {
         // Swap background
         video.src = `https://player.twitch.tv/?channel=${channel_name}&parent=apoorlywrittenbot.cc&allowfullscreen=false&muted=true&autoplay=true`;
         staticBackground.style.display = "none";
         document.getElementById('commandsView').style.display = 'none';
+        document.getElementById('commandsDetails').style.display = 'none';
         // Restore functionality
         commandsView = false;
         mapping = {};
@@ -112,12 +115,12 @@ async function switchView(e) {
     }
 }
 
-function create(e) {
+async function create(e) {
     if (e) {
         e.stopPropagation();
     }
     if (commandsView) {
-        return commandsList("commands");
+        return await commandsList("COMMANDS");
     }
     if (editing) {
         return;
@@ -185,10 +188,10 @@ function create(e) {
     return element;
 }
 
-function edit(e) {
+async function edit(e) {
     e.stopPropagation();
     if (commandsView) {
-        return commandsList("Counters");
+        return await commandsList("COUNTER");
     }
     if (editing) {
         return;
@@ -437,7 +440,7 @@ async function closeMenu(e) {
 async function save(e) {
     e.stopPropagation();
     if (commandsView) {
-        return commandsList("quotes");
+        return await commandsList("KIMEXPLAINS");
     }
     if (editing) {
         return;
@@ -470,10 +473,10 @@ async function save(e) {
     await redraw();
 }
 
-function clearAll(e) {
+async function clearAll(e) {
     e.stopPropagation();
     if (commandsView) {
-        return;
+        return await commandsList("FIERCE");
     }
     if (editing) {
         return;

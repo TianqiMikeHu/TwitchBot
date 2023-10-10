@@ -11,10 +11,17 @@ VARIABLES_TABLE = "inabot-variables"
 QUOTES_TABLE = "inabot-quotes"
 TOKENS_TABLE = "CF-Cookies"
 SQS_URL = "https://sqs.us-west-2.amazonaws.com/414556232085/inabot-queue"
+SQS_RESPONSE_URL = (
+    "https://sqs.us-west-2.amazonaws.com/414556232085/inabot-API-response"
+)
 SUPERMODS = ["mike_hu_0_0"]
 
 BRACKET_L = "${"
 BRACKET_R = "}"
+
+PYRAMID_WIDTH_MAX = 0
+PYRAMID_WIDTH_NEXT = 1
+PYRAMID_WORD = None
 
 ACCESS_TOKENS = {}
 # Key: user_id
@@ -48,6 +55,7 @@ COOLDOWN = {}
 
 ANY_COMMANDS = []  # ['!cmd1', '!cmd2', ...]
 SCHEDULABLE_COMMANDS = []  # ['!cmd1', '!cmd2', ...]
+COUNTERS_LIST = []
 
 CURRENT_SCHEDULE = {}
 # {
@@ -59,6 +67,15 @@ SQS_QUEUE = Queue()
 
 PERMIT = []
 
-PYRAMID_WIDTH_MAX = 0
-PYRAMID_WIDTH_NEXT = 1
-PYRAMID_WORD = None
+IS_LIVE = False
+
+class WebContext:
+    def __init__(self, author):
+        self.author = author
+
+class WebAuthor:
+    def __init__(self, display_name, is_broadcaster=False, is_mod=True, is_vip=True):
+        self.display_name = display_name
+        self.is_broadcaster = is_broadcaster
+        self.is_mod = is_mod
+        self.is_vip = is_vip

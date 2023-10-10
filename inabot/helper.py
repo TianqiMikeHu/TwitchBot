@@ -27,12 +27,6 @@ def read_from_SQS():
                 )
 
 
-def ingest_message(msg):
-    msg = json.loads(msg)
-    if msg["action"] == "reload":
-        hot_reload()
-
-
 def hot_reload():
     print("reloading...")
     code = importlib.import_module("custom_code")
@@ -44,14 +38,15 @@ def check_int(s):
         return s[1:].isdigit()
     return s.isdigit()
 
+
 def convert_to_user(arg):
-    if arg[0] == '@':
+    if arg[0] == "@":
         arg = arg[1:]
     user = API.broadcaster_ID(arg)
     if not user:
         return arg
     else:
-        return user['display_name']
+        return user["display_name"]
 
 
 def initialize_commands():
@@ -59,33 +54,47 @@ def initialize_commands():
 
     response = client.get_item(
         Key={
-            "command_name": {
+            "var_name": {
                 "S": "_commands_json",
-            }
+            },
+            "var_type": {"S": "CUSTOM"},
         },
-        TableName=data.COMMANDS_TABLE,
+        TableName=data.VARIABLES_TABLE,
     )
-    data.CMD_LIST = json.loads(response["Item"]["command_response"]["S"])
+    data.CMD_LIST = json.loads(response["Item"]["var_val"]["S"])
 
     response = client.get_item(
         Key={
-            "command_name": {
+            "var_name": {
                 "S": "_commands_any",
-            }
+            },
+            "var_type": {"S": "CUSTOM"},
         },
-        TableName=data.COMMANDS_TABLE,
+        TableName=data.VARIABLES_TABLE,
     )
-    data.ANY_COMMANDS = json.loads(response["Item"]["command_response"]["S"])
+    data.ANY_COMMANDS = json.loads(response["Item"]["var_val"]["S"])
 
     response = client.get_item(
         Key={
-            "command_name": {
+            "var_name": {
                 "S": "_commands_schedule",
-            }
+            },
+            "var_type": {"S": "CUSTOM"},
         },
-        TableName=data.COMMANDS_TABLE,
+        TableName=data.VARIABLES_TABLE,
     )
-    data.SCHEDULABLE_COMMANDS = json.loads(response["Item"]["command_response"]["S"])
+    data.SCHEDULABLE_COMMANDS = json.loads(response["Item"]["var_val"]["S"])
+
+    response = client.get_item(
+        Key={
+            "var_name": {
+                "S": "_counters_json",
+            },
+            "var_type": {"S": "CUSTOM"},
+        },
+        TableName=data.VARIABLES_TABLE,
+    )
+    data.COUNTERS_LIST = json.loads(response["Item"]["var_val"]["S"])
 
 
 def load_command(cmd):
@@ -122,7 +131,7 @@ def load_command(cmd):
 #
 # ${game} -> The current category of inabox44
 # ${title} -> The current category of inabox44
-def parse_variables(message, author, args):
+def parse_variables(message, context, args):
     inde_left = 0
     index_right = 0
     while 1:
@@ -136,7 +145,7 @@ def parse_variables(message, author, args):
 
             match evaluate_this_list[0]:
                 case "sender":
-                    evaluate_this = author.display_name
+                    evaluate_this = context.author.display_name
                 case "args":
                     slice_indices = evaluate_this_list[1].split(":")
                     if len(slice_indices) < 2:
@@ -209,6 +218,26 @@ def count(counter):
         },
         ReturnValues="ALL_NEW",
     )
+
+    # Update counters list
+    if counter not in data.COUNTERS_LIST:
+        data.COUNTERS_LIST.append(counter)
+        response2 = client.update_item(
+            Key={
+                "var_name": {
+                    "S": "_counters_json",
+                },
+                "var_type": {"S": "CUSTOM"},
+            },
+            TableName=data.VARIABLES_TABLE,
+            UpdateExpression="SET var_val=:v",
+            ExpressionAttributeValues={
+                ":v": {
+                    "S": json.dumps(data.COUNTERS_LIST, separators=(",", ":")),
+                }
+            },
+        )
+
     return response["Attributes"]["var_val"]["N"]
 
 
@@ -226,11 +255,14 @@ def get_count(counter):
     return response["Item"]["var_val"]["N"]
 
 
-async def cmd_add(channel_write, author, args):
+async def cmd_add(channel_write, context, args, web=False):
     if len(args) < 4:
-        return await channel_write.send(
-            f"@{author.display_name} [ERROR] Too few arguments."
-        )
+        if web:
+            return f"@{context.author.display_name} [ERROR] Too few arguments."
+        else:
+            return await channel_write.send(
+                f"@{context.author.display_name} [ERROR] Too few arguments."
+            )
     client = boto3.client("dynamodb", region_name="us-west-2")
     command = {
         "command_name": {
@@ -256,21 +288,25 @@ async def cmd_add(channel_write, author, args):
     except boto3.resource(
         "dynamodb"
     ).meta.client.exceptions.ConditionalCheckFailedException:
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{args[2].lower()}" already exists.'
-        )
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{args[2].lower()}" already exists.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{args[2].lower()}" already exists.'
+            )
 
     data.COMMANDS[args[2].lower()] = command
     data.CMD_LIST.append(args[2].lower())
 
     response = client.update_item(
         Key={
-            "command_name": {
+            "var_name": {
                 "S": "_commands_json",
-            }
+            },
+            "var_type": {"S": "CUSTOM"},
         },
-        TableName=data.COMMANDS_TABLE,
-        UpdateExpression="SET command_response = :r",
+        TableName=data.VARIABLES_TABLE,
+        UpdateExpression="SET var_val = :r",
         ExpressionAttributeValues={
             ":r": {
                 "S": json.dumps(data.CMD_LIST, separators=(",", ":")),
@@ -278,31 +314,45 @@ async def cmd_add(channel_write, author, args):
         },
     )
 
-    return await channel_write.send(
-        f'@{author.display_name} Command "{args[2].lower()}" added succcessfully.'
-    )
-
-
-async def cmd_edit(channel_write, author, args):
-    if len(args) < 4:
-        return await channel_write.send(
-            f"@{author.display_name} [ERROR] Too few arguments."
+    if web:
+        return (
+            f'@{context.author.display_name} Command "{args[2].lower()}" added succcessfully.'
         )
+    else:
+        return await channel_write.send(
+            f'@{context.author.display_name} Command "{args[2].lower()}" added succcessfully.'
+        )
+
+
+async def cmd_edit(channel_write, context, args, web=False):
+    if len(args) < 4:
+        if web:
+            return f"@{context.author.display_name} [ERROR] Too few arguments."
+        else:
+            return await channel_write.send(
+                f"@{context.author.display_name} [ERROR] Too few arguments."
+            )
 
     cmd = args[2].lower()
 
     if cmd not in data.CMD_LIST:
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{cmd}" does not exist.'
-        )
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+            )
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
         cmd_data = load_command(cmd)
 
-    if not access.authorization(cmd_data["command_permission"]["S"], author):
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
-        )
+    if not access.authorization(cmd_data["command_permission"]["S"], context.author):
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+            )
 
     client = boto3.client("dynamodb", region_name="us-west-2")
     response = client.update_item(
@@ -322,26 +372,35 @@ async def cmd_edit(channel_write, author, args):
     )
 
     data.COMMANDS[cmd] = response["Attributes"]
-    return await channel_write.send(
-        f'@{author.display_name} Command "{cmd}" edited succcessfully.'
-    )
+    if web:
+        return f'@{context.author.display_name} Command "{cmd}" edited succcessfully.'
+    else:
+        return await channel_write.send(
+            f'@{context.author.display_name} Command "{cmd}" edited succcessfully.'
+        )
 
 
-async def cmd_del(channel_write, author, args):
+async def cmd_del(channel_write, context, args, web=False):
     cmd = args[2].lower()
 
     if cmd not in data.CMD_LIST:
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{cmd}" does not exist.'
-        )
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+            )
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
         cmd_data = load_command(cmd)
 
-    if not access.authorization(cmd_data["command_permission"]["S"], author):
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
-        )
+    if not access.authorization(cmd_data["command_permission"]["S"], context.author):
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+            )
 
     client = boto3.client("dynamodb", region_name="us-west-2")
     response = client.delete_item(
@@ -358,12 +417,13 @@ async def cmd_del(channel_write, author, args):
 
     response = client.update_item(
         Key={
-            "command_name": {
+            "var_name": {
                 "S": "_commands_json",
-            }
+            },
+            "var_type": {"S": "CUSTOM"},
         },
-        TableName=data.COMMANDS_TABLE,
-        UpdateExpression="SET command_response = :r",
+        TableName=data.VARIABLES_TABLE,
+        UpdateExpression="SET var_val = :r",
         ExpressionAttributeValues={
             ":r": {
                 "S": json.dumps(data.CMD_LIST, separators=(",", ":")),
@@ -375,12 +435,13 @@ async def cmd_del(channel_write, author, args):
         data.ANY_COMMANDS.remove(cmd)
         response = client.update_item(
             Key={
-                "command_name": {
+                "var_name": {
                     "S": "_commands_any",
-                }
+                },
+                "var_type": {"S": "CUSTOM"},
             },
-            TableName=data.COMMANDS_TABLE,
-            UpdateExpression="SET command_response = :r",
+            TableName=data.VARIABLES_TABLE,
+            UpdateExpression="SET var_val = :r",
             ExpressionAttributeValues={
                 ":r": {
                     "S": json.dumps(data.ANY_COMMANDS, separators=(",", ":")),
@@ -393,12 +454,13 @@ async def cmd_del(channel_write, author, args):
         data.SCHEDULABLE_COMMANDS.remove(cmd)
         response = client.update_item(
             Key={
-                "command_name": {
+                "var_name": {
                     "S": "_commands_schedule",
-                }
+                },
+                "var_type": {"S": "CUSTOM"},
             },
-            TableName=data.COMMANDS_TABLE,
-            UpdateExpression="SET command_response = :r",
+            TableName=data.VARIABLES_TABLE,
+            UpdateExpression="SET var_val = :r",
             ExpressionAttributeValues={
                 ":r": {
                     "S": json.dumps(data.SCHEDULABLE_COMMANDS, separators=(",", ":")),
@@ -406,51 +468,75 @@ async def cmd_del(channel_write, author, args):
             },
         )
 
-    return await channel_write.send(
-        f'@{author.display_name} Command "{args[2].lower()}" deleted succcessfully.'
-    )
+    if web:
+        return (
+            f'@{context.author.display_name} Command "{args[2].lower()}" deleted succcessfully.'
+        )
+    else:
+        return await channel_write.send(
+            f'@{context.author.display_name} Command "{args[2].lower()}" deleted succcessfully.'
+        )
 
 
-async def cmd_show(channel_write, author, args):
+async def cmd_show(channel_write, context, args, web=False):
     cmd = args[2].lower()
 
     if cmd not in data.CMD_LIST:
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{cmd}" does not exist.'
-        )
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+            )
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
         cmd_data = load_command(cmd)
 
-    if not access.authorization(cmd_data["command_permission"]["S"], author):
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
-        )
+    if not access.authorization(cmd_data["command_permission"]["S"], context.author):
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+            )
 
-    await channel_write.send(cmd_data["command_response"]["S"])
+    if web:
+        return cmd_data["command_response"]["S"]
+    else:
+        return await channel_write.send(cmd_data["command_response"]["S"])
 
 
-async def cmd_options(channel_write, author, args):
+async def cmd_options(channel_write, context, args, web=False):
     cmd = args[2].lower()
 
     if cmd not in data.CMD_LIST:
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{cmd}" does not exist.'
-        )
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+            )
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
         cmd_data = load_command(cmd)
 
-    if not access.authorization(cmd_data["command_permission"]["S"], author):
-        return await channel_write.send(
-            f'@{author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
-        )
+    if not access.authorization(cmd_data["command_permission"]["S"], context.author):
+        if web:
+            return f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+            )
 
     if len(args) == 3:  # Show options
-        await channel_write.send(
-            f'Permission={cmd_data["command_permission"]["S"]}, Global={cmd_data["command_cooldown_global"]["N"]}, \
+        if web:
+            return f'Permission={cmd_data["command_permission"]["S"]}, Global={cmd_data["command_cooldown_global"]["N"]}, \
             User={cmd_data["command_cooldown_user"]["N"]}, Schedule={cmd_data["command_cooldown_schedule"]["N"]}, Type={cmd_data["command_type"]["S"]}'
-        )
+        else:
+            return await channel_write.send(
+                f'Permission={cmd_data["command_permission"]["S"]}, Global={cmd_data["command_cooldown_global"]["N"]}, \
+                User={cmd_data["command_cooldown_user"]["N"]}, Schedule={cmd_data["command_cooldown_schedule"]["N"]}, Type={cmd_data["command_type"]["S"]}'
+            )
     else:
         permission = False
         global_cd = False
@@ -462,9 +548,12 @@ async def cmd_options(channel_write, author, args):
         for opt in options:
             opt_args = opt.strip().split("=")
             if len(opt_args) != 2:
-                return await channel_write.send(
-                    f"@{author.display_name} [ERROR] Invalid syntax: {opt}"
-                )
+                if web:
+                    return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt}"
+                else:
+                    return await channel_write.send(
+                        f"@{context.author.display_name} [ERROR] Invalid syntax: {opt}"
+                    )
             opt_args = [o.strip() for o in opt_args]
             match opt_args[0].lower():
                 case "permission":
@@ -472,60 +561,87 @@ async def cmd_options(channel_write, author, args):
                         cmd_data["command_permission"]["S"] = opt_args[1]
                         permission = True
                     else:
-                        return await channel_write.send(
-                            f"@{author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
-                        )
+                        if web:
+                            return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                        else:
+                            return await channel_write.send(
+                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            )
                 case "global":
                     if check_int(opt_args[1]):
                         if int(opt_args[1]) >= 0:
                             cmd_data["command_cooldown_global"]["N"] = opt_args[1]
                             global_cd = True
                         else:
-                            return await channel_write.send(
-                                f"@{author.display_name} [ERROR] Global cooldown cannot be negative."
-                            )
+                            if web:
+                                return f"@{context.author.display_name} [ERROR] Global cooldown cannot be negative."
+                            else:
+                                return await channel_write.send(
+                                    f"@{context.author.display_name} [ERROR] Global cooldown cannot be negative."
+                                )
                     else:
-                        return await channel_write.send(
-                            f"@{author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
-                        )
+                        if web:
+                            return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                        else:
+                            return await channel_write.send(
+                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            )
                 case "user":
                     if check_int(opt_args[1]):
                         if int(opt_args[1]) >= 0:
                             cmd_data["command_cooldown_user"]["N"] = opt_args[1]
                             user_cd = True
                         else:
-                            return await channel_write.send(
-                                f"@{author.display_name} [ERROR] User cooldown cannot be negative."
-                            )
+                            if web:
+                                return f"@{context.author.display_name} [ERROR] User cooldown cannot be negative."
+                            else:
+                                return await channel_write.send(
+                                    f"@{context.uthor.display_name} [ERROR] User cooldown cannot be negative."
+                                )
                     else:
-                        return await channel_write.send(
-                            f"@{author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
-                        )
+                        if web:
+                            return f"@{context.uthor.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                        else:
+                            return await channel_write.send(
+                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            )
                 case "schedule":
                     if check_int(opt_args[1]):
                         if 0 <= int(opt_args[1]) < 15:
-                            return await channel_write.send(
-                                f"@{author.display_name} [ERROR] Schedule interval cannot be less than 15 seconds."
-                            )
+                            if web:
+                                return f"@{context.author.display_name} [ERROR] Schedule interval cannot be less than 15 seconds."
+                            else:
+                                return await channel_write.send(
+                                    f"@{context.author.display_name} [ERROR] Schedule interval cannot be less than 15 seconds."
+                                )
                         else:
                             cmd_data["command_cooldown_schedule"]["N"] = opt_args[1]
                             schedule_cd = True
                     else:
-                        return await channel_write.send(
-                            f"@{author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
-                        )
+                        if web:
+                            return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                        else:
+                            return await channel_write.send(
+                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            )
                 case "type":
                     if opt_args[1].upper() in ["SIMPLE", "DYNAMIC", "ANY"]:
                         cmd_data["command_type"]["S"] = opt_args[1].upper()
                         cmd_type = True
                     else:
-                        return await channel_write.send(
-                            f"@{author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
-                        )
+                        if web:
+                            return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                        else:
+                            return await channel_write.send(
+                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            )
                 case _:
-                    return await channel_write.send(
-                        f"@{author.display_name} [ERROR] Invalid syntax: {opt_args[0]}"
-                    )
+                    if web:
+                        return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[0]}"
+                    else:
+                        return await channel_write.send(
+                            f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[0]}"
+                        )
 
         data.COMMANDS[cmd] = cmd_data
         client = boto3.client("dynamodb", region_name="us-west-2")
@@ -548,12 +664,13 @@ async def cmd_options(channel_write, author, args):
                     data.SCHEDULABLE_COMMANDS.append(cmd)
                     response = client.update_item(
                         Key={
-                            "command_name": {
+                            "var_name": {
                                 "S": "_commands_schedule",
-                            }
+                            },
+                            "var_type": {"S": "CUSTOM"},
                         },
-                        TableName=data.COMMANDS_TABLE,
-                        UpdateExpression="SET command_response = :r",
+                        TableName=data.VARIABLES_TABLE,
+                        UpdateExpression="SET var_val = :r",
                         ExpressionAttributeValues={
                             ":r": {
                                 "S": json.dumps(
@@ -572,12 +689,13 @@ async def cmd_options(channel_write, author, args):
                     data.SCHEDULABLE_COMMANDS.remove(cmd)
                     response = client.update_item(
                         Key={
-                            "command_name": {
+                            "var_name": {
                                 "S": "_commands_schedule",
-                            }
+                            },
+                            "var_type": {"S": "CUSTOM"},
                         },
-                        TableName=data.COMMANDS_TABLE,
-                        UpdateExpression="SET command_response = :r",
+                        TableName=data.VARIABLES_TABLE,
+                        UpdateExpression="SET var_val = :r",
                         ExpressionAttributeValues={
                             ":r": {
                                 "S": json.dumps(
@@ -594,12 +712,13 @@ async def cmd_options(channel_write, author, args):
                         data.ANY_COMMANDS.remove(cmd)
                         response = client.update_item(
                             Key={
-                                "command_name": {
+                                "var_name": {
                                     "S": "_commands_any",
-                                }
+                                },
+                                "var_type": {"S": "CUSTOM"},
                             },
-                            TableName=data.COMMANDS_TABLE,
-                            UpdateExpression="SET command_response = :r",
+                            TableName=data.VARIABLES_TABLE,
+                            UpdateExpression="SET var_val = :r",
                             ExpressionAttributeValues={
                                 ":r": {
                                     "S": json.dumps(
@@ -614,12 +733,13 @@ async def cmd_options(channel_write, author, args):
                         data.ANY_COMMANDS.remove(cmd)
                         response = client.update_item(
                             Key={
-                                "command_name": {
+                                "var_name": {
                                     "S": "_commands_any",
-                                }
+                                },
+                                "var_type": {"S": "CUSTOM"},
                             },
-                            TableName=data.COMMANDS_TABLE,
-                            UpdateExpression="SET command_response = :r",
+                            TableName=data.VARIABLES_TABLE,
+                            UpdateExpression="SET var_val = :r",
                             ExpressionAttributeValues={
                                 ":r": {
                                     "S": json.dumps(
@@ -633,12 +753,13 @@ async def cmd_options(channel_write, author, args):
                         data.ANY_COMMANDS.append(cmd)
                         response = client.update_item(
                             Key={
-                                "command_name": {
+                                "var_name": {
                                     "S": "_commands_any",
-                                }
+                                },
+                                "var_type": {"S": "CUSTOM"},
                             },
-                            TableName=data.COMMANDS_TABLE,
-                            UpdateExpression="SET command_response = :r",
+                            TableName=data.VARIABLES_TABLE,
+                            UpdateExpression="SET var_val = :r",
                             ExpressionAttributeValues={
                                 ":r": {
                                     "S": json.dumps(
@@ -650,18 +771,22 @@ async def cmd_options(channel_write, author, args):
                 case _:
                     pass
 
-        return await channel_write.send(
-            f'@{author.display_name} Updated {", ".join(output)} for command "{cmd}".'
-        )
+        if web:
+            return f'@{context.author.display_name} Updated {", ".join(output)} for command "{cmd}".'
+        else:
+            return await channel_write.send(
+                f'@{context.author.display_name} Updated {", ".join(output)} for command "{cmd}".'
+            )
 
-async def quotes(channel_write, author, args):
+
+async def quotes(channel_write, context, args, web=False):
     quotes_name = args[0].lower()
     client = boto3.client("dynamodb", region_name="us-west-2")
     if len(args) >= 3:
         if args[1].upper() == "ADD":
-            if not access.authorization("M", author):
+            if not access.authorization("M", context.author):
                 return await channel_write.send(
-                    f"@{author.display_name} [ERROR] You do not have permission for this action."
+                    f"@{context.author.display_name} [ERROR] You do not have permission for this action."
                 )
             response = client.update_item(
                 Key={
@@ -682,26 +807,25 @@ async def quotes(channel_write, author, args):
             index = response["Attributes"]["var_val"]["N"]
             response = client.put_item(
                 Item={
-                    "quotes_name": {
-                        "S": quotes_name
-                    },
-                    "quotes_index": {
-                        "N": index
-                    },
-                    "quotes_val": {
-                        "S": ' '.join(args[2:])
-                    }
+                    "quotes_name": {"S": quotes_name},
+                    "quotes_index": {"N": index},
+                    "quotes_val": {"S": " ".join(args[2:])},
                 },
                 TableName=data.QUOTES_TABLE,
             )
-            return await channel_write.send(
-                f"@{author.display_name} Successfully added {quotes_name} #{index}"
-            )
+            if web:
+                return (
+                    f"@{context.author.display_name} Successfully added {quotes_name} #{index}"
+                )
+            else:
+                return await channel_write.send(
+                    f"@{context.author.display_name} Successfully added {quotes_name} #{index}"
+                )
         elif args[1].upper() == "EDIT":
             if len(args) >= 4:
-                if not access.authorization("M", author):
+                if not access.authorization("M", context.author):
                     return await channel_write.send(
-                        f"@{author.display_name} [ERROR] You do not have permission for this action."
+                        f"@{context.author.display_name} [ERROR] You do not have permission for this action."
                     )
                 response = client.get_item(
                     Key={
@@ -715,37 +839,36 @@ async def quotes(channel_write, author, args):
                 index = args[2]
                 if not index.isdigit():
                     return await channel_write.send(
-                        f"@{author.display_name} [ERROR] \"{index}\" is not a positive integer."
+                        f'@{context.author.display_name} [ERROR] "{index}" is not a positive integer.'
                     )
-                if int(index)<1:
+                if int(index) < 1:
                     return await channel_write.send(
-                        f"@{author.display_name} [ERROR] Index cannot be less than 1."
+                        f"@{context.author.display_name} [ERROR] Index cannot be less than 1."
                     )
-                if int(index)>int(response["Item"]["var_val"]["N"]):
+                if int(index) > int(response["Item"]["var_val"]["N"]):
                     return await channel_write.send(
-                        f"@{author.display_name} [ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
+                        f"@{context.author.display_name} [ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
                     )
                 response = client.update_item(
                     Key={
-                        "quotes_name": {
-                            "S": quotes_name
-                        },
-                        "quotes_index": {
-                            "N": index
-                        },
+                        "quotes_name": {"S": quotes_name},
+                        "quotes_index": {"N": index},
                     },
                     TableName=data.QUOTES_TABLE,
                     UpdateExpression="SET quotes_val=:v",
                     ExpressionAttributeValues={
                         ":v": {
-                            "S": ' '.join(args[3:]),
+                            "S": " ".join(args[3:]),
                         }
                     },
                     ReturnValues="ALL_NEW",
                 )
-                return await channel_write.send(
-                    f"@{author.display_name} Successfully edited {quotes_name} #{index}"
-                )
+                if web:
+                    return f"@{context.author.display_name} Successfully edited {quotes_name} #{index}"
+                else:
+                    return await channel_write.send(
+                        f"@{context.author.display_name} Successfully edited {quotes_name} #{index}"
+                    )
     elif len(args) >= 2:
         if args[1].isdigit():
             response = client.get_item(
@@ -758,28 +881,24 @@ async def quotes(channel_write, author, args):
                 TableName=data.VARIABLES_TABLE,
             )
             index = args[1]
-            if int(index)<1:
+            if int(index) < 1:
                 return await channel_write.send(
-                    f"@{author.display_name} [ERROR] Index cannot be less than 1."
+                    f"@{context.author.display_name} [ERROR] Index cannot be less than 1."
                 )
-            if int(index)>int(response["Item"]["var_val"]["N"]):
+            if int(index) > int(response["Item"]["var_val"]["N"]):
                 return await channel_write.send(
-                    f"@{author.display_name} [ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
+                    f"@{context.author.display_name} [ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
                 )
             response = client.get_item(
                 Key={
-                    "quotes_name": {
-                        "S": quotes_name
-                    },
-                    "quotes_index": {
-                        "N": index
-                    },
+                    "quotes_name": {"S": quotes_name},
+                    "quotes_index": {"N": index},
                 },
                 TableName=data.QUOTES_TABLE,
             )
             return await channel_write.send(response["Item"]["quotes_val"]["S"])
 
-    # Get last index        
+    # Get last index
     response = client.get_item(
         Key={
             "var_name": {
@@ -792,90 +911,120 @@ async def quotes(channel_write, author, args):
     last_index = int(response["Item"]["var_val"]["N"])
     response = client.get_item(
         Key={
-            "quotes_name": {
-                "S": quotes_name
-            },
-            "quotes_index": {
-                "N": str(random.randrange(1, last_index+1))
-            },
+            "quotes_name": {"S": quotes_name},
+            "quotes_index": {"N": str(random.randrange(1, last_index + 1))},
         },
         TableName=data.QUOTES_TABLE,
     )
     return await channel_write.send(response["Item"]["quotes_val"]["S"])
+
 
 async def pyramid(channel_write, author, msg):
     repetition = r"\s+\1"
     increase = None
     decrease = None
 
-    if data.PYRAMID_WIDTH_MAX<data.PYRAMID_WIDTH_NEXT:  # Increase phase
-        if data.PYRAMID_WIDTH_NEXT == 1:    # New pyramid
+    if data.PYRAMID_WIDTH_MAX < data.PYRAMID_WIDTH_NEXT:  # Increase phase
+        if data.PYRAMID_WIDTH_NEXT == 1:  # New pyramid
             increase = re.match(r"^(\w+)$", msg)
-            if increase:    # Starting pyramid
+            if increase:  # Starting pyramid
                 data.PYRAMID_WORD = increase.group()
-                data.PYRAMID_WIDTH_MAX+=1
-                data.PYRAMID_WIDTH_NEXT+=1
-        else:   # Pyramid in progress
-            increase = re.match(f"^({data.PYRAMID_WORD})"+repetition*(data.PYRAMID_WIDTH_NEXT-1)+"$", msg)
-            if data.PYRAMID_WIDTH_MAX>=3:  # Can decrease (When max width >=3)
-                decrease = re.match(f"^({data.PYRAMID_WORD})"+repetition*(data.PYRAMID_WIDTH_MAX-2)+"$", msg)
+                data.PYRAMID_WIDTH_MAX += 1
+                data.PYRAMID_WIDTH_NEXT += 1
+        else:  # Pyramid in progress
+            increase = re.match(
+                f"^({data.PYRAMID_WORD})"
+                + repetition * (data.PYRAMID_WIDTH_NEXT - 1)
+                + "$",
+                msg,
+            )
+            if data.PYRAMID_WIDTH_MAX >= 3:  # Can decrease (When max width >=3)
+                decrease = re.match(
+                    f"^({data.PYRAMID_WORD})"
+                    + repetition * (data.PYRAMID_WIDTH_MAX - 2)
+                    + "$",
+                    msg,
+                )
             if increase:
-                data.PYRAMID_WIDTH_MAX+=1
-                data.PYRAMID_WIDTH_NEXT+=1
+                data.PYRAMID_WIDTH_MAX += 1
+                data.PYRAMID_WIDTH_NEXT += 1
             elif decrease:
-                data.PYRAMID_WIDTH_NEXT-=3
-            else:   # Pyramid broke
-                data.PYRAMID_WIDTH_MAX=0
-                data.PYRAMID_WIDTH_NEXT=1
+                data.PYRAMID_WIDTH_NEXT -= 3
+            else:  # Pyramid broke
+                data.PYRAMID_WIDTH_MAX = 0
+                data.PYRAMID_WIDTH_NEXT = 1
                 # Potential new pyramid
                 increase = re.match(r"^(\w+)$", msg)
-                if increase:    # Starting pyramid
+                if increase:  # Starting pyramid
                     data.PYRAMID_WORD = increase.group()
-                    data.PYRAMID_WIDTH_MAX+=1
-                    data.PYRAMID_WIDTH_NEXT+=1
-    else:   # Decrease phase
-        decrease = re.match(f"^({data.PYRAMID_WORD})"+repetition*(data.PYRAMID_WIDTH_NEXT-1)+"$", msg)
+                    data.PYRAMID_WIDTH_MAX += 1
+                    data.PYRAMID_WIDTH_NEXT += 1
+    else:  # Decrease phase
+        decrease = re.match(
+            f"^({data.PYRAMID_WORD})"
+            + repetition * (data.PYRAMID_WIDTH_NEXT - 1)
+            + "$",
+            msg,
+        )
         if decrease:
-            if data.PYRAMID_WIDTH_NEXT==1:  # Success!
+            if data.PYRAMID_WIDTH_NEXT == 1:  # Success!
                 match data.PYRAMID_WIDTH_MAX:
                     case 3:
-                        await channel_write.send(f"Nice 3-width {data.PYRAMID_WORD} myd {author.display_name} ... but is that really the best you've got? inaboxSus")
+                        await channel_write.send(
+                            f"Nice 3-width {data.PYRAMID_WORD} myd {author.display_name} ... but is that really the best you've got? inaboxSus"
+                        )
                     case 4:
-                        await channel_write.send(f"Nice work on the best number {data.PYRAMID_WORD} myd {author.display_name} inaboxGasm inaboxGasm inaboxGasm inaboxGasm")
+                        await channel_write.send(
+                            f"Nice work on the best number {data.PYRAMID_WORD} myd {author.display_name} inaboxGasm inaboxGasm inaboxGasm inaboxGasm"
+                        )
                     case _:
-                        await channel_write.send(f"{author.display_name} just finished a {data.PYRAMID_WIDTH_MAX}-width {data.PYRAMID_WORD} myd. Now you've got my attention inaboxPog")
-                data.PYRAMID_WIDTH_MAX=0
-                data.PYRAMID_WIDTH_NEXT=1
-            else:   # Should decrease further
-                data.PYRAMID_WIDTH_NEXT-=1
-        else:   # Pyramid broke
-            data.PYRAMID_WIDTH_MAX=0
-            data.PYRAMID_WIDTH_NEXT=1
+                        await channel_write.send(
+                            f"{author.display_name} just finished a {data.PYRAMID_WIDTH_MAX}-width {data.PYRAMID_WORD} myd. Now you've got my attention inaboxPog"
+                        )
+                data.PYRAMID_WIDTH_MAX = 0
+                data.PYRAMID_WIDTH_NEXT = 1
+            else:  # Should decrease further
+                data.PYRAMID_WIDTH_NEXT -= 1
+        else:  # Pyramid broke
+            data.PYRAMID_WIDTH_MAX = 0
+            data.PYRAMID_WIDTH_NEXT = 1
             # Potential new pyramid
             increase = re.match(r"^(\w+)$", msg)
-            if increase:    # Starting pyramid
+            if increase:  # Starting pyramid
                 data.PYRAMID_WORD = increase.group()
-                data.PYRAMID_WIDTH_MAX+=1
-                data.PYRAMID_WIDTH_NEXT+=1
+                data.PYRAMID_WIDTH_MAX += 1
+                data.PYRAMID_WIDTH_NEXT += 1
 
 
 async def sub_alert(channel_write, tags):
     months = None
     display_name = None
-    if tags['msg-id'] == 'sub' or tags['msg-id'] == 'resub':
-        months = tags['msg-param-cumulative-months']
-        display_name = tags.get('display-name')
+    if tags["msg-id"] == "sub" or tags["msg-id"] == "resub":
+        months = tags["msg-param-cumulative-months"]
+        display_name = tags.get("display-name")
         if not display_name:
-            display_name = tags['login']
-    elif tags['msg-id'] == 'subgift':
-        months = tags['msg-param-months']
-        display_name = tags.get('msg-param-recipient-display-name')
+            display_name = tags["login"]
+    elif tags["msg-id"] == "subgift":
+        months = tags["msg-param-months"]
+        display_name = tags.get("msg-param-recipient-display-name")
         if not display_name:
-            display_name = tags['msg-param-recipient-user-name']
-    
+            display_name = tags["msg-param-recipient-user-name"]
+
     if not months:
         return
-    if months == '1':
-        await channel_write.send(f"{display_name} just subscribed inaboxPog Welcome to The Box!")
+    if months == "1":
+        await channel_write.send(
+            f"{display_name} just subscribed inaboxPog Welcome to The Box!"
+        )
     else:
-        await channel_write.send(f"Welcome back to The Box, {display_name}! inaboxPog Thanks for subscribing for {months} months in a row inaboxLove")
+        await channel_write.send(
+            f"Welcome back to The Box, {display_name}! inaboxPog Thanks for subscribing for {months} months in a row inaboxLove"
+        )
+
+
+def web_api_response(msg):
+    client = boto3.client("sqs", region_name="us-west-2")
+    response = client.send_message(
+        QueueUrl="https://sqs.us-west-2.amazonaws.com/414556232085/inabot-API-response",
+        MessageBody=msg,
+    )

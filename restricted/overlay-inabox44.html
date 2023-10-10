@@ -19,6 +19,7 @@
         rel="icon" type="image/x-icon">
     <link rel="stylesheet" href="../overlay-style.css" type="text/css" charset="utf-8" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <script src="https://cdn.jsdelivr.net/gh/mdbassit/Coloris@latest/dist/coloris.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"></script>
     <script type="text/javascript" src="../overlay-variables.js"></script>
@@ -166,27 +167,133 @@
 
     <div id="mask"></div>
 
-    <div id="commandsView" class="card overflow-hidden" style="width: 20rem;">
-        <div class="card-title lead m-0 py-3 border-bottom border-dark" style="padding-left: 1rem; height: 4rem;">
+    <div id="commandsView" class="card overflow-hidden" style="z-index: 8;">
+        <div id="cmdListTitle" class="card-title lead m-0 py-3 border-bottom border-dark" style="padding-left: 1rem; height: 4rem;">
             Commands List
         </div>
-        <div id="commandsList" class="card rounded-0" style="width: 20rem;">
-            <div class="card-body pt-1 vh-100 overflow-auto">
-                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
-                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
-                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
-                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
-                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
-                <div class="h5 listItem border-bottom">Content</div>
+        <div class="closeButton" style="transform: rotate(45deg); margin: 1rem;" onclick="newListItem();">
+            <button type="button" class="btn-close"></button>
+        </div>
+        <div id="commandsList" class="card rounded-0">
+            <div id="commandsListContent" class="card-body pt-1 vh-100 overflow-auto">
+                <div class="h5 listItem border-bottom" onclick="listItemClicked(this);">Please wait...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="newListItem" class="card menu" style="width: 30rem; z-index: 20;">
+        <div class="card" style="width: 30rem">
+            <div class="card-body py-0">
+                <h2 class="card-title lead m-0 py-3 border-bottom border-dark" id="newCmdTitle">
+                    New Command
+                </h2>
+                <div class="pane py-3 border-bottom">
+                    <div class="cs-form form-lg">
+                        <input type="text" class="form-control needs-validation is-invalid rounded-0" id="newCmdName"
+                            placeholder="!commandName" onkeyup="validateInput(this, 'noWhiteSpace');">
+                    </div><br>
+                    <div class="cs-form form-lg">
+                        <textarea id="newCmdResponse" class="form-control needs-validation is-invalid rounded-0"
+                            rows="4" placeholder="Command Response"
+                            onkeyup="validateInput(this, 'nonEmpty');"></textarea>
+                    </div>
+                </div>
+                <div class="closeButton" onclick="addListItem();">
+                    <button type="button" class="btn-close"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="commandsDetails" class="card overflow-hidden" style="z-index: 8;">
+        <div id="cmdName" class="card-title lead m-0 py-3 border-bottom border-dark"
+            style="padding-left: 1rem; height: 4rem;">
+            -No Item Selected-
+        </div>
+        <div>
+            <button id="saveIcon" disabled type="button" onclick="saveListItem(event);"
+                style="font-size:24px;border:none;background-color:white;"><i class="fa fa-save"></i></button>
+        </div>
+        <div>
+            <button id="trashIcon" disabled type="button" onclick="deleteListItem(event);"
+                style="font-size:24px;color:red;border:none;background-color:white;"><i
+                    class="fa fa-trash-o"></i></button>
+        </div>
+        <div id="commandsDetailsScrollable" class="card rounded-0">
+            <div class="card-body py-0 vh-100 overflow-auto">
+                <div class="pane py-3 border-bottom">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Value</div>
+                    </div>
+                    <div class="cs-form form-lg">
+                        <textarea id="cmdResponse" disabled class="form-control needs-validation rounded-0" rows="4"
+                            placeholder="Command Response" onkeyup="validateInput(this, 'nonEmpty');"></textarea>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-around collapsable">
+                    <div class="pane py-3 border-bottom" style="flex-basis: 20rem;">
+                        <div>
+                            <div class="card-title my-0 mb-2 h6">Permission</div>
+                        </div>
+                        <div class="select2">
+                            <select class="form-select rounded-0" id="cmdPermission" disabled>
+                                <option value="E">Everyone</option>
+                                <option value="V">VIP</option>
+                                <option value="M">Moderator</option>
+                                <option value="S">Super Moderator</option>
+                                <option value="B">Broadcaster</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="pane py-3 border-bottom" style="flex-basis: 20rem;">
+                        <div>
+                            <div class="card-title my-0 mb-2 h6">Command Type</div>
+                        </div>
+                        <div class="select2">
+                            <select class="form-select rounded-0" id="cmdType" disabled>
+                                <option value="SIMPLE">SIMPLE</option>
+                                <option value="ANY">ANY POSITION</option>
+                                <option value="DYNAMIC">DYNAMIC</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="pane py-3 border-bottom collapsable">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Global Cooldown</div>
+                    </div>
+                    <div class="cs-form form-lg d-flex">
+                        <input type="text" class="form-control needs-validation rounded-0" id="cmdGlobal" disabled
+                            aria-describedby="globalPostpend" placeholder="15"
+                            onkeyup="validateInput(this, 'positiveInteger');">
+                        <span class="input-group-text rounded-0" id="globalPostpend">s</span>
+                    </div>
+                </div>
+                <div class="pane py-3 border-bottom collapsable">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">User Cooldown</div>
+                    </div>
+                    <div class="cs-form form-lg d-flex">
+                        <input type="text" class="form-control needs-validation rounded-0" id="cmdUser" disabled
+                            aria-describedby="userPostpend" placeholder="15"
+                            onkeyup="validateInput(this, 'positiveInteger');">
+                        <span class="input-group-text rounded-0" id="userPostpend">s</span>
+                    </div>
+                </div>
+                <div class="pane py-3 border-bottom collapsable">
+                    <div>
+                        <div class="card-title my-0 mb-2 h6">Schedule Interval</div>
+                    </div>
+                    <p class="small m-0">
+                        &#8226; Use a negative number to disable
+                    </p>
+                    <div class="cs-form form-lg d-flex">
+                        <input type="text" class="form-control needs-validation rounded-0" id="cmdSchedule" disabled
+                            aria-describedby="schedulePostpend" placeholder="-1"
+                            onkeyup="validateInput(this, 'integer');">
+                        <span class="input-group-text rounded-0" id="schedulePostpend">s</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
