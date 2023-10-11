@@ -175,6 +175,9 @@ async def delete_counter(channel_read, channel_write, context, args, web=False):
 async def fierce(channel_read, channel_write, context, args):
     return await helper.quotes(channel_write, context.author, args)
 
+async def kimexplains(channel_read, channel_write, context, args):
+    return await helper.quotes(channel_write, context.author, args)
+
 
 async def permit(channel_read, channel_write, context, args):
     if len(args) < 2:

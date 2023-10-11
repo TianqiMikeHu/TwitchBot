@@ -196,9 +196,6 @@ async function loadInitialJSON(video) {
         count++;
     }
     imagesDictionary = data.images;
-    if (channel_name == "inabox44") {
-        await loadVariables();
-    }
 }
 
 // Modifies lastClickedElement
@@ -998,7 +995,7 @@ async function addListItem() {
                             commandsListContent.appendChild(highlight);
                             break;
                         default:
-                            break;
+                            return;
                     }
                     highlight.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
                     await listItemClicked(highlight);
@@ -1054,10 +1051,12 @@ async function saveListItem(event) {
             }
             config = {
                 method: 'POST',
-                body: JSON.stringify({ "action": "web_api_cmd", "cmd": [
-                    `!cmd edit ${cmdName.innerHTML} ${cmdResponse.value.replaceAll('\n', ' ')}`,
-                    `!cmd options ${cmdName.innerHTML} permission=${cmdPermission.value},type=${cmdType.value},global=${cmdGlobal.value},user=${cmdUser.value},schedule=${cmdSchedule.value}`
-                ] })
+                body: JSON.stringify({
+                    "action": "web_api_cmd", "cmd": [
+                        `!cmd edit ${cmdName.innerHTML} ${cmdResponse.value.replaceAll('\n', ' ')}`,
+                        `!cmd options ${cmdName.innerHTML} permission=${cmdPermission.value},type=${cmdType.value},global=${cmdGlobal.value},user=${cmdUser.value},schedule=${cmdSchedule.value}`
+                    ]
+                })
             }
             break;
         case "COUNTER":
@@ -1091,7 +1090,7 @@ async function saveListItem(event) {
             }
             break;
         default:
-            break;
+            return;
     }
 
     if (config) {
@@ -1117,7 +1116,66 @@ async function saveListItem(event) {
 }
 
 async function deleteListItem(event) {
-    alert("Deleted!", "success");
+    document.addEventListener("click", disable, true);
+    let config, response, data;
+    let cmdName = document.getElementById('cmdName');
+
+    switch (currentCommandsView) {
+        case "COMMANDS":
+            config = {
+                method: 'POST',
+                body: JSON.stringify({ "action": "web_api_cmd", "cmd": [`!cmd del ${cmdName.innerHTML}`] })
+            }
+            break;
+        case "COUNTER":
+            config = {
+                method: 'POST',
+                body: JSON.stringify({ "action": "web_api_cmd", "cmd": [`!deletecounter ${cmdName.innerHTML}`] })
+            }
+            break;
+        default:
+            return;
+    }
+
+    if (config) {
+        alert("Please wait...", "info", true);
+        response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot-web?channel=inabox44`, config);
+        document.querySelectorAll('.alert-info').forEach(e => e.remove());
+        if (!response.ok) {
+            alert("Error: Request timed out. Check if bot is down.", "danger");
+        }
+        else {
+            data = await response.json();
+            for (let feedback of data) {
+                if (feedback.includes("[ERROR]")) {
+                    alert(feedback, "danger");
+                }
+                else {
+                    alert(feedback, "success");
+                    let index;
+                    switch (currentCommandsView) {
+                        case "COMMANDS":
+                            index = commandsViewVariables['COMMANDS'].indexOf(cmdName.innerHTML);
+                            if (index !== -1) {
+                                commandsViewVariables['COMMANDS'].splice(index, 1);
+                            }
+                            await commandsList('COMMANDS');
+                            break;
+                        case "COUNTER":
+                            index = commandsViewVariables['COUNTER'].indexOf(cmdName.innerHTML);
+                            if (index !== -1) {
+                                commandsViewVariables['COUNTER'].splice(index, 1);
+                            }
+                            await commandsList('COUNTER');
+                            break;
+                        default:
+                            return;
+                    }
+                }
+            }
+        }
+    }
+    document.removeEventListener('click', disable, true);
 }
 
 async function loadVariables() {

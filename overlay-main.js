@@ -57,6 +57,10 @@ async function switchView(e) {
     let staticBackground = document.getElementById('staticBackground');
     let editButton = document.getElementById("editButton");
     if (!commandsView) {
+        // Load variables if not done already
+        if (channel_name == "inabox44") {
+            await loadVariables();
+        }
         // Swap background
         video.src = "";
         staticBackground.src = `https://apoorlywrittenbot.cc/media/${channel_name}-background.png`;
@@ -205,6 +209,7 @@ async function edit(e) {
     let element_json = mapping[lastClickedElement.parentNode.id];
 
     let index = 0;
+    fonts.unshift("Zrnic");
     fonts.unshift("FoxyMist");
     fonts.unshift("Kalam");
 
@@ -284,6 +289,7 @@ async function edit(e) {
 
         index += 1;
     }
+    fonts.shift();
     fonts.shift();
     fonts.shift();
 
@@ -506,11 +512,13 @@ function showJSON(e) {
     let video = document.getElementById('video');
     video.style.pointerEvents = 'none';
 
+    fonts.unshift("Zrnic");
     fonts.unshift("FoxyMist");
     fonts.unshift("Kalam");
     let json = { "coordinates": mapping, "fonts": fonts };
 
     document.getElementById("JSONPRE").textContent = JSON.stringify(json, undefined, 2);
+    fonts.shift();
     fonts.shift();
     fonts.shift();
 
@@ -579,6 +587,7 @@ async function applyFonts(e) {
     WebFontLoad();
 
     // Get rid of fonts that no longer exist
+    fonts.unshift("Zrnic");
     fonts.unshift("FoxyMist");
     fonts.unshift("Kalam");
     let mapping_copy = {};
@@ -591,6 +600,7 @@ async function applyFonts(e) {
         mapping_copy[key] = value;
     }
     mapping = mapping_copy;
+    fonts.shift();
     fonts.shift();
     fonts.shift();
 
