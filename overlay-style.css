@@ -32,6 +32,18 @@ body {
     }
 }
 
+@keyframes fadePurpletoGreen {
+    0% {
+        background-color: #6441a5;
+        border: 1px solid #8f00ff;
+    }
+
+    100% {
+        background-color: #0a8f0b;
+        border: 1px solid #0dbf0d;
+    }
+}
+
 #liveAlertPlaceholder {
     position: fixed;
     top: 0px;

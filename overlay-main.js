@@ -29,8 +29,8 @@ document.onkeydown = function (evt) {
         elementUnfocused();
     }
     else if (isDelete && lastClickedElement != null && !commandsView) {
-        let index = lastClickedElement.parentNode.id;
-        let element_json = mapping[index];
+        let parentIndex = lastClickedElement.parentNode.id;
+        let element_json = mapping[parentIndex];
         // Clean up unused images
         for (const ele of element_json.elements) {
             if (ele.category == 'image') {
@@ -41,21 +41,45 @@ document.onkeydown = function (evt) {
             delete imagesDictionary[id];
         }
         imagesInMenu = [];
-        delete mapping[index];
+        delete mapping[parentIndex];
         lastClickedElement.parentNode.remove();
         lastClickedElement = null;
         elementUnfocused();
     }
 };
 
+function removeAnimation(button, timeout, normal = true) {
+    if (normal) {
+        setTimeout(() => {
+            button.style = `background-color: ${sidebarAlternateColor}; border: 1px solid ${borderAlternateCOlor}`;
+            button.style.animation = '';
+        }, timeout);
+    }
+    else {
+        setTimeout(() => {
+            button.style = `background-color: ${sidebarDefaultColor}; border: 1px solid ${borderColor}`;
+            button.style.animation = '';
+        }, timeout);
+    }
+}
+
 async function switchView(e) {
     e.stopPropagation();
     if (editing) {
         return;
     }
+    document.addEventListener("click", disable, true);
+    document.addEventListener("mousedown", disable, true);
+    document.addEventListener("mouseover", disable, true);
     let video = document.getElementById('video');
     let staticBackground = document.getElementById('staticBackground');
+    let switchButton = document.getElementById("switchButton");
+    let newButton = document.getElementById("newButton");
     let editButton = document.getElementById("editButton");
+    let saveButton = document.getElementById("saveButton");
+    let clearButton = document.getElementById("clearButton");
+    let jsonButton = document.getElementById("jsonButton");
+    let fontsButton = document.getElementById("fontsButton");
     if (!commandsView) {
         // Load variables if not done already
         if (channel_name == "inabox44") {
@@ -75,18 +99,26 @@ async function switchView(e) {
         document.getElementById('commandsView').style.display = 'block';
         document.getElementById('commandsDetails').style.display = 'block';
         // Sidebar style
-        document.getElementById("switchButton").innerHTML = 'Switch to Overlay View';
-        document.getElementById("newButton").innerHTML = 'Commands';
-        editButton.innerHTML = 'Counters';
-        document.getElementById("saveButton").innerHTML = '!kimexplains';
-        document.getElementById("clearButton").innerHTML = '!fierce';
-        document.getElementById("jsonButton").innerHTML = '-';
-        document.getElementById("fontsButton").innerHTML = '-';
+        let animationIndex = 0;
         for (var button of document.querySelectorAll('.sidebar')) {
-            button.style = `background-color: ${sidebarAlternateColor}; border: 1px solid ${borderAlternateCOlor}`;
+            button.style.animation = `fadePurpletoGreen 0.2s ${animationIndex * 0.2}s forwards`;
+            removeAnimation(button, 200 * (animationIndex + 1));
+            animationIndex++;
         }
         sidebarCurrentColor = sidebarAlternateColor;
+        switchButton.innerHTML = 'Switch to Overlay View';
+        newButton.innerHTML = 'Commands';
+        editButton.innerHTML = 'Counters';
+        saveButton.innerHTML = '!kimexplains';
+        clearButton.innerHTML = '!fierce';
+        jsonButton.innerHTML = '-';
+        fontsButton.innerHTML = '-';
         commandsList("COMMANDS");
+        setTimeout(() => {
+            document.removeEventListener("click", disable, true);
+            document.removeEventListener("mousedown", disable, true);
+            document.removeEventListener("mouseover", disable, true);
+        }, 1400);
     }
     else {
         // Swap background
@@ -102,9 +134,15 @@ async function switchView(e) {
         imagesInMenu = [];
         intervalList = [];
         await loadInitialJSON(video);
+        editButton.style = `background-color: ${sidebarAlternateColor}; border: 1px solid ${borderAlternateCOlor}`;
         deleteExpiredTimers();
-        elementUnfocused();
         // Sidebar style
+        let animationIndex = 0;
+        for (var button of document.querySelectorAll('.sidebar')) {
+            button.style.animation = `fadePurpletoGreen 0.2s ${animationIndex * 0.2}s reverse forwards`;
+            removeAnimation(button, 200 * (animationIndex + 1), false);
+            animationIndex++;
+        }
         document.getElementById("switchButton").innerHTML = 'Switch to Commands View';
         document.getElementById("newButton").innerHTML = 'New Element';
         editButton.innerHTML = 'Edit This Element';
@@ -112,10 +150,13 @@ async function switchView(e) {
         document.getElementById("clearButton").innerHTML = 'Clear All';
         document.getElementById("jsonButton").innerHTML = 'Show JSON';
         document.getElementById("fontsButton").innerHTML = 'Load Fonts';
-        for (var button of document.querySelectorAll('.sidebar')) {
-            button.style = `background-color: ${sidebarDefaultColor}; border: 1px solid ${borderColor}`;
-        }
         sidebarCurrentColor = sidebarDefaultColor;
+        setTimeout(() => {
+            elementUnfocused();
+            document.removeEventListener("click", disable, true);
+            document.removeEventListener("mousedown", disable, true);
+            document.removeEventListener("mouseover", disable, true);
+        }, 1400);
     }
 }
 
@@ -208,7 +249,6 @@ async function edit(e) {
 
     let element_json = mapping[lastClickedElement.parentNode.id];
 
-    let index = 0;
     fonts.unshift("Zrnic");
     fonts.unshift("FoxyMist");
     fonts.unshift("Kalam");
@@ -286,8 +326,6 @@ async function edit(e) {
         else {
             restartBlock.disabled = true;
         }
-
-        index += 1;
     }
     fonts.shift();
     fonts.shift();
@@ -358,8 +396,8 @@ async function closeMenu(e) {
     }
     imagesInMenu = [];
     // Write to mapping dictionary
-    let index = lastClickedElement.parentNode.id;
-    let reference = mapping[index]["elements"];
+    let parentIndex = lastClickedElement.parentNode.id;
+    let reference = mapping[parentIndex]["elements"];
     let content, type, color, font, time, restart, img;
     let warning = false;
     let parentNode = [];
@@ -432,13 +470,13 @@ async function closeMenu(e) {
 
     // Remove element if empty
     if (parentNode.length == 0) {
-        delete mapping[index];
+        delete mapping[parentIndex];
         lastClickedElement.parentNode.remove();
         lastClickedElement = null;
         elementUnfocused();
     }
     else {
-        mapping[index]["elements"] = parentNode;
+        mapping[parentIndex]["elements"] = parentNode;
         await redraw();
     }
 }

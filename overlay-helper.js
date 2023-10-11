@@ -357,7 +357,7 @@ function resizeAfterImgLoad(img) {
 
 function deleteExpiredTimers() {
     // Activate timers and throw out expired ones
-    for (var [index, element] of Object.entries(mapping)) {
+    for (var [objIndex, element] of Object.entries(mapping)) {
         let j = (element.elements).length;
         let now = ((Date.now() / 1000) | 0);
         element.now = now;
@@ -405,20 +405,20 @@ function startTimer(timerText, expiration, element) {
 }
 
 //////////////////////////
-function addDotsListeners(index) {
-    let box = document.getElementById(`box-${index.toString()}`);
-    let boxWrapper = document.getElementById(`${index.toString()}`);
+function addDotsListeners(boxIndex) {
+    let box = document.getElementById(`box-${boxIndex.toString()}`);
+    let boxWrapper = document.getElementById(`${boxIndex.toString()}`);
 
-    let rightMid = document.getElementById(`right-mid-${index.toString()}`);
-    let leftMid = document.getElementById(`left-mid-${index.toString()}`);
-    let topMid = document.getElementById(`top-mid-${index.toString()}`);
-    let bottomMid = document.getElementById(`bottom-mid-${index.toString()}`);
+    let rightMid = document.getElementById(`right-mid-${boxIndex.toString()}`);
+    let leftMid = document.getElementById(`left-mid-${boxIndex.toString()}`);
+    let topMid = document.getElementById(`top-mid-${boxIndex.toString()}`);
+    let bottomMid = document.getElementById(`bottom-mid-${boxIndex.toString()}`);
 
-    let leftTop = document.getElementById(`left-top-${index.toString()}`);
-    let rightTop = document.getElementById(`right-top-${index.toString()}`);
-    let rightBottom = document.getElementById(`right-bottom-${index.toString()}`);
-    let leftBottom = document.getElementById(`left-bottom-${index.toString()}`);
-    let rotate = document.getElementById(`rotate-${index.toString()}`);
+    let leftTop = document.getElementById(`left-top-${boxIndex.toString()}`);
+    let rightTop = document.getElementById(`right-top-${boxIndex.toString()}`);
+    let rightBottom = document.getElementById(`right-bottom-${boxIndex.toString()}`);
+    let leftBottom = document.getElementById(`left-bottom-${boxIndex.toString()}`);
+    let rotate = document.getElementById(`rotate-${boxIndex.toString()}`);
 
     boxWrapper.addEventListener('mousedown', e => dragHandler(e, boxWrapper), false);
     box.addEventListener('mousedown', e => elementFocused(e, box), false);
@@ -1152,19 +1152,19 @@ async function deleteListItem(event) {
                 }
                 else {
                     alert(feedback, "success");
-                    let index;
+                    let removeIndex;
                     switch (currentCommandsView) {
                         case "COMMANDS":
-                            index = commandsViewVariables['COMMANDS'].indexOf(cmdName.innerHTML);
-                            if (index !== -1) {
-                                commandsViewVariables['COMMANDS'].splice(index, 1);
+                            removeIndex = commandsViewVariables['COMMANDS'].indexOf(cmdName.innerHTML);
+                            if (removeIndex !== -1) {
+                                commandsViewVariables['COMMANDS'].splice(removeIndex, 1);
                             }
                             await commandsList('COMMANDS');
                             break;
                         case "COUNTER":
-                            index = commandsViewVariables['COUNTER'].indexOf(cmdName.innerHTML);
-                            if (index !== -1) {
-                                commandsViewVariables['COUNTER'].splice(index, 1);
+                            removeIndex = commandsViewVariables['COUNTER'].indexOf(cmdName.innerHTML);
+                            if (removeIndex !== -1) {
+                                commandsViewVariables['COUNTER'].splice(removeIndex, 1);
                             }
                             await commandsList('COUNTER');
                             break;
