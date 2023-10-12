@@ -26,6 +26,7 @@ var sidebarCurrentColor = sidebarDefaultColor;
 const listItemSelectedColor = '#b3e6ff';
 const minWidth = 20;
 const minHeight = 20;
+const listPageSize = 20;
 var initX, initY, mousePressX, mousePressY, initW, initH, initRotate;
 
 var left_INT = 0;
@@ -33,6 +34,8 @@ var width_INT = 0;
 
 var lastClickedElement;
 var lastClickedListItem;
+var highlight_name;
+var highlight_ele;
 var editing = false;
 var commandsView = false;
 
@@ -50,4 +53,26 @@ var emotes = {};
 
 var currentCommandsView = "COMMANDS";
 
-var commandsViewVariables = {}
+var commandsViewVariables = {};
+
+function pagination_config(var_name) {
+    return {
+        dataSource: commandsViewVariables[var_name],
+        pageSize: listPageSize,
+        showPageNumbers: false,
+        showNavigator: true,
+        showGoInput: true,
+        showGoButton: true,
+        className: "p-2 mx-auto",
+        callback: function (data, pagination) {
+            commandsListContent.innerHTML = "";
+            let ele;
+            for (let row of data) {
+                ele = htmlToElement(`<div class="h5 listItem border-bottom" id="generated-${row}" onclick="listItemClicked(this);">${row}</div>`);
+                commandsListContent.appendChild(ele);
+            }
+            let nav = document.querySelectorAll('.paginationjs-nav');
+            nav[0].innerHTML = `Page ${pagination.pageNumber}/${Math.ceil(pagination.totalNumber / pagination.pageSize)}`;
+        }
+    }
+}

@@ -74,8 +74,9 @@ class WebContext:
         self.author = author
 
 class WebAuthor:
-    def __init__(self, display_name, is_broadcaster=False, is_mod=True, is_vip=True):
+    def __init__(self, display_name, name, is_broadcaster=False, is_mod=True, is_vip=True):
         self.display_name = display_name
+        self.name = name
         self.is_broadcaster = is_broadcaster
         self.is_mod = is_mod
         self.is_vip = is_vip

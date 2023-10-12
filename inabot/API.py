@@ -104,6 +104,7 @@ def unban(broadcaster_id, moderator_id, user_id):
         headers=get_header_user(moderator_id),
     )
 
+
 def broadcaster_ID(name):
     r = requests.get(
         url=f"https://api.twitch.tv/helix/users?login={name}",
@@ -130,6 +131,7 @@ def announcement(message):
         print(r.json())
     return None
 
+
 def shoutout(to_broadcaster_id):
     r = requests.post(
         url=f"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={data.BROADCASTER_ID}&to_broadcaster_id={to_broadcaster_id}&moderator_id={data.INABOT_ID}",
@@ -140,7 +142,36 @@ def shoutout(to_broadcaster_id):
         print(r.json())
     return None
 
-def get_streams(user_login):
-    r = requests.get(url=f"https://api.twitch.tv/helix/streams?user_login={user_login}", headers=get_header_user(data.INABOT_ID))
-    return r.json()['data']
 
+def get_streams(user_login):
+    r = requests.get(
+        url=f"https://api.twitch.tv/helix/streams?user_login={user_login}",
+        headers=get_header_user(data.INABOT_ID),
+    )
+    return r.json()["data"]
+
+
+def get_game_id(game_name):
+    r = requests.get(
+        url=f"https://api.twitch.tv/helix/games?name={game_name}",
+        headers=get_header_user(data.INABOT_ID),
+    )
+    if not r.json()["data"]:
+        return None
+    return r.json()["data"][0]["id"]
+
+
+def update_channel_info(title=None, game_id=None):
+    if not title and not game_id:
+        return
+    body = {}
+    if title:
+        body["title"] = title
+    if game_id:
+        body["game_id"] = game_id
+    r = requests.patch(
+        url=f"https://api.twitch.tv/helix/channels?broadcaster_id={data.BROADCASTER_ID}",
+        headers=get_header_user(data.BROADCASTER_ID),
+        json=body,
+    )
+    return r.status_code

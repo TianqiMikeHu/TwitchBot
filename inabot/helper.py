@@ -119,7 +119,7 @@ def load_command(cmd):
 # ${args :5} -> args[:5]
 # ${args :} -> args[:]
 #
-# ${user abc} -> Interpret 'abc' as user. Converto display_name and remove @ character if needed.
+# ${user abc} -> Interpret 'abc' as user. Convert to display_name and remove @ character if needed.
 # ${escape abc} -> Escapes double quotes and backslashes
 #
 # ${random.pick ["item one", "item two", "item three"]} -> Pick random item from list

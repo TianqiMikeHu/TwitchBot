@@ -16,10 +16,13 @@ function InitializeColorPicker() {
     });
 }
 
-function WebFontLoad() {
+async function WebFontLoad() {
     document.querySelectorAll('[href*="fonts.googleapis.com/css?"]').forEach(e => e.remove());
     if (WebFontConfig.google.families.length) {
         WebFont.load(WebFontConfig);
+    }
+    else {
+        await redraw();
     }
 }
 
@@ -178,6 +181,7 @@ function InitializeEventListeners() {
 async function loadInitialJSON(video) {
     let response = await fetch(`https://apoorlywrittenbot.cc/public/json?channel=${channel_name}`);
     if (!response.ok) {
+        alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
         throw new Error("HTTP status " + response.status);
     }
     let data = await response.json();
@@ -188,7 +192,6 @@ async function loadInitialJSON(video) {
     }
     fonts = data.fonts;
     WebFontConfig.google.families = fonts;
-    WebFontLoad();
     // Reset index
     let count = 0;
     for (const [key, value] of Object.entries(data.coordinates)) {
@@ -196,6 +199,7 @@ async function loadInitialJSON(video) {
         count++;
     }
     imagesDictionary = data.images;
+    await WebFontLoad();
 }
 
 // Modifies lastClickedElement
@@ -624,6 +628,8 @@ function rotateHandler(event, boxWrapper, box) {
 
 async function commandsList(var_name) {
     currentCommandsView = var_name;
+    highlight_name = null;
+    highlight_ele = null;
     let commandsListContent;
     switch (currentCommandsView) {
         case "COMMANDS":
@@ -635,10 +641,7 @@ async function commandsList(var_name) {
                 ele.classList.add("d-block");
             }
             commandsListContent = document.getElementById('commandsListContent');
-            commandsListContent.innerHTML = "";
-            for (let row of commandsViewVariables['COMMANDS']) {
-                commandsListContent.appendChild(htmlToElement(`<div class="h5 listItem border-bottom" onclick="listItemClicked(this);">${row}</div>`));
-            }
+            $('#commandsList').pagination(pagination_config('COMMANDS'));
             break;
         case "COUNTER":
             document.getElementById('cmdListTitle').innerHTML = "Counters List";
@@ -649,15 +652,13 @@ async function commandsList(var_name) {
             }
             response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/variables?var=counters`);
             if (!response.ok) {
+                alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
                 throw new Error("HTTP status " + response.status);
             }
             data = await response.json();
             content = JSON.parse(data['value']);
             commandsListContent = document.getElementById('commandsListContent');
-            commandsListContent.innerHTML = "";
-            for (let row of commandsViewVariables['COUNTER']) {
-                commandsListContent.appendChild(htmlToElement(`<div class="h5 listItem border-bottom" onclick="listItemClicked(this);">${row}</div>`));
-            }
+            $('#commandsList').pagination(pagination_config('COUNTER'));
             break;
         case "KIMEXPLAINS":
             document.getElementById('cmdListTitle').innerHTML = "!Kimexplains List";
@@ -668,15 +669,13 @@ async function commandsList(var_name) {
             }
             response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/variables?var=kimexplains`);
             if (!response.ok) {
+                alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
                 throw new Error("HTTP status " + response.status);
             }
             data = await response.json();
             content = JSON.parse(data['value']);
             commandsListContent = document.getElementById('commandsListContent');
-            commandsListContent.innerHTML = "";
-            for (let i = 0; i < commandsViewVariables['KIMEXPLAINS']; i++) {
-                commandsListContent.appendChild(htmlToElement(`<div class="h5 listItem border-bottom" onclick="listItemClicked(this);">!kimexplains ${i + 1}</div>`));
-            }
+            $('#commandsList').pagination(pagination_config('KIMEXPLAINS'));
             break;
         case "FIERCE":
             document.getElementById('cmdListTitle').innerHTML = "!Fierce List";
@@ -687,15 +686,13 @@ async function commandsList(var_name) {
             }
             response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/variables?var=fierce`);
             if (!response.ok) {
+                alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
                 throw new Error("HTTP status " + response.status);
             }
             data = await response.json();
             content = JSON.parse(data['value']);
             commandsListContent = document.getElementById('commandsListContent');
-            commandsListContent.innerHTML = "";
-            for (let i = 0; i < commandsViewVariables['FIERCE']; i++) {
-                commandsListContent.appendChild(htmlToElement(`<div class="h5 listItem border-bottom" onclick="listItemClicked(this);">!fierce ${i + 1}</div>`));
-            }
+            $('#commandsList').pagination(pagination_config('FIERCE'));
             break;
         default:
             break;
@@ -749,6 +746,7 @@ async function listItemClicked(item) {
         case "COMMANDS":
             response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/commands?var=${encodeURIComponent(item.innerHTML)}`);
             if (!response.ok) {
+                alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
                 throw new Error("HTTP status " + response.status);
             }
             data = await response.json();
@@ -763,6 +761,7 @@ async function listItemClicked(item) {
         case "COUNTER":
             response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/counters?var=${encodeURIComponent(item.innerHTML)}`);
             if (!response.ok) {
+                alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
                 throw new Error("HTTP status " + response.status);
             }
             data = await response.json();
@@ -772,6 +771,7 @@ async function listItemClicked(item) {
             trashIcon.disabled = true;
             response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/kimexplains?var=${encodeURIComponent(item.innerHTML.split(' ')[1])}`);
             if (!response.ok) {
+                alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
                 throw new Error("HTTP status " + response.status);
             }
             data = await response.json();
@@ -781,6 +781,7 @@ async function listItemClicked(item) {
             trashIcon.disabled = true;
             response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/fierce?var=${encodeURIComponent(item.innerHTML.split(' ')[1])}`);
             if (!response.ok) {
+                alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
                 throw new Error("HTTP status " + response.status);
             }
             data = await response.json();
@@ -883,6 +884,18 @@ function newListItem() {
     menu.style.animation = "menuAnimation 0.5s forwards";
 }
 
+function sortedIndex(array, value) {
+    var low = 0,
+        high = array.length;
+
+    while (low < high) {
+        var mid = (low + high) >>> 1;
+        if (array[mid] < value) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}
+
 function disable(e) {
     e.stopPropagation();
     e.preventDefault();
@@ -957,48 +970,45 @@ async function addListItem() {
                     alert(feedback, "danger");
                 }
                 else {
-                    let commandsListContent = document.getElementById('commandsListContent');
-                    let highlight, ele;
+                    let newItem, newIndex, newPageNumber;
                     switch (currentCommandsView) {
                         case "COMMANDS":
-                            commandsViewVariables['COMMANDS'].push(newCmdName.value);
-                            commandsViewVariables['COMMANDS'] = commandsViewVariables['COMMANDS'].sort();
-                            commandsListContent.innerHTML = "";
-                            for (let row of commandsViewVariables['COMMANDS']) {
-                                ele = htmlToElement(`<div class="h5 listItem border-bottom" onclick="listItemClicked(this);">${row}</div>`);
-                                if (row == newCmdName.value) {
-                                    highlight = ele;
-                                }
-                                commandsListContent.appendChild(ele);
-                            }
+                            newIndex = sortedIndex(commandsViewVariables['COMMANDS'], newCmdName.value);
+                            commandsViewVariables['COMMANDS'].splice(newIndex, 0, newCmdName.value);
+                            newPageNumber = Math.ceil(newIndex/listPageSize);
+                            highlight_name = newCmdName.value;
+                            $('#commandsList').pagination(pagination_config('COMMANDS'));
+                            $('#commandsList').pagination('go',newPageNumber);
                             break;
                         case "COUNTER":
-                            commandsViewVariables['COUNTER'].push(newCmdName.value);
-                            commandsViewVariables['COUNTER'] = commandsViewVariables['COUNTER'].sort();
-                            commandsListContent.innerHTML = "";
-                            for (let row of commandsViewVariables['COUNTER']) {
-                                ele = htmlToElement(`<div class="h5 listItem border-bottom" onclick="listItemClicked(this);">${row}</div>`);
-                                if (row == newCmdName.value) {
-                                    highlight = ele;
-                                }
-                                commandsListContent.appendChild(ele);
-                            }
+                            newIndex = sortedIndex(commandsViewVariables['COUNTER'], newCmdName.value);
+                            commandsViewVariables['COUNTER'].splice(newIndex, 0, newCmdName.value);
+                            newPageNumber = Math.ceil(newIndex/listPageSize);
+                            highlight_name = newCmdName.value;
+                            $('#commandsList').pagination(pagination_config('COUNTER'));
+                            $('#commandsList').pagination('go',newPageNumber);
                             break;
                         case "KIMEXPLAINS":
-                            commandsViewVariables['KIMEXPLAINS'] += 1;
-                            highlight = htmlToElement(`<div class="h5 listItem border-bottom" onclick="listItemClicked(this);">!kimexplains ${commandsViewVariables['KIMEXPLAINS']}</div>`);
-                            commandsListContent.appendChild(highlight);
+                            newItem = `!kimexplains ${commandsViewVariables['KIMEXPLAINS'].length+1}`;
+                            commandsViewVariables['KIMEXPLAINS'].push(newItem);
+                            newPageNumber = Math.ceil((commandsViewVariables['KIMEXPLAINS'].length)/listPageSize);
+                            highlight_name = newItem;
+                            $('#commandsList').pagination(pagination_config('KIMEXPLAINS'));
+                            $('#commandsList').pagination('go',newPageNumber);
                             break;
                         case "FIERCE":
-                            commandsViewVariables['FIERCE'] += 1;
-                            highlight = htmlToElement(`<div class="h5 listItem border-bottom" onclick="listItemClicked(this);">!fierce ${commandsViewVariables['FIERCE']}</div>`);
-                            commandsListContent.appendChild(highlight);
+                            newItem = `!fierce ${commandsViewVariables['FIERCE'].length+1}`;
+                            commandsViewVariables['FIERCE'].push(newItem);
+                            newPageNumber = Math.ceil((commandsViewVariables['FIERCE'].length)/listPageSize);
+                            highlight_name = newItem;
+                            $('#commandsList').pagination(pagination_config('FIERCE'));
+                            $('#commandsList').pagination('go',newPageNumber);
                             break;
                         default:
                             return;
                     }
-                    highlight.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-                    await listItemClicked(highlight);
+                    document.getElementById(`generated-${highlight_name}`).scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+                    await listItemClicked(document.getElementById(`generated-${highlight_name}`));
                     alert(feedback, "success");
                 }
             }
@@ -1183,6 +1193,7 @@ async function loadVariables() {
     if (!commandsViewVariables['COMMANDS']) {
         response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/variables?var=commands`);
         if (!response.ok) {
+            alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
             throw new Error("HTTP status " + response.status);
         }
         data = await response.json();
@@ -1191,25 +1202,34 @@ async function loadVariables() {
     if (!commandsViewVariables['COUNTER']) {
         response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/variables?var=counters`);
         if (!response.ok) {
+            alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
             throw new Error("HTTP status " + response.status);
         }
         data = await response.json();
-        commandsViewVariables['COUNTER'] = JSON.parse(data['value']);
+        commandsViewVariables['COUNTER'] = JSON.parse(data['value']).sort();
     }
     if (!commandsViewVariables['KIMEXPLAINS']) {
         response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/variables?var=kimexplains`);
         if (!response.ok) {
+            alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
             throw new Error("HTTP status " + response.status);
         }
         data = await response.json();
-        commandsViewVariables['KIMEXPLAINS'] = JSON.parse(data['value']);
+        commandsViewVariables['KIMEXPLAINS'] = [];
+        for (let i=1; i<(JSON.parse(data['value'])+1); i++){
+            commandsViewVariables['KIMEXPLAINS'].push(`!kimexplains ${i}`);
+        }
     }
     if (!commandsViewVariables['FIERCE']) {
         response = await fetch(`https://apoorlywrittenbot.cc/restricted/inabot/variables?var=fierce`);
         if (!response.ok) {
+            alert(`Status code: ${response.status}. An unexpected error occurred. Try refreshing the page.`, 'danger');
             throw new Error("HTTP status " + response.status);
         }
         data = await response.json();
-        commandsViewVariables['FIERCE'] = JSON.parse(data['value']);
+        commandsViewVariables['FIERCE'] = [];
+        for (let i=1; i<(JSON.parse(data['value'])+1); i++){
+            commandsViewVariables['FIERCE'].push(`!fierce ${i}`);
+        }
     }
 }

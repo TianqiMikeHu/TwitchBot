@@ -622,7 +622,7 @@ async function applyFonts(e) {
     fonts = fonts.map(s => s.trim());
 
     WebFontConfig.google.families = fonts;
-    WebFontLoad();
+    await WebFontLoad();
 
     // Get rid of fonts that no longer exist
     fonts.unshift("Zrnic");

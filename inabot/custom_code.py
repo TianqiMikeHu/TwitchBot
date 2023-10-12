@@ -32,10 +32,10 @@ async def web_cmd_manager(display_name, args):
     if args[0] == "!cmd" and len(args) < 3:
         return f"@{display_name} [ERROR] Too few arguments."
     if display_name == "inabox44":
-        web_author = data.WebAuthor(display_name=display_name, is_broadcaster=True)
+        web_author = data.WebAuthor(display_name=display_name, name=display_name.lower(), is_broadcaster=True)
         web_context = data.WebContext(author=web_author)
     else:
-        web_author = data.WebAuthor(display_name=display_name)
+        web_author = data.WebAuthor(display_name=display_name, name=display_name.lower())
         web_context = data.WebContext(author=web_author)
 
     if args[0] == "!editcounter":
@@ -173,10 +173,11 @@ async def delete_counter(channel_read, channel_write, context, args, web=False):
 
 
 async def fierce(channel_read, channel_write, context, args):
-    return await helper.quotes(channel_write, context.author, args)
+    return await helper.quotes(channel_write, context, args)
+
 
 async def kimexplains(channel_read, channel_write, context, args):
-    return await helper.quotes(channel_write, context.author, args)
+    return await helper.quotes(channel_write, context, args)
 
 
 async def permit(channel_read, channel_write, context, args):
@@ -205,7 +206,9 @@ async def permit(channel_read, channel_write, context, args):
 
 async def so(channel_read, channel_write, context, args):
     if len(args) < 2:
-        return "Usage: !so [user]"
+        return await channel_write.send(
+            f"@{context.author.display_name} [ERROR] Too few arguments."
+        )
 
     user = args[1]
     if user[0] == "@":
@@ -213,7 +216,9 @@ async def so(channel_read, channel_write, context, args):
 
     user = API.broadcaster_ID(user)
     if not user:
-        return
+        return await channel_write.send(
+            f"@{context.author.display_name} [ERROR] User {user} not found."
+        )
     id = user["id"]
     display_name = user["display_name"]
 
@@ -223,3 +228,27 @@ async def so(channel_read, channel_write, context, args):
 
     API.shoutout(id)
     return API.announcement(response)
+
+
+async def title(channel_read, channel_write, context, args):
+    if len(args) < 2:
+        return await context.reply("[ERROR] Too few arguments.")
+    status = API.update_channel_info(title=" ".join(args[1:]))
+    if status == 204:
+        return await context.reply("Title updated successfully.")
+    else:
+        return await context.reply(f"[ERROR] Status code: {str(status)}")
+    
+
+async def game(channel_read, channel_write, context, args):
+    if len(args) < 2:
+        return await context.reply("[ERROR] Too few arguments.")
+    game_name = " ".join(args[1:])
+    game_id = API.get_game_id(game_name)
+    if not game_id:
+        return await context.reply(f"[ERROR] Game \"{game_name}\" not found.")
+    status = API.update_channel_info(game_id=game_id)
+    if status == 204:
+        return await context.reply("Category updated successfully.")
+    else:
+        return await context.reply(f"[ERROR] Status code: {str(status)}")
