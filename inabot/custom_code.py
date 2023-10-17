@@ -4,6 +4,9 @@ import boto3
 import access
 import API
 import json
+from datetime import datetime
+import pytz
+import requests
 
 
 async def cmd_manager(channel_read, channel_write, context, args):
@@ -32,10 +35,14 @@ async def web_cmd_manager(display_name, args):
     if args[0] == "!cmd" and len(args) < 3:
         return f"@{display_name} [ERROR] Too few arguments."
     if display_name == "inabox44":
-        web_author = data.WebAuthor(display_name=display_name, name=display_name.lower(), is_broadcaster=True)
+        web_author = data.WebAuthor(
+            display_name=display_name, name=display_name.lower(), is_broadcaster=True
+        )
         web_context = data.WebContext(author=web_author)
     else:
-        web_author = data.WebAuthor(display_name=display_name, name=display_name.lower())
+        web_author = data.WebAuthor(
+            display_name=display_name, name=display_name.lower()
+        )
         web_context = data.WebContext(author=web_author)
 
     if args[0] == "!editcounter":
@@ -238,7 +245,7 @@ async def title(channel_read, channel_write, context, args):
         return await context.reply("Title updated successfully.")
     else:
         return await context.reply(f"[ERROR] Status code: {str(status)}")
-    
+
 
 async def game(channel_read, channel_write, context, args):
     if len(args) < 2:
@@ -246,9 +253,125 @@ async def game(channel_read, channel_write, context, args):
     game_name = " ".join(args[1:])
     game_id = API.get_game_id(game_name)
     if not game_id:
-        return await context.reply(f"[ERROR] Game \"{game_name}\" not found.")
+        return await context.reply(f'[ERROR] Game "{game_name}" not found.')
     status = API.update_channel_info(game_id=game_id)
     if status == 204:
         return await context.reply("Category updated successfully.")
     else:
         return await context.reply(f"[ERROR] Status code: {str(status)}")
+
+
+async def followers(channel_read, channel_write, context, args):
+    return await channel_write.send(
+        f"Kim has {str(API.follower_count())} followers inaboxHype"
+    )
+
+
+async def inabot_queue(channel_read, channel_write, context, args):
+    if len(args) > 1:
+        match args[1].lower():
+            case "join":
+                queue = helper.get_queue()
+                if context.author.display_name in queue:
+                    return await channel_write.send(
+                        f"@{context.author.display_name} is already in the queue."
+                    )
+                queue.append(context.author.display_name)
+                helper.save_queue(queue)
+                return await channel_write.send(
+                    f"@{context.author.display_name} has joined the queue."
+                )
+            case "leave":
+                queue = helper.get_queue()
+                if not queue:
+                    return await channel_write.send("Current queue: EMPTY")
+                if context.author.display_name not in queue:
+                    return await channel_write.send(
+                        f"@{context.author.display_name} is not currently in the queue."
+                    )
+                queue.remove(context.author.display_name)
+                helper.save_queue(queue)
+                return await channel_write.send(
+                    f"@{context.author.display_name} has left the queue."
+                )
+            case "clear":
+                if not access.authorization("M", context.author):
+                    return await channel_write.send(
+                        f"@{context.author.display_name} [ERROR] You do not have permission for this action."
+                    )
+                helper.save_queue([])
+                return await channel_write.send(
+                    f"@{context.author.display_name} has cleared the queue."
+                )
+            case "remove":
+                if not access.authorization("M", context.author):
+                    return await channel_write.send(
+                        f"@{context.author.display_name} [ERROR] You do not have permission for this action."
+                    )
+                queue = helper.get_queue()
+                if not queue:
+                    return await channel_write.send("Current queue: EMPTY")
+                if len(args) > 2:
+                    if args[2] not in queue:
+                        return await channel_write.send(
+                            f"@{context.author.display_name} User {args[2]} is not currently in the queue."
+                        )
+                    queue.remove(args[2])
+                    helper.save_queue(queue)
+                    return await channel_write.send(
+                        f"@{context.author.display_name} User {args[2]} has been removed from the queue."
+                    )
+                else:
+                    removed = queue.pop(0)
+                    helper.save_queue(queue)
+                    return await channel_write.send(
+                        f"@{context.author.display_name} User {removed} has been removed from the queue."
+                    )
+            case "add":
+                if not access.authorization("M", context.author):
+                    return await channel_write.send(
+                        f"@{context.author.display_name} [ERROR] You do not have permission for this action."
+                    )
+                queue = helper.get_queue()
+                if len(args) > 2:
+                    if args[2] in queue:
+                        return await channel_write.send(
+                            f"@{context.author.display_name} User {args[2]} is already in the queue."
+                        )
+                    queue.append(args[2])
+                    helper.save_queue(queue)
+                    return await channel_write.send(
+                        f"@{context.author.display_name} User {args[2]} has been added to the queue."
+                    )
+                else:
+                    return await channel_write.send(
+                        f"@{context.author.display_name} [ERROR] Too few arguments."
+                    )
+            case _:
+                pass
+    queue = helper.get_queue()
+    output = "Current queue: "
+    if not queue:
+        return await channel_write.send("Current queue: EMPTY")
+    else:
+        for person in queue:
+            output += f"{person}, "
+        output = output[:-2]
+        return await channel_write.send(f"{output}")
+
+
+async def timezone(channel_read, channel_write, context, args):
+    timezone = pytz.timezone("Canada/Mountain")
+    now = datetime.now(timezone)
+    return await channel_write.send(
+        f"The current time for inabox44 is {now.strftime('%H:%M:%S')} (Canada/Mountain time zone, {now.strftime('%z')})"
+    )
+
+
+async def youtube(channel_read, channel_write, context, args):
+    r = requests.get(
+        url="https://decapi.me/youtube/latest_video?id=UCDiSZI6qL_kYW_NkQmyE0zQ"
+    )
+    return await channel_write.send(
+        f"Kim has a YouTube channel! Check out her latest video here: {r.text}"
+    )

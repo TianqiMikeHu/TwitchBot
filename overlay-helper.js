@@ -927,6 +927,10 @@ async function addListItem() {
                 alert("Counter name invalid. Operation cancelled.", "warning");
                 break;
             }
+            if (commandsViewVariables['COUNTER'].includes(newCmdName.value)){
+                alert("Counter exists. Operation cancelled.", "warning");
+                break;
+            }
             config = {
                 method: 'POST',
                 body: JSON.stringify({ "action": "web_api_cmd", "cmd": [`!editcounter ${newCmdName.value} 0`] })
@@ -973,9 +977,10 @@ async function addListItem() {
                     let newItem, newIndex, newPageNumber;
                     switch (currentCommandsView) {
                         case "COMMANDS":
+                            newCmdName.value = newCmdName.value.toLowerCase();
                             newIndex = sortedIndex(commandsViewVariables['COMMANDS'], newCmdName.value);
                             commandsViewVariables['COMMANDS'].splice(newIndex, 0, newCmdName.value);
-                            newPageNumber = Math.ceil(newIndex/listPageSize);
+                            newPageNumber = Math.ceil((newIndex+1)/listPageSize);
                             highlight_name = newCmdName.value;
                             $('#commandsList').pagination(pagination_config('COMMANDS'));
                             $('#commandsList').pagination('go',newPageNumber);
@@ -983,7 +988,7 @@ async function addListItem() {
                         case "COUNTER":
                             newIndex = sortedIndex(commandsViewVariables['COUNTER'], newCmdName.value);
                             commandsViewVariables['COUNTER'].splice(newIndex, 0, newCmdName.value);
-                            newPageNumber = Math.ceil(newIndex/listPageSize);
+                            newPageNumber = Math.ceil((newIndex+1)/listPageSize);
                             highlight_name = newCmdName.value;
                             $('#commandsList').pagination(pagination_config('COUNTER'));
                             $('#commandsList').pagination('go',newPageNumber);

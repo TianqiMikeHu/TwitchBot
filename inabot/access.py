@@ -80,8 +80,8 @@ def url_match(author, msg):
     matches = re.findall(r"\b((?:https?:\/\/(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6})|(?:(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6}[\/|?]))", msg)
     # matches = re.findall(r"\b((?:[a-zA-Z\d@\-]+\.)+[a-zA-Z]{2,6})\b", msg)
     if matches:
-        if not authorization("V", author):
-            return True
+        # if not authorization("V", author):
+        #     return True
         for m in matches:
             if 'twitch.tv' not in m:
                 return True

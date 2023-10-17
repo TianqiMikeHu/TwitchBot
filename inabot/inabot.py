@@ -41,6 +41,7 @@ class Bot(commands.Bot):
     @routines.routine(minutes=60, iterations=None)
     async def invalidate(self):
         helper.invalidate()
+        helper.new_commands_page()
 
     @routines.routine(seconds=0.5, iterations=None)
     async def ingest_message(self):
@@ -127,7 +128,7 @@ class Bot(commands.Bot):
                 await self.get_channel(self.channel_write).send(
                     f"@{msg.author.display_name} Hey, that looks like a link."
                 )
-                API.timeout_username(data.BROADCASTER_ID, data.INABOT_ID, msg.author.name, duration=60)
+                API.delete_message(data.BROADCASTER_ID, data.INABOT_ID, msg.id)
                 return
             data.PERMIT.remove(msg.author.name)
             if access.cooldown_approved(
@@ -136,7 +137,7 @@ class Bot(commands.Bot):
                 await self.get_channel(self.channel_write).send(
                     f"@{msg.author.display_name} Hey, that looks like a link. (Expired permission override)"
                 )
-                API.timeout_username(data.BROADCASTER_ID, data.INABOT_ID, msg.author.name, duration=60)
+                API.delete_message(data.BROADCASTER_ID, data.INABOT_ID, msg.id)
                 del data.COOLDOWN["_permit_timeout"][msg.author.name]
                 return
 

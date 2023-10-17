@@ -128,6 +128,7 @@ def load_command(cmd):
 #
 # ${count abc} -> Increment counter 'abc', return new value
 # ${getcount abc} -> Return value of counter 'abc'
+# ${uncount abc} -> Decrement counter 'abc', return new value
 #
 # ${game} -> The current category of inabox44
 # ${title} -> The current category of inabox44
@@ -183,6 +184,8 @@ def parse_variables(message, context, args):
                     evaluate_this = count(evaluate_this_list[1])
                 case "getcount":
                     evaluate_this = get_count(evaluate_this_list[1])
+                case "uncount":
+                    evaluate_this = uncount(evaluate_this_list[1])
                 case "game":
                     evaluate_this = API.get_game(data.BROADCASTER_ID)
                 case "title":
@@ -214,6 +217,47 @@ def count(counter):
         ExpressionAttributeValues={
             ":v": {
                 "N": "1",
+            }
+        },
+        ReturnValues="ALL_NEW",
+    )
+
+    # Update counters list
+    if counter not in data.COUNTERS_LIST:
+        data.COUNTERS_LIST.append(counter)
+        response2 = client.update_item(
+            Key={
+                "var_name": {
+                    "S": "_counters_json",
+                },
+                "var_type": {"S": "CUSTOM"},
+            },
+            TableName=data.VARIABLES_TABLE,
+            UpdateExpression="SET var_val=:v",
+            ExpressionAttributeValues={
+                ":v": {
+                    "S": json.dumps(data.COUNTERS_LIST, separators=(",", ":")),
+                }
+            },
+        )
+
+    return response["Attributes"]["var_val"]["N"]
+
+
+def uncount(counter):
+    client = boto3.client("dynamodb", region_name="us-west-2")
+    response = client.update_item(
+        Key={
+            "var_name": {
+                "S": counter,
+            },
+            "var_type": {"S": "COUNTER"},
+        },
+        TableName=data.VARIABLES_TABLE,
+        UpdateExpression="ADD var_val :v",
+        ExpressionAttributeValues={
+            ":v": {
+                "N": "-1",
             }
         },
         ReturnValues="ALL_NEW",
@@ -315,9 +359,7 @@ async def cmd_add(channel_write, context, args, web=False):
     )
 
     if web:
-        return (
-            f'@{context.author.display_name} Command "{args[2].lower()}" added succcessfully.'
-        )
+        return f'@{context.author.display_name} Command "{args[2].lower()}" added succcessfully.'
     else:
         return await channel_write.send(
             f'@{context.author.display_name} Command "{args[2].lower()}" added succcessfully.'
@@ -469,9 +511,7 @@ async def cmd_del(channel_write, context, args, web=False):
         )
 
     if web:
-        return (
-            f'@{context.author.display_name} Command "{args[2].lower()}" deleted succcessfully.'
-        )
+        return f'@{context.author.display_name} Command "{args[2].lower()}" deleted succcessfully.'
     else:
         return await channel_write.send(
             f'@{context.author.display_name} Command "{args[2].lower()}" deleted succcessfully.'
@@ -549,7 +589,9 @@ async def cmd_options(channel_write, context, args, web=False):
             opt_args = opt.strip().split("=")
             if len(opt_args) != 2:
                 if web:
-                    return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt}"
+                    return (
+                        f"@{context.author.display_name} [ERROR] Invalid syntax: {opt}"
+                    )
                 else:
                     return await channel_write.send(
                         f"@{context.author.display_name} [ERROR] Invalid syntax: {opt}"
@@ -814,9 +856,7 @@ async def quotes(channel_write, context, args, web=False):
                 TableName=data.QUOTES_TABLE,
             )
             if web:
-                return (
-                    f"@{context.author.display_name} Successfully added {quotes_name} #{index}"
-                )
+                return f"@{context.author.display_name} Successfully added {quotes_name} #{index}"
             else:
                 return await channel_write.send(
                     f"@{context.author.display_name} Successfully added {quotes_name} #{index}"
@@ -1028,3 +1068,46 @@ def web_api_response(msg):
         QueueUrl="https://sqs.us-west-2.amazonaws.com/414556232085/inabot-API-response",
         MessageBody=msg,
     )
+
+
+def get_queue():
+    client = boto3.client("dynamodb", region_name="us-west-2")
+    response = client.get_item(
+        Key={
+            "var_name": {
+                "S": "queue",
+            },
+            "var_type": {"S": "CUSTOM"},
+        },
+        TableName=data.VARIABLES_TABLE,
+    )
+    return json.loads(response["Item"]["var_val"]["S"])
+
+
+def save_queue(queue):
+    client = boto3.client("dynamodb", region_name="us-west-2")
+    response = client.update_item(
+        Key={
+            "var_name": {
+                "S": "queue",
+            },
+            "var_type": {"S": "CUSTOM"},
+        },
+        TableName=data.VARIABLES_TABLE,
+        UpdateExpression="SET var_val=:v",
+        ExpressionAttributeValues={
+            ":v": {
+                "S": json.dumps(queue, separators=(",", ":")),
+            }
+        },
+        ReturnValues="ALL_NEW",
+    )
+
+
+def new_commands_page():
+    if data.IS_LIVE:
+        client = boto3.client("lambda", region_name="us-west-2")
+        response = client.invoke(
+            FunctionName="CommandsPage",
+            InvocationType="Event",
+        )

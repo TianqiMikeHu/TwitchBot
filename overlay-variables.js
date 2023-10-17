@@ -26,7 +26,7 @@ var sidebarCurrentColor = sidebarDefaultColor;
 const listItemSelectedColor = '#b3e6ff';
 const minWidth = 20;
 const minHeight = 20;
-const listPageSize = 20;
+const listPageSize = 40;
 var initX, initY, mousePressX, mousePressY, initW, initH, initRotate;
 
 var left_INT = 0;

@@ -46,11 +46,18 @@ async def parse_command(channel_read, channel_write, context, args):
         # Try ANY POSITION match
         if len(data.ANY_COMMANDS) > 0:
             match = re.findall(
-                r"(?=(\b" + "|".join(data.ANY_COMMANDS) + r"\b))", " ".join(args)
+                r"\b" + r"\b|\b".join(data.ANY_COMMANDS) + r"\b", " ".join(args)
             )
             if len(match) > 0:
                 cmd = match[0]
-            else:
+            else:  # Beanie regex
+                if re.search(
+                    r"[bßᵇᵦǝ][eéêëèEÉÈÊËĒₑᵉᴉq3][aààâäAÀÂÅᵃₐu][ñnNÑⁿₙɐ][iîïÎÏIᵢᶦǝ][eéêëèEÉÈÊËĒᵉₑ!q3]",
+                    " ".join(args),
+                ):
+                    return await channel_write.send(
+                        f"@{context.author.display_name} I think you mean toque inaboxToque"
+                    )
                 return
         else:
             return
@@ -60,7 +67,9 @@ async def parse_command(channel_read, channel_write, context, args):
 
     # print(f"VIP: {author.is_vip}; MOD: {author.is_mod}; SUPERMODS {author.name in data.SUPERMODS}; BROADCASTER: {author.is_broadcaster}")
     if context is not None:  # Schedule is exempt from permission check
-        if not access.authorization(cmd_data["command_permission"]["S"], context.author):
+        if not access.authorization(
+            cmd_data["command_permission"]["S"], context.author
+        ):
             return
 
     if context is not None:  # Schedule is exempt from cooldown check
@@ -74,7 +83,11 @@ async def parse_command(channel_read, channel_write, context, args):
     else:
         # DYNAMIC
         await dynamic_handler(
-            cmd_data["command_response"]["S"], channel_read, channel_write, context, args
+            cmd_data["command_response"]["S"],
+            channel_read,
+            channel_write,
+            context,
+            args,
         )
 
 
