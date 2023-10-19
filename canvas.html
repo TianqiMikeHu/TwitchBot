@@ -201,9 +201,12 @@
 			timeout: 1500
 		}
 
-		function WebFontLoad() {
+		async function WebFontLoad() {
 			if (WebFontConfig.google.families.length) {
 				WebFont.load(WebFontConfig);
+			}
+			else {
+				await redraw();
 			}
 		}
 
@@ -219,7 +222,7 @@
 			let data = await response.json();
 			elements_json = data;
 			WebFontConfig.google.families = data.fonts;
-			WebFontLoad();
+			await WebFontLoad();
 		}
 
 		function isOpen(ws) {
