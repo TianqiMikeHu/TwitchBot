@@ -1,0 +1,5 @@
+twitchio
+boto3
+python-dotenv
+requests
+pytz
