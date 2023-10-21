@@ -96,6 +96,17 @@ def initialize_commands():
     )
     data.COUNTERS_LIST = json.loads(response["Item"]["var_val"]["S"])
 
+    response = client.get_item(
+        Key={
+            "var_name": {
+                "S": "_client_id",
+            },
+            "var_type": {"S": "CUSTOM"},
+        },
+        TableName=data.VARIABLES_TABLE,
+    )
+    data.CLIENT_ID = response["Item"]["var_val"]["S"]
+
 
 def load_command(cmd):
     print(f"Read request: {cmd}")

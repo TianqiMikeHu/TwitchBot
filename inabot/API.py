@@ -2,7 +2,6 @@ import data
 import requests
 import boto3
 import random
-import os
 
 
 def get_header_user(user_id):
@@ -22,7 +21,7 @@ def get_header_user(user_id):
         data.ACCESS_TOKENS[user_id] = user_access_token
 
     header = {
-        "Client-ID": os.getenv("CLIENTID"),
+        "Client-ID": data.CLIENT_ID,
         "Authorization": f"Bearer {user_access_token}",
         "Content-Type": "application/json",
     }

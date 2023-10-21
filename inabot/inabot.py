@@ -4,7 +4,6 @@ import data
 import helper
 import API
 from command_handler import *
-import dotenv
 import access
 import json
 import threading
@@ -12,7 +11,6 @@ import threading
 
 class Bot(commands.Bot):
     def __init__(self, channel_read, channel_write):
-        dotenv.load_dotenv()
         #### This is for debugging
         if channel_read == channel_write:
             initial_channels = [channel_read]
