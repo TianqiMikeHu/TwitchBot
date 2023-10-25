@@ -187,3 +187,12 @@ def follower_count():
         headers=get_header_user(data.INABOT_ID),
     )
     return r.json()["total"]
+
+def follow_date(user_id):
+    r = requests.get(
+        url=f"https://api.twitch.tv/helix/channels/followers?user_id={user_id}&broadcaster_id={data.BROADCASTER_ID}&first=1",
+        headers=get_header_user(data.INABOT_ID),
+    )
+    if r.json().get('data'):
+        return r.json()['data'][0]['followed_at']
+    return None

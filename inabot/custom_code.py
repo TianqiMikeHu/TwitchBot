@@ -5,6 +5,7 @@ import access
 import API
 import json
 from datetime import datetime
+from dateutil import relativedelta
 import pytz
 import requests
 
@@ -265,6 +266,39 @@ async def followers(channel_read, channel_write, context, args):
     return await channel_write.send(
         f"Kim has {str(API.follower_count())} followers inaboxHype"
     )
+
+
+async def follow_age(channel_read, channel_write, context, args):
+    target = context.author.display_name
+    if len(args) > 1 and access.authorization("M", context.author):
+        target = args[1]
+        if target[0] == "@":
+            target = target[1:]
+        user = API.broadcaster_ID(target)
+        if not user:
+            return await context.reply(f"[ERROR] User {target} not found.")
+        date = API.follow_date(user['id'])
+        target = user['display_name']
+    else:
+        date = API.follow_date(context.author.id)
+    if not date:
+        return await context.reply(f"{target} is not following Kim.")
+    date = datetime.fromisoformat(date)
+    delta = relativedelta.relativedelta(
+        datetime.utcnow().replace(tzinfo=pytz.utc), date
+    )
+    # print(datetime.utcnow().replace(tzinfo=pytz.utc))
+    # print(date)
+    # print(delta)
+    response = f"{target} followed Kim on {date.strftime('%b %d %Y at %H:%M:%S UTC')}, for a total of "
+    if delta.years:
+        response += f"{delta.years} year{'s' if delta.years>1 else ''} "
+    if delta.months:
+        response += f"{delta.months} month{'s' if delta.months>1 else ''} "
+    response += f"{delta.days} day{'s' if delta.days>1 else ''} "
+    response += f"and {delta.hours} hour{'s' if delta.hours>1 else ''} "
+
+    return await context.reply(response)
 
 
 async def inabot_queue(channel_read, channel_write, context, args):
