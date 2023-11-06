@@ -277,8 +277,8 @@ async def follow_age(channel_read, channel_write, context, args):
         user = API.broadcaster_ID(target)
         if not user:
             return await context.reply(f"[ERROR] User {target} not found.")
-        date = API.follow_date(user['id'])
-        target = user['display_name']
+        date = API.follow_date(user["id"])
+        target = user["display_name"]
     else:
         date = API.follow_date(context.author.id)
     if not date:
@@ -287,9 +287,6 @@ async def follow_age(channel_read, channel_write, context, args):
     delta = relativedelta.relativedelta(
         datetime.utcnow().replace(tzinfo=pytz.utc), date
     )
-    # print(datetime.utcnow().replace(tzinfo=pytz.utc))
-    # print(date)
-    # print(delta)
     response = f"{target} followed Kim on {date.strftime('%b %d %Y at %H:%M:%S UTC')}, for a total of "
     if delta.years:
         response += f"{delta.years} year{'s' if delta.years>1 else ''} "
@@ -392,6 +389,28 @@ async def inabot_queue(channel_read, channel_write, context, args):
             output += f"{person}, "
         output = output[:-2]
         return await channel_write.send(f"{output}")
+
+
+async def joinqueue(channel_read, channel_write, context, args):
+    return await inabot_queue(channel_read, channel_write, context, ["!queue", "join"])
+
+
+async def modban(channel_read, channel_write, context, args):
+    mods = helper.get_mods()
+    mod = None
+    if args[1].lower() in list(mods.keys()):
+        mod = mods[args[1].lower()]
+    if mod is None:
+        for alias in list(mods.values()):
+            if args[1].lower() == alias.lower():
+                mod = alias
+                break
+    if mod is None:
+        return await channel_write.send(f"{args[1]} is not a mod.")
+    counter = helper.count(f"{mod}Ban".replace(" ", ""))
+    return await channel_write.send(
+        f"The people have wanted to ban {mod} {counter} times, but have been unable to because {mod} is a mod inaboxPout"
+    )
 
 
 async def timezone(channel_read, channel_write, context, args):

@@ -43,23 +43,28 @@ async def parse_command(channel_read, channel_write, context, args):
     cmd = args[0].lower()
 
     if cmd not in data.CMD_LIST:
-        # Try ANY POSITION match
-        if len(data.ANY_COMMANDS) > 0:
-            match = re.findall(
-                r"\b" + r"\b|\b".join(data.ANY_COMMANDS) + r"\b", " ".join(args)
-            )
-            if len(match) > 0:
-                cmd = match[0]
-            else:  # Beanie regex
-                if re.search(
-                    r"[bßᵇᵦǝ][eéêëèEÉÈÊËĒₑᵉᴉq3][aààâäAÀÂÅᵃₐu][ñnNÑⁿₙɐ][iîïÎÏIᵢᶦǝ][eéêëèEÉÈÊËĒᵉₑ!q3]",
-                    " ".join(args),
-                ):
-                    return await channel_write.send(
-                        f"@{context.author.display_name} I think you mean toque inaboxToque"
-                    )
-                return
-        else:
+        match = False
+        if len(data.ANY_COMMANDS) > 0:  # Try ANY POSITION match
+            original = " ".join(args).lower()
+            for c in data.ANY_COMMANDS:
+                regex = r"(?:(?<=\s)|(?<=^))" + c + r"(?=$|\s)"
+                try:
+                    if re.search(regex, original):
+                        cmd = c
+                        match = True
+                        break
+                except:
+                    pass
+        if not match:  # Regex aliases
+            for regex in data.REGEX:
+                try:
+                    if re.search(regex, original):
+                        cmd = data.REGEX[regex]
+                        match = True
+                        break
+                except:
+                    pass
+        if cmd not in data.CMD_LIST:  # Not found
             return
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet

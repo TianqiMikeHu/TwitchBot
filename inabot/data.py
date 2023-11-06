@@ -64,18 +64,27 @@ CURRENT_SCHEDULE = {}
 #     "!test": 3.235009327883418
 # }
 
+REGEX = {
+    r"[bßᵇᵦǝ][eéêëèEÉÈÊËĒₑᵉᴉq3][aààâäAÀÂÅᵃₐu][ñnNÑⁿₙɐ][iîïÎÏIᵢᶦǝ][eéêëèEÉÈÊËĒᵉₑ!q3]": "!beanie",
+    r"\btab(?:s|bed)?\b": "!bpaddtab",
+}
+
 SQS_QUEUE = Queue()
 
 PERMIT = []
 
 IS_LIVE = False
 
+
 class WebContext:
     def __init__(self, author):
         self.author = author
 
+
 class WebAuthor:
-    def __init__(self, display_name, name, is_broadcaster=False, is_mod=True, is_vip=True):
+    def __init__(
+        self, display_name, name, is_broadcaster=False, is_mod=True, is_vip=True
+    ):
         self.display_name = display_name
         self.name = name
         self.is_broadcaster = is_broadcaster

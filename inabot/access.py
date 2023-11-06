@@ -71,19 +71,23 @@ def cooldown_approved(cmd, author_name):
         data.COOLDOWN[cmd][author_name] = now
         return True
 
+
 # True means block
 def url_match(author, msg):
     if authorization("M", author):
         return False
     if re.match(r"([^\s]+\.(?:co|org|net))", msg):
         return True
-    matches = re.findall(r"\b((?:https?:\/\/(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6})|(?:(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6}[\/|?]))", msg)
+    matches = re.findall(
+        r"\b((?:https?:\/\/(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6})|(?:(?:[a-zA-Z\d\-]+\.)+[a-zA-Z]{2,6}[\/|?]))",
+        msg,
+    )
     # matches = re.findall(r"\b((?:[a-zA-Z\d@\-]+\.)+[a-zA-Z]{2,6})\b", msg)
     if matches:
         # if not authorization("V", author):
         #     return True
         for m in matches:
-            if 'twitch.tv' not in m:
+            if "twitch.tv" not in m:
                 return True
         return False
     else:

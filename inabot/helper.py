@@ -1115,6 +1115,20 @@ def save_queue(queue):
     )
 
 
+def get_mods():
+    client = boto3.client("dynamodb", region_name="us-west-2")
+    response = client.get_item(
+        Key={
+            "var_name": {
+                "S": "mods",
+            },
+            "var_type": {"S": "CUSTOM"},
+        },
+        TableName=data.VARIABLES_TABLE,
+    )
+    return json.loads(response["Item"]["var_val"]["S"])
+
+
 def new_commands_page():
     if data.IS_LIVE:
         client = boto3.client("lambda", region_name="us-west-2")

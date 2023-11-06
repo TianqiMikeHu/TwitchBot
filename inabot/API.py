@@ -103,10 +103,11 @@ def unban(broadcaster_id, moderator_id, user_id):
         headers=get_header_user(moderator_id),
     )
 
+
 def delete_message(broadcaster_id, moderator_id, message_id):
     r = requests.delete(
         url=f"https://api.twitch.tv/helix/moderation/chat?broadcaster_id={broadcaster_id}&moderator_id={moderator_id}&message_id={message_id}",
-        headers=get_header_user(moderator_id)
+        headers=get_header_user(moderator_id),
     )
 
 
@@ -181,6 +182,7 @@ def update_channel_info(title=None, game_id=None):
     )
     return r.status_code
 
+
 def follower_count():
     r = requests.get(
         url=f"https://api.twitch.tv/helix/channels/followers?broadcaster_id={data.BROADCASTER_ID}&first=1",
@@ -188,11 +190,12 @@ def follower_count():
     )
     return r.json()["total"]
 
+
 def follow_date(user_id):
     r = requests.get(
         url=f"https://api.twitch.tv/helix/channels/followers?user_id={user_id}&broadcaster_id={data.BROADCASTER_ID}&first=1",
         headers=get_header_user(data.INABOT_ID),
     )
-    if r.json().get('data'):
-        return r.json()['data'][0]['followed_at']
+    if r.json().get("data"):
+        return r.json()["data"][0]["followed_at"]
     return None

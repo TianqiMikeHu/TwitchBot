@@ -74,7 +74,10 @@ class Bot(commands.Bot):
                     )
                 case "web_api_quotes":
                     feedbacks = []
-                    web_author = data.WebAuthor(display_name=msg["display_name"], name=msg["display_name"].lower())
+                    web_author = data.WebAuthor(
+                        display_name=msg["display_name"],
+                        name=msg["display_name"].lower(),
+                    )
                     web_context = data.WebContext(author=web_author)
                     for cmd in msg["cmd"]:
                         feedback = await helper.quotes(
@@ -153,5 +156,5 @@ class Bot(commands.Bot):
 
 
 threading.Thread(target=helper.read_from_SQS, daemon=True).start()
-bot = Bot(channel_read="inabox44", channel_write="mike_hu_0_0")
+bot = Bot(channel_read="inabox44", channel_write="inabox44")
 bot.run()
