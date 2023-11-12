@@ -12,8 +12,8 @@ import requests
 
 async def cmd_manager(channel_read, channel_write, context, args):
     if len(args) < 3:
-        return await channel_write.send(
-            f"@{context.author.display_name} [ERROR] Too few arguments."
+        return await context.reply(
+            f"[ERROR] Too few arguments."
         )
     match args[1].lower():
         case "add":
@@ -27,8 +27,8 @@ async def cmd_manager(channel_read, channel_write, context, args):
         case "options":
             return await helper.cmd_options(channel_write, context, args)
         case _:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] "{args[1]}" is not a valid option.'
+            return await context.reply(
+                f'[ERROR] "{args[1]}" is not a valid option.'
             )
 
 
@@ -70,8 +70,8 @@ async def edit_counter(channel_read, channel_write, context, args, web=False):
         if web:
             return f"@{context.author.display_name} [ERROR] Too few arguments."
         else:
-            return await channel_write.send(
-                f"@{context.author.display_name} [ERROR] Too few arguments."
+            return await context.reply(
+                f"[ERROR] Too few arguments."
             )
     counter = args[1]
     if not helper.check_int(args[2]):
@@ -80,8 +80,8 @@ async def edit_counter(channel_read, channel_write, context, args, web=False):
                 f'@{context.author.display_name} [ERROR] "{args[2]}" is not an integer.'
             )
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] "{args[2]}" is not an integer.'
+            return await context.reply(
+                f'[ERROR] "{args[2]}" is not an integer.'
             )
     client = boto3.client("dynamodb", region_name="us-west-2")
     response = client.update_item(
@@ -123,8 +123,8 @@ async def edit_counter(channel_read, channel_write, context, args, web=False):
     if web:
         return f'@{context.author.display_name} Counter "{counter}" set to {args[2]}.'
     else:
-        return await channel_write.send(
-            f'@{context.author.display_name} Counter "{counter}" set to {args[2]}.'
+        return await context.reply(
+            f'Counter "{counter}" set to {args[2]}.'
         )
 
 
@@ -133,15 +133,15 @@ async def delete_counter(channel_read, channel_write, context, args, web=False):
         if web:
             return f"@{context.author.display_name} [ERROR] Too few arguments."
         else:
-            return await channel_write.send(
-                f"@{context.author.display_name} [ERROR] Too few arguments."
+            return await context.reply(
+                f"[ERROR] Too few arguments."
             )
     if args[1] not in data.COUNTERS_LIST:
         if web:
             return f'@{context.author.display_name} [ERROR] Counter "{args[1]}" does not exist.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Counter "{args[1]}" does not exist.'
+            return await context.reply(
+                f'[ERROR] Counter "{args[1]}" does not exist.'
             )
     client = boto3.client("dynamodb", region_name="us-west-2")
     response = client.delete_item(
@@ -175,8 +175,8 @@ async def delete_counter(channel_read, channel_write, context, args, web=False):
             f'@{context.author.display_name} Counter "{args[1]}" deleted successfully.'
         )
     else:
-        return await channel_write.send(
-            f'@{context.author.display_name} Counter "{args[1]}" deleted successfully.'
+        return await context.reply(
+            f'Counter "{args[1]}" deleted successfully.'
         )
 
 
@@ -327,8 +327,8 @@ async def inabot_queue(channel_read, channel_write, context, args):
                 )
             case "clear":
                 if not access.authorization("M", context.author):
-                    return await channel_write.send(
-                        f"@{context.author.display_name} [ERROR] You do not have permission for this action."
+                    return await context.reply(
+                        f"[ERROR] You do not have permission for this action."
                     )
                 helper.save_queue([])
                 return await channel_write.send(
@@ -336,8 +336,8 @@ async def inabot_queue(channel_read, channel_write, context, args):
                 )
             case "remove":
                 if not access.authorization("M", context.author):
-                    return await channel_write.send(
-                        f"@{context.author.display_name} [ERROR] You do not have permission for this action."
+                    return await context.reply(
+                        f"[ERROR] You do not have permission for this action."
                     )
                 queue = helper.get_queue()
                 if not queue:
@@ -360,8 +360,8 @@ async def inabot_queue(channel_read, channel_write, context, args):
                     )
             case "add":
                 if not access.authorization("M", context.author):
-                    return await channel_write.send(
-                        f"@{context.author.display_name} [ERROR] You do not have permission for this action."
+                    return await context.reply(
+                        f"[ERROR] You do not have permission for this action."
                     )
                 queue = helper.get_queue()
                 if len(args) > 2:
@@ -375,8 +375,8 @@ async def inabot_queue(channel_read, channel_write, context, args):
                         f"@{context.author.display_name} User {args[2]} has been added to the queue."
                     )
                 else:
-                    return await channel_write.send(
-                        f"@{context.author.display_name} [ERROR] Too few arguments."
+                    return await context.reply(
+                        f"[ERROR] Too few arguments."
                     )
             case _:
                 pass

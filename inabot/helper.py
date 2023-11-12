@@ -315,8 +315,8 @@ async def cmd_add(channel_write, context, args, web=False):
         if web:
             return f"@{context.author.display_name} [ERROR] Too few arguments."
         else:
-            return await channel_write.send(
-                f"@{context.author.display_name} [ERROR] Too few arguments."
+            return await context.reply(
+                f"[ERROR] Too few arguments."
             )
     client = boto3.client("dynamodb", region_name="us-west-2")
     command = {
@@ -346,8 +346,8 @@ async def cmd_add(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{args[2].lower()}" already exists.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{args[2].lower()}" already exists.'
+            return await context.reply(
+                f'[ERROR] Command "{args[2].lower()}" already exists.'
             )
 
     data.COMMANDS[args[2].lower()] = command
@@ -372,8 +372,8 @@ async def cmd_add(channel_write, context, args, web=False):
     if web:
         return f'@{context.author.display_name} Command "{args[2].lower()}" added succcessfully.'
     else:
-        return await channel_write.send(
-            f'@{context.author.display_name} Command "{args[2].lower()}" added succcessfully.'
+        return await context.reply(
+            f'Command "{args[2].lower()}" added succcessfully.'
         )
 
 
@@ -382,8 +382,8 @@ async def cmd_edit(channel_write, context, args, web=False):
         if web:
             return f"@{context.author.display_name} [ERROR] Too few arguments."
         else:
-            return await channel_write.send(
-                f"@{context.author.display_name} [ERROR] Too few arguments."
+            return await context.reply(
+                f"[ERROR] Too few arguments."
             )
 
     cmd = args[2].lower()
@@ -392,8 +392,8 @@ async def cmd_edit(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+            return await context.reply(
+                f'[ERROR] Command "{cmd}" does not exist.'
             )
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
@@ -403,8 +403,8 @@ async def cmd_edit(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+            return await context.reply(
+                f'[ERROR] Command "{cmd}" is above your permission level.'
             )
 
     client = boto3.client("dynamodb", region_name="us-west-2")
@@ -428,8 +428,8 @@ async def cmd_edit(channel_write, context, args, web=False):
     if web:
         return f'@{context.author.display_name} Command "{cmd}" edited succcessfully.'
     else:
-        return await channel_write.send(
-            f'@{context.author.display_name} Command "{cmd}" edited succcessfully.'
+        return await context.reply(
+            f'Command "{cmd}" edited succcessfully.'
         )
 
 
@@ -440,8 +440,8 @@ async def cmd_del(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+            return await context.reply(
+                f'[ERROR] Command "{cmd}" does not exist.'
             )
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
@@ -451,8 +451,8 @@ async def cmd_del(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+            return await context.reply(
+                f'[ERROR] Command "{cmd}" is above your permission level.'
             )
 
     client = boto3.client("dynamodb", region_name="us-west-2")
@@ -524,8 +524,8 @@ async def cmd_del(channel_write, context, args, web=False):
     if web:
         return f'@{context.author.display_name} Command "{args[2].lower()}" deleted succcessfully.'
     else:
-        return await channel_write.send(
-            f'@{context.author.display_name} Command "{args[2].lower()}" deleted succcessfully.'
+        return await context.reply(
+            f'Command "{args[2].lower()}" deleted succcessfully.'
         )
 
 
@@ -536,8 +536,8 @@ async def cmd_show(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+            return await context.reply(
+                f'[ERROR] Command "{cmd}" does not exist.'
             )
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
@@ -547,8 +547,8 @@ async def cmd_show(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+            return await context.reply(
+                f'[ERROR] Command "{cmd}" is above your permission level.'
             )
 
     if web:
@@ -564,8 +564,8 @@ async def cmd_options(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
+            return await context.reply(
+                f'[ERROR] Command "{cmd}" does not exist.'
             )
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
@@ -575,8 +575,8 @@ async def cmd_options(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} [ERROR] Command "{cmd}" is above your permission level.'
+            return await context.reply(
+                f'[ERROR] Command "{cmd}" is above your permission level.'
             )
 
     if len(args) == 3:  # Show options
@@ -604,8 +604,8 @@ async def cmd_options(channel_write, context, args, web=False):
                         f"@{context.author.display_name} [ERROR] Invalid syntax: {opt}"
                     )
                 else:
-                    return await channel_write.send(
-                        f"@{context.author.display_name} [ERROR] Invalid syntax: {opt}"
+                    return await context.reply(
+                        f"[ERROR] Invalid syntax: {opt}"
                     )
             opt_args = [o.strip() for o in opt_args]
             match opt_args[0].lower():
@@ -617,8 +617,8 @@ async def cmd_options(channel_write, context, args, web=False):
                         if web:
                             return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
                         else:
-                            return await channel_write.send(
-                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            return await context.reply(
+                                f"[ERROR] Invalid syntax: {opt_args[1]}"
                             )
                 case "global":
                     if check_int(opt_args[1]):
@@ -629,15 +629,15 @@ async def cmd_options(channel_write, context, args, web=False):
                             if web:
                                 return f"@{context.author.display_name} [ERROR] Global cooldown cannot be negative."
                             else:
-                                return await channel_write.send(
-                                    f"@{context.author.display_name} [ERROR] Global cooldown cannot be negative."
+                                return await context.reply(
+                                    f"[ERROR] Global cooldown cannot be negative."
                                 )
                     else:
                         if web:
                             return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
                         else:
-                            return await channel_write.send(
-                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            return await context.reply(
+                                f"[ERROR] Invalid syntax: {opt_args[1]}"
                             )
                 case "user":
                     if check_int(opt_args[1]):
@@ -648,15 +648,15 @@ async def cmd_options(channel_write, context, args, web=False):
                             if web:
                                 return f"@{context.author.display_name} [ERROR] User cooldown cannot be negative."
                             else:
-                                return await channel_write.send(
-                                    f"@{context.uthor.display_name} [ERROR] User cooldown cannot be negative."
+                                return await context.reply(
+                                    f"[ERROR] User cooldown cannot be negative."
                                 )
                     else:
                         if web:
                             return f"@{context.uthor.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
                         else:
-                            return await channel_write.send(
-                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            return await context.reply(
+                                f"[ERROR] Invalid syntax: {opt_args[1]}"
                             )
                 case "schedule":
                     if check_int(opt_args[1]):
@@ -664,8 +664,8 @@ async def cmd_options(channel_write, context, args, web=False):
                             if web:
                                 return f"@{context.author.display_name} [ERROR] Schedule interval cannot be less than 15 seconds."
                             else:
-                                return await channel_write.send(
-                                    f"@{context.author.display_name} [ERROR] Schedule interval cannot be less than 15 seconds."
+                                return await context.reply(
+                                    f"[ERROR] Schedule interval cannot be less than 15 seconds."
                                 )
                         else:
                             cmd_data["command_cooldown_schedule"]["N"] = opt_args[1]
@@ -674,8 +674,8 @@ async def cmd_options(channel_write, context, args, web=False):
                         if web:
                             return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
                         else:
-                            return await channel_write.send(
-                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            return await context.reply(
+                                f"[ERROR] Invalid syntax: {opt_args[1]}"
                             )
                 case "type":
                     if opt_args[1].upper() in ["SIMPLE", "DYNAMIC", "ANY"]:
@@ -685,15 +685,15 @@ async def cmd_options(channel_write, context, args, web=False):
                         if web:
                             return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
                         else:
-                            return await channel_write.send(
-                                f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[1]}"
+                            return await context.reply(
+                                f"[ERROR] Invalid syntax: {opt_args[1]}"
                             )
                 case _:
                     if web:
                         return f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[0]}"
                     else:
-                        return await channel_write.send(
-                            f"@{context.author.display_name} [ERROR] Invalid syntax: {opt_args[0]}"
+                        return await context.reply(
+                            f"[ERROR] Invalid syntax: {opt_args[0]}"
                         )
 
         data.COMMANDS[cmd] = cmd_data
@@ -827,8 +827,8 @@ async def cmd_options(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} Updated {", ".join(output)} for command "{cmd}".'
         else:
-            return await channel_write.send(
-                f'@{context.author.display_name} Updated {", ".join(output)} for command "{cmd}".'
+            return await context.reply(
+                f'Updated {", ".join(output)} for command "{cmd}".'
             )
 
 
@@ -838,8 +838,8 @@ async def quotes(channel_write, context, args, web=False):
     if len(args) >= 3:
         if args[1].upper() == "ADD":
             if not access.authorization("M", context.author):
-                return await channel_write.send(
-                    f"@{context.author.display_name} [ERROR] You do not have permission for this action."
+                return await context.reply(
+                    f"[ERROR] You do not have permission for this action."
                 )
             response = client.update_item(
                 Key={
@@ -869,14 +869,14 @@ async def quotes(channel_write, context, args, web=False):
             if web:
                 return f"@{context.author.display_name} Successfully added {quotes_name} #{index}"
             else:
-                return await channel_write.send(
-                    f"@{context.author.display_name} Successfully added {quotes_name} #{index}"
+                return await context.reply(
+                    f"Successfully added {quotes_name} #{index}"
                 )
         elif args[1].upper() == "EDIT":
             if len(args) >= 4:
                 if not access.authorization("M", context.author):
-                    return await channel_write.send(
-                        f"@{context.author.display_name} [ERROR] You do not have permission for this action."
+                    return await context.reply(
+                        f"[ERROR] You do not have permission for this action."
                     )
                 response = client.get_item(
                     Key={
@@ -889,16 +889,16 @@ async def quotes(channel_write, context, args, web=False):
                 )
                 index = args[2]
                 if not index.isdigit():
-                    return await channel_write.send(
-                        f'@{context.author.display_name} [ERROR] "{index}" is not a positive integer.'
+                    return await context.reply(
+                        f'[ERROR] "{index}" is not a positive integer.'
                     )
                 if int(index) < 1:
-                    return await channel_write.send(
-                        f"@{context.author.display_name} [ERROR] Index cannot be less than 1."
+                    return await context.reply(
+                        f"[ERROR] Index cannot be less than 1."
                     )
                 if int(index) > int(response["Item"]["var_val"]["N"]):
-                    return await channel_write.send(
-                        f"@{context.author.display_name} [ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
+                    return await context.reply(
+                        f"[ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
                     )
                 response = client.update_item(
                     Key={
@@ -917,8 +917,8 @@ async def quotes(channel_write, context, args, web=False):
                 if web:
                     return f"@{context.author.display_name} Successfully edited {quotes_name} #{index}"
                 else:
-                    return await channel_write.send(
-                        f"@{context.author.display_name} Successfully edited {quotes_name} #{index}"
+                    return await context.reply(
+                        f"@Successfully edited {quotes_name} #{index}"
                     )
     elif len(args) >= 2:
         if args[1].isdigit():
@@ -933,12 +933,12 @@ async def quotes(channel_write, context, args, web=False):
             )
             index = args[1]
             if int(index) < 1:
-                return await channel_write.send(
-                    f"@{context.author.display_name} [ERROR] Index cannot be less than 1."
+                return await context.reply(
+                    f"[ERROR] Index cannot be less than 1."
                 )
             if int(index) > int(response["Item"]["var_val"]["N"]):
-                return await channel_write.send(
-                    f"@{context.author.display_name} [ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
+                return await context.reply(
+                    f"[ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
                 )
             response = client.get_item(
                 Key={
