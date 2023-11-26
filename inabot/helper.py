@@ -920,7 +920,9 @@ async def quotes(channel_write, context, args, web=False):
                     return await context.reply(
                         f"@Successfully edited {quotes_name} #{index}"
                     )
-    elif len(args) >= 2:
+        elif args[1].upper() == "LIST" and quotes_name == "!kimexplains":
+            return await channel_write.send("https://apoorlywrittenbot.cc/inabot/kimexplains.html")
+    if len(args) >= 2:
         if args[1].isdigit():
             response = client.get_item(
                 Key={

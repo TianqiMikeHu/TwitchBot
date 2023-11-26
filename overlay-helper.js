@@ -1075,7 +1075,7 @@ async function saveListItem(event) {
             }
             break;
         case "COUNTER":
-            if (cmdResponse.classList.contains("is-invalid") || !parseInt(cmdResponse.value.trim())) {
+            if (cmdResponse.classList.contains("is-invalid") || isNaN(parseInt(cmdResponse.value.trim()))) {
                 alert("Counter value invalid. Operation cancelled.", "warning");
                 break;
             }

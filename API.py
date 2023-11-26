@@ -42,7 +42,7 @@ def shoutout(to_broadcaster_id):
         headers=get_header_user("681131749"),
     )
 
-    if r.status_code != 204 or r.status_code != 429:
+    if r.status_code != 204 and r.status_code != 429:
         return f"[ERROR]: status code is {str(r.status_code)}"
 
     return None

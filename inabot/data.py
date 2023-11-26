@@ -15,7 +15,7 @@ SQS_URL = "https://sqs.us-west-2.amazonaws.com/414556232085/inabot-queue"
 SQS_RESPONSE_URL = (
     "https://sqs.us-west-2.amazonaws.com/414556232085/inabot-API-response"
 )
-SUPERMODS = ["mike_hu_0_0"]
+SUPERMODS = ["mike_hu_0_0", "paintediady", "somesoma"]
 
 BRACKET_L = "${"
 BRACKET_R = "}"
