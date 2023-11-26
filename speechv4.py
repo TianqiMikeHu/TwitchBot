@@ -145,9 +145,9 @@ class audio_input:
                 continue
             writer.write(f"{transcript}\n")
             writer.flush()
-            # outbound_queue.put(transcript)
+            outbound_queue.put(transcript)
             transcript = transcript.lower()
-            # print(transcript, flush=True)
+            print(transcript, flush=True)
 
             for item in self.keywords:
                 if item["keyword"]["S"] in transcript:
