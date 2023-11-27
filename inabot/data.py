@@ -65,8 +65,8 @@ CURRENT_SCHEDULE = {}
 # }
 
 REGEX = {
-    r"[bßᵇᵦǝ][eéêëèEÉÈÊËĒₑᵉᴉq3][aààâäAÀÂÅᵃₐu][ñnNÑⁿₙɐ][iîïÎÏIᵢᶦǝ][eéêëèEÉÈÊËĒᵉₑ!q3]": "!beanie",
-    r"\btab(?:s|bed)?\b": "!bpaddtab",
+    r"[bßᵇᵦǝ][eéêëèEÉÈÊËĒₑᵉᴉq3][aààâäAÀÂÅᵃₐu][ñnNÑⁿₙɐ][iîïÎÏIᵢᶦǝ][eéêëèEÉÈÊËĒᵉₑ!q3]": "beanie",
+    r"\btab(?:s|bed)?\b": "tab"
 }
 
 SQS_QUEUE = Queue()
