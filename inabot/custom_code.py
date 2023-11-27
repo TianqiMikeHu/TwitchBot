@@ -6,6 +6,7 @@ import API
 import json
 from datetime import datetime
 from dateutil import relativedelta
+from dateutil import parser
 import pytz
 import requests
 
@@ -283,7 +284,7 @@ async def follow_age(channel_read, channel_write, context, args):
         date = API.follow_date(context.author.id)
     if not date:
         return await context.reply(f"{target} is not following Kim.")
-    date = datetime.fromisoformat(date)
+    date = parser.isoparse(date)
     delta = relativedelta.relativedelta(
         datetime.utcnow().replace(tzinfo=pytz.utc), date
     )
