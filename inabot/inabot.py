@@ -7,7 +7,6 @@ from command_handler import *
 import access
 import json
 import threading
-import sys
 
 
 class Bot(commands.Bot):
@@ -154,9 +153,6 @@ class Bot(commands.Bot):
             await self.get_context(msg),
             args,
         )
-
-sys.stderr = open('err.txt', 'w')
-sys.stdout = open('out.txt', 'w')
 
 threading.Thread(target=helper.read_from_SQS, daemon=True).start()
 bot = Bot(channel_read="inabox44", channel_write="inabox44")
