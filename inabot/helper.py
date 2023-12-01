@@ -6,7 +6,10 @@ import API
 import random
 import access
 import re
-
+from datetime import datetime
+from dateutil import relativedelta
+from dateutil import parser
+import pytz
 
 def invalidate():
     data.ACCESS_TOKENS = {}
@@ -315,9 +318,7 @@ async def cmd_add(channel_write, context, args, web=False):
         if web:
             return f"@{context.author.display_name} [ERROR] Too few arguments."
         else:
-            return await context.reply(
-                f"[ERROR] Too few arguments."
-            )
+            return await context.reply(f"[ERROR] Too few arguments.")
     client = boto3.client("dynamodb", region_name="us-west-2")
     command = {
         "command_name": {
@@ -372,9 +373,7 @@ async def cmd_add(channel_write, context, args, web=False):
     if web:
         return f'@{context.author.display_name} Command "{args[2].lower()}" added succcessfully.'
     else:
-        return await context.reply(
-            f'Command "{args[2].lower()}" added succcessfully.'
-        )
+        return await context.reply(f'Command "{args[2].lower()}" added succcessfully.')
 
 
 async def cmd_edit(channel_write, context, args, web=False):
@@ -382,9 +381,7 @@ async def cmd_edit(channel_write, context, args, web=False):
         if web:
             return f"@{context.author.display_name} [ERROR] Too few arguments."
         else:
-            return await context.reply(
-                f"[ERROR] Too few arguments."
-            )
+            return await context.reply(f"[ERROR] Too few arguments.")
 
     cmd = args[2].lower()
 
@@ -392,9 +389,7 @@ async def cmd_edit(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
         else:
-            return await context.reply(
-                f'[ERROR] Command "{cmd}" does not exist.'
-            )
+            return await context.reply(f'[ERROR] Command "{cmd}" does not exist.')
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
         cmd_data = load_command(cmd)
@@ -428,9 +423,7 @@ async def cmd_edit(channel_write, context, args, web=False):
     if web:
         return f'@{context.author.display_name} Command "{cmd}" edited succcessfully.'
     else:
-        return await context.reply(
-            f'Command "{cmd}" edited succcessfully.'
-        )
+        return await context.reply(f'Command "{cmd}" edited succcessfully.')
 
 
 async def cmd_del(channel_write, context, args, web=False):
@@ -440,9 +433,7 @@ async def cmd_del(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
         else:
-            return await context.reply(
-                f'[ERROR] Command "{cmd}" does not exist.'
-            )
+            return await context.reply(f'[ERROR] Command "{cmd}" does not exist.')
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
         cmd_data = load_command(cmd)
@@ -536,9 +527,7 @@ async def cmd_show(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
         else:
-            return await context.reply(
-                f'[ERROR] Command "{cmd}" does not exist.'
-            )
+            return await context.reply(f'[ERROR] Command "{cmd}" does not exist.')
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
         cmd_data = load_command(cmd)
@@ -564,9 +553,7 @@ async def cmd_options(channel_write, context, args, web=False):
         if web:
             return f'@{context.author.display_name} [ERROR] Command "{cmd}" does not exist.'
         else:
-            return await context.reply(
-                f'[ERROR] Command "{cmd}" does not exist.'
-            )
+            return await context.reply(f'[ERROR] Command "{cmd}" does not exist.')
     cmd_data = data.COMMANDS.get(cmd)
     if not cmd_data:  # Not loaded in yet
         cmd_data = load_command(cmd)
@@ -604,9 +591,7 @@ async def cmd_options(channel_write, context, args, web=False):
                         f"@{context.author.display_name} [ERROR] Invalid syntax: {opt}"
                     )
                 else:
-                    return await context.reply(
-                        f"[ERROR] Invalid syntax: {opt}"
-                    )
+                    return await context.reply(f"[ERROR] Invalid syntax: {opt}")
             opt_args = [o.strip() for o in opt_args]
             match opt_args[0].lower():
                 case "permission":
@@ -869,9 +854,7 @@ async def quotes(channel_write, context, args, web=False):
             if web:
                 return f"@{context.author.display_name} Successfully added {quotes_name} #{index}"
             else:
-                return await context.reply(
-                    f"Successfully added {quotes_name} #{index}"
-                )
+                return await context.reply(f"Successfully added {quotes_name} #{index}")
         elif args[1].upper() == "EDIT":
             if len(args) >= 4:
                 if not access.authorization("M", context.author):
@@ -893,9 +876,7 @@ async def quotes(channel_write, context, args, web=False):
                         f'[ERROR] "{index}" is not a positive integer.'
                     )
                 if int(index) < 1:
-                    return await context.reply(
-                        f"[ERROR] Index cannot be less than 1."
-                    )
+                    return await context.reply(f"[ERROR] Index cannot be less than 1.")
                 if int(index) > int(response["Item"]["var_val"]["N"]):
                     return await context.reply(
                         f"[ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
@@ -922,7 +903,9 @@ async def quotes(channel_write, context, args, web=False):
                     )
     if len(args) >= 2:
         if args[1].upper() == "LIST" and quotes_name == "!kimexplains":
-            return await channel_write.send("https://apoorlywrittenbot.cc/inabot/kimexplains.html")
+            return await channel_write.send(
+                "https://apoorlywrittenbot.cc/inabot/kimexplains.html"
+            )
         if args[1].isdigit():
             response = client.get_item(
                 Key={
@@ -935,9 +918,7 @@ async def quotes(channel_write, context, args, web=False):
             )
             index = args[1]
             if int(index) < 1:
-                return await context.reply(
-                    f"[ERROR] Index cannot be less than 1."
-                )
+                return await context.reply(f"[ERROR] Index cannot be less than 1.")
             if int(index) > int(response["Item"]["var_val"]["N"]):
                 return await context.reply(
                     f"[ERROR] \"{index}\" is greater than the last index of {response['Item']['var_val']['N']}."
@@ -1138,3 +1119,61 @@ def new_commands_page():
             FunctionName="CommandsPage",
             InvocationType="Event",
         )
+
+
+async def word_appearance(keyword, user):
+    client = boto3.client("dynamodb", region_name="us-west-2")
+    timestamp = datetime.utcnow().replace(tzinfo=pytz.utc).isoformat()
+    response = client.update_item(
+        Key={
+            "var_name": {
+                "S": f"keyword_{keyword}",
+            },
+            "var_type": {"S": "CUSTOM"},
+        },
+        TableName=data.VARIABLES_TABLE,
+        UpdateExpression="SET var_val=:v, var_val2=:w",
+        ExpressionAttributeValues={
+            ":v": {
+                "S": timestamp,
+            },
+            ":w": {
+                "S": user,
+            },
+        },
+    )
+
+async def last_word_appearance(channel_write, keyword, alias):
+    client = boto3.client("dynamodb", region_name="us-west-2")
+    response = client.get_item(
+        Key={
+            "var_name": {
+                "S": f"keyword_{keyword}",
+            },
+            "var_type": {"S": "CUSTOM"},
+        },
+        TableName=data.VARIABLES_TABLE,
+    )
+
+    timestamp = response["Item"]["var_val"]["S"]
+    user = response["Item"]["var_val2"]["S"]
+
+    timestamp = parser.isoparse(timestamp)
+    delta = relativedelta.relativedelta(
+        datetime.utcnow().replace(tzinfo=pytz.utc), timestamp
+    )
+
+    duration = ""
+    if delta.years:
+        duration += f"{delta.years} year{'s' if delta.years>1 else ''} "
+    if delta.months:
+        duration += f"{delta.months} month{'s' if delta.months>1 else ''} "
+    if delta.days:
+        duration += f"{delta.days} day{'s' if delta.days>1 else ''} "
+    if delta.hours:
+        duration += f"{delta.hours} hour{'s' if delta.hours>1 else ''} "
+    duration += f"{delta.minutes} minute{'s' if delta.minutes>1 else ''} "
+    duration += f"and {delta.seconds} second{'s' if delta.seconds>1 else ''} "
+
+    response = f"It has been {duration} since anyone mentioned \"{alias}\". {user} last mentioned it on {timestamp.strftime('%b %d %Y at %H:%M:%S UTC')} inaboxSip"
+    return await channel_write.send(response)

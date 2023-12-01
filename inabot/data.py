@@ -66,7 +66,12 @@ CURRENT_SCHEDULE = {}
 
 REGEX = {
     r"[bßᵇᵦǝ][eéêëèEÉÈÊËĒₑᵉᴉq3][aààâäAÀÂÅᵃₐu][ñnNÑⁿₙɐ][iîïÎÏIᵢᶦǝ][eéêëèEÉÈÊËĒᵉₑ!q3]": "beanie",
+    r"\bi'm jeevan\b": "imjeevan",
     r"\btab(?:s|bed)?\b": "tab"
+}
+
+POST_COMMAND_REGEX = {
+    r"\btaint(?:s|ed)?\b": "taint",
 }
 
 SQS_QUEUE = Queue()

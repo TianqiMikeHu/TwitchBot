@@ -155,5 +155,6 @@ class Bot(commands.Bot):
         )
 
 threading.Thread(target=helper.read_from_SQS, daemon=True).start()
-bot = Bot(channel_read="inabox44", channel_write="inabox44")
+# bot = Bot(channel_read="inabox44", channel_write="inabox44")
+bot = Bot(channel_read="mike_hu_0_0", channel_write="mike_hu_0_0")
 bot.run()

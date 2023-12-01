@@ -41,11 +41,11 @@ async def schedule_handler(channel_read, channel_write):
 
 async def parse_command(channel_read, channel_write, context, args):
     cmd = args[0].lower()
+    original = " ".join(args).lower()
 
     if cmd not in data.CMD_LIST:
         match = False
         if len(data.ANY_COMMANDS) > 0:  # Try ANY POSITION match
-            original = " ".join(args).lower()
             for c in data.ANY_COMMANDS:
                 regex = r"(?:(?<=\s)|(?<=^))" + c + r"(?=$|\s)"
                 try:
@@ -64,36 +64,56 @@ async def parse_command(channel_read, channel_write, context, args):
                         break
                 except:
                     pass
-        if cmd not in data.CMD_LIST:  # Not found
-            return
-    cmd_data = data.COMMANDS.get(cmd)
-    if not cmd_data:  # Not loaded in yet
-        cmd_data = helper.load_command(cmd)
 
-    # print(f"VIP: {author.is_vip}; MOD: {author.is_mod}; SUPERMODS {author.name in data.SUPERMODS}; BROADCASTER: {author.is_broadcaster}")
-    if context is not None:  # Schedule is exempt from permission check
-        if not access.authorization(
-            cmd_data["command_permission"]["S"], context.author
-        ):
-            return
+    skip = False
+    if cmd in data.CMD_LIST:
+        cmd_data = data.COMMANDS.get(cmd)
+        if not cmd_data:  # Not loaded in yet
+            cmd_data = helper.load_command(cmd)
 
-    if context is not None:  # Schedule is exempt from cooldown check
-        if not access.cooldown_approved(cmd, context.author.display_name):
-            return
+        # print(f"VIP: {author.is_vip}; MOD: {author.is_mod}; SUPERMODS {author.name in data.SUPERMODS}; BROADCASTER: {author.is_broadcaster}")
+        if context is not None:  # Schedule is exempt from permission check
+            if not access.authorization(
+                cmd_data["command_permission"]["S"], context.author
+            ):
+                skip = True
 
-    if cmd_data["command_type"]["S"] != "DYNAMIC":
-        await channel_write.send(
-            helper.parse_variables(cmd_data["command_response"]["S"], context, args)
-        )
-    else:
-        # DYNAMIC
-        await dynamic_handler(
-            cmd_data["command_response"]["S"],
-            channel_read,
-            channel_write,
-            context,
-            args,
-        )
+        if context is not None:  # Schedule is exempt from cooldown check
+            if not access.cooldown_approved(cmd, context.author.display_name):
+                skip = True
+
+        if not skip:
+            if cmd_data["command_type"]["S"] != "DYNAMIC":
+                await channel_write.send(
+                    helper.parse_variables(cmd_data["command_response"]["S"], context, args)
+                )
+            else:
+                # DYNAMIC
+                await dynamic_handler(
+                    cmd_data["command_response"]["S"],
+                    channel_read,
+                    channel_write,
+                    context,
+                    args,
+                )
+
+    # Things to process after the primary command. Regex commands here should be DYNAMIC ONLY with EVERYONE permission
+    for regex in data.POST_COMMAND_REGEX:
+        try:
+            if re.search(regex, original):
+                cmd = data.POST_COMMAND_REGEX[regex]
+                cmd_data = data.COMMANDS.get(cmd)
+                if not cmd_data:  # Not loaded in yet
+                    cmd_data = helper.load_command(cmd)
+                await dynamic_handler(
+                    cmd_data["command_response"]["S"],
+                    channel_read,
+                    channel_write,
+                    context,
+                    args,
+                )
+        except:
+            pass
 
 
 async def dynamic_handler(cmd, channel_read, channel_write, context, args):

@@ -13,9 +13,7 @@ import requests
 
 async def cmd_manager(channel_read, channel_write, context, args):
     if len(args) < 3:
-        return await context.reply(
-            f"[ERROR] Too few arguments."
-        )
+        return await context.reply(f"[ERROR] Too few arguments.")
     match args[1].lower():
         case "add":
             return await helper.cmd_add(channel_write, context, args)
@@ -28,9 +26,7 @@ async def cmd_manager(channel_read, channel_write, context, args):
         case "options":
             return await helper.cmd_options(channel_write, context, args)
         case _:
-            return await context.reply(
-                f'[ERROR] "{args[1]}" is not a valid option.'
-            )
+            return await context.reply(f'[ERROR] "{args[1]}" is not a valid option.')
 
 
 async def web_cmd_manager(display_name, args):
@@ -71,9 +67,7 @@ async def edit_counter(channel_read, channel_write, context, args, web=False):
         if web:
             return f"@{context.author.display_name} [ERROR] Too few arguments."
         else:
-            return await context.reply(
-                f"[ERROR] Too few arguments."
-            )
+            return await context.reply(f"[ERROR] Too few arguments.")
     counter = args[1]
     if not helper.check_int(args[2]):
         if web:
@@ -81,9 +75,7 @@ async def edit_counter(channel_read, channel_write, context, args, web=False):
                 f'@{context.author.display_name} [ERROR] "{args[2]}" is not an integer.'
             )
         else:
-            return await context.reply(
-                f'[ERROR] "{args[2]}" is not an integer.'
-            )
+            return await context.reply(f'[ERROR] "{args[2]}" is not an integer.')
     client = boto3.client("dynamodb", region_name="us-west-2")
     response = client.update_item(
         Key={
@@ -124,9 +116,7 @@ async def edit_counter(channel_read, channel_write, context, args, web=False):
     if web:
         return f'@{context.author.display_name} Counter "{counter}" set to {args[2]}.'
     else:
-        return await context.reply(
-            f'Counter "{counter}" set to {args[2]}.'
-        )
+        return await context.reply(f'Counter "{counter}" set to {args[2]}.')
 
 
 async def delete_counter(channel_read, channel_write, context, args, web=False):
@@ -134,16 +124,12 @@ async def delete_counter(channel_read, channel_write, context, args, web=False):
         if web:
             return f"@{context.author.display_name} [ERROR] Too few arguments."
         else:
-            return await context.reply(
-                f"[ERROR] Too few arguments."
-            )
+            return await context.reply(f"[ERROR] Too few arguments.")
     if args[1] not in data.COUNTERS_LIST:
         if web:
             return f'@{context.author.display_name} [ERROR] Counter "{args[1]}" does not exist.'
         else:
-            return await context.reply(
-                f'[ERROR] Counter "{args[1]}" does not exist.'
-            )
+            return await context.reply(f'[ERROR] Counter "{args[1]}" does not exist.')
     client = boto3.client("dynamodb", region_name="us-west-2")
     response = client.delete_item(
         Key={
@@ -176,9 +162,7 @@ async def delete_counter(channel_read, channel_write, context, args, web=False):
             f'@{context.author.display_name} Counter "{args[1]}" deleted successfully.'
         )
     else:
-        return await context.reply(
-            f'Counter "{args[1]}" deleted successfully.'
-        )
+        return await context.reply(f'Counter "{args[1]}" deleted successfully.')
 
 
 async def fierce(channel_read, channel_write, context, args):
@@ -376,9 +360,7 @@ async def inabot_queue(channel_read, channel_write, context, args):
                         f"@{context.author.display_name} User {args[2]} has been added to the queue."
                     )
                 else:
-                    return await context.reply(
-                        f"[ERROR] Too few arguments."
-                    )
+                    return await context.reply(f"[ERROR] Too few arguments.")
             case _:
                 pass
     queue = helper.get_queue()
@@ -429,3 +411,17 @@ async def youtube(channel_read, channel_write, context, args):
     return await channel_write.send(
         f"Kim has a YouTube channel! Check out her latest video here: {r.text}"
     )
+
+
+async def taint(channel_read, channel_write, context, args):
+    await helper.word_appearance("taint", context.author.display_name)
+
+
+async def last_taint(channel_read, channel_write, context, args):
+    await helper.last_word_appearance(channel_write, "taint", "taint(s|ed)")
+
+async def im_jeevan(channel_read, channel_write, context, args):
+    if context.author.name == "gurjeevan_":
+        return await context.reply("Hi Jeevan, I'm inabot inaboxArrive")
+    else:
+        return await context.reply("You are not Jeevan inaboxSus")
