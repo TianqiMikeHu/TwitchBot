@@ -11,6 +11,7 @@ from dateutil import relativedelta
 from dateutil import parser
 import pytz
 
+
 def invalidate():
     data.ACCESS_TOKENS = {}
 
@@ -1121,9 +1122,24 @@ def new_commands_page():
         )
 
 
-async def word_appearance(keyword, user):
+def duration_string(delta):
+    duration = ""
+    if delta.years:
+        duration += f"{delta.years} year{'s' if delta.years>1 else ''} "
+    if delta.months:
+        duration += f"{delta.months} month{'s' if delta.months>1 else ''} "
+    if delta.days:
+        duration += f"{delta.days} day{'s' if delta.days>1 else ''} "
+    if delta.hours:
+        duration += f"{delta.hours} hour{'s' if delta.hours>1 else ''} "
+    duration += f"{delta.minutes} minute{'s' if delta.minutes>1 else ''} "
+    duration += f"and {delta.seconds} second{'s' if delta.seconds>1 else ''} "
+    return duration
+
+
+async def word_appearance(channel_write, keyword, user, alias):
     client = boto3.client("dynamodb", region_name="us-west-2")
-    timestamp = datetime.utcnow().replace(tzinfo=pytz.utc).isoformat()
+    timestamp = datetime.utcnow().replace(tzinfo=pytz.utc)
     response = client.update_item(
         Key={
             "var_name": {
@@ -1135,13 +1151,20 @@ async def word_appearance(keyword, user):
         UpdateExpression="SET var_val=:v, var_val2=:w",
         ExpressionAttributeValues={
             ":v": {
-                "S": timestamp,
+                "S": timestamp.isoformat(),
             },
             ":w": {
                 "S": user,
             },
         },
+        ReturnValues="ALL_OLD",
     )
+    last_timestamp = parser.isoparse(response["Attributes"]["var_val"]["S"])
+    if (timestamp - last_timestamp).total_seconds() > 300:  # 5 minutes
+        delta = relativedelta.relativedelta(timestamp, last_timestamp)
+        response = f"{user} just mentioned {alias}. inaboxHmm This ended a streak of {duration_string(delta)}."
+        return await channel_write.send(response)
+
 
 async def last_word_appearance(channel_write, keyword, alias):
     client = boto3.client("dynamodb", region_name="us-west-2")
@@ -1163,17 +1186,5 @@ async def last_word_appearance(channel_write, keyword, alias):
         datetime.utcnow().replace(tzinfo=pytz.utc), timestamp
     )
 
-    duration = ""
-    if delta.years:
-        duration += f"{delta.years} year{'s' if delta.years>1 else ''} "
-    if delta.months:
-        duration += f"{delta.months} month{'s' if delta.months>1 else ''} "
-    if delta.days:
-        duration += f"{delta.days} day{'s' if delta.days>1 else ''} "
-    if delta.hours:
-        duration += f"{delta.hours} hour{'s' if delta.hours>1 else ''} "
-    duration += f"{delta.minutes} minute{'s' if delta.minutes>1 else ''} "
-    duration += f"and {delta.seconds} second{'s' if delta.seconds>1 else ''} "
-
-    response = f"It has been {duration} since anyone mentioned \"{alias}\". {user} last mentioned it on {timestamp.strftime('%b %d %Y at %H:%M:%S UTC')} inaboxSip"
+    response = f"It has been {duration_string(delta)} since anyone mentioned {alias}. {user} last mentioned it on {timestamp.strftime('%b %d %Y at %H:%M:%S UTC')} inaboxSip"
     return await channel_write.send(response)

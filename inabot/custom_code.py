@@ -414,11 +414,11 @@ async def youtube(channel_read, channel_write, context, args):
 
 
 async def taint(channel_read, channel_write, context, args):
-    await helper.word_appearance("taint", context.author.display_name)
+    await helper.word_appearance(channel_write, "taint", context.author.display_name, "the forbidden T word")
 
 
 async def last_taint(channel_read, channel_write, context, args):
-    await helper.last_word_appearance(channel_write, "taint", "taint(s|ed)")
+    await helper.last_word_appearance(channel_write, "taint", "the forbidden T word")
 
 async def im_jeevan(channel_read, channel_write, context, args):
     if context.author.name == "gurjeevan_":
