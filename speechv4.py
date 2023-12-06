@@ -14,12 +14,19 @@ import boto3
 from collections import deque
 from deepgram import Deepgram
 import asyncio
+import os
+import sys
+import re
 
-COOLDOWN = 90
-writer = open("output.txt", "w")
+
+COOLDOWN = 120
+PAUSED = None
+VARIABLES_TABLE = "inabot-variables"
+writer = open("output.txt", "a")
 processing_queue = queue.Queue()
 outbound_queue = queue.Queue()
 new_deque = deque(maxlen=3)
+
 
 class Bot(commands.Bot):
     def __init__(self, channel):
@@ -55,15 +62,67 @@ class Bot(commands.Bot):
             Body=text,
             Bucket="inabot",
             ContentType="text/plain",
-            Key=f"transcribeV2-new/{self.channel}/{title}.txt",
+            Key=f"transcribe-new/{self.channel}/{title}.txt",
         )
         return response, f"{self.channel}/{title}"
 
     async def event_message(self, msg):
+        global PAUSED
         if msg.author is None:
             return
-        name = msg.author.name.lower()
-        if name == "inabot44":
+        if not msg.author.is_mod:
+            return
+        if msg.content.lower() == "!pause":
+            if PAUSED:
+                await msg.channel.send(
+                    f"Speech recognition feedback is already paused."
+                )
+                return
+            PAUSED = True
+            ddb = boto3.client("dynamodb", region_name="us-west-2")
+            response = ddb.update_item(
+                Key={
+                    "var_name": {
+                        "S": "pause",
+                    },
+                    "var_type": {"S": "CUSTOM"},
+                },
+                TableName=VARIABLES_TABLE,
+                UpdateExpression="SET var_val=:v",
+                ExpressionAttributeValues={
+                    ":v": {
+                        "BOOL": True
+                    }
+                },
+            )
+            await msg.channel.send(f"Speech recognition feedback paused.")
+            return
+        if msg.content.lower() == "!resume":
+            if not PAUSED:
+                await msg.channel.send(
+                    f"Speech recognition feedback is already running."
+                )
+                return
+            PAUSED = False
+            ddb = boto3.client("dynamodb", region_name="us-west-2")
+            response = ddb.update_item(
+                Key={
+                    "var_name": {
+                        "S": "pause",
+                    },
+                    "var_type": {"S": "CUSTOM"},
+                },
+                TableName=VARIABLES_TABLE,
+                UpdateExpression="SET var_val=:v",
+                ExpressionAttributeValues={
+                    ":v": {
+                        "BOOL": False
+                    }
+                },
+            )
+            await msg.channel.send(f"Speech recognition feedback resumed.")
+            return
+        if msg.author.name == "inabot44":
             if msg.content == "Stream is offline. Autoscaling in...":
                 response, key = self.save_to_s3()
                 if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
@@ -111,7 +170,19 @@ class audio_input:
 
     def load_audio_keywords(self):
         ddb = boto3.client("dynamodb", region_name="us-west-2")
+        global PAUSED
         try:
+            response = ddb.get_item(
+                Key={
+                    "var_name": {
+                        "S": f"pause",
+                    },
+                    "var_type": {"S": "CUSTOM"},
+                },
+                TableName=VARIABLES_TABLE,
+            )
+            PAUSED = response["Item"]["var_val"]["BOOL"]
+            print(f"Current status: {PAUSED}", flush=True)
             response = ddb.scan(TableName=f"Speech-{self.channel.lower()}")
             # keyword, response, count
             self.keywords = response["Items"]
@@ -130,12 +201,12 @@ class audio_input:
 
     async def extract_transcript(self, data):
         try:
-            transcript = data['channel']['alternatives'][0]['transcript']
+            transcript = data["channel"]["alternatives"][0]["transcript"]
             if transcript:
                 processing_queue.put(transcript)
         except:
             return
-        
+
     async def process_transcript(self):
         while True:
             await asyncio.sleep(0)
@@ -146,13 +217,18 @@ class audio_input:
             writer.write(f"{transcript}\n")
             writer.flush()
             # outbound_queue.put(transcript)
+            print(transcript, flush=True)
             transcript = transcript.lower()
-            # print(transcript, flush=True)
 
             for item in self.keywords:
-                if item["keyword"]["S"] in transcript:
+                if re.search(f"\\b{item['keyword']['S']}\\b", transcript):
                     timestamp = time.time()
 
+                    if PAUSED:
+                        print(
+                            f"\nKeyword \"{item['keyword']['S']}\" was throttled: PAUSED"
+                        )
+                        continue
                     if timestamp - item["timestamp"]["N"] < COOLDOWN:
                         print(
                             f"\nKeyword \"{item['keyword']['S']}\" was throttled: delta={timestamp-item['timestamp']['N']}\n",
@@ -174,7 +250,9 @@ class audio_input:
                         f"{item['response']['S']} (x{item['count']['N']})",
                         flush=True,
                     )
-                    outbound_queue.put(f"{item['response']['S']} (x{item['count']['N']})")
+                    outbound_queue.put(
+                        f"{item['response']['S']} (x{item['count']['N']})"
+                    )
                     response = ddb.update_item(
                         TableName=f"Speech-{self.channel.lower()}",
                         ExpressionAttributeNames={
@@ -194,6 +272,12 @@ class audio_input:
                         UpdateExpression="SET #C = :c",
                     )
 
+
+def onclose(msg):
+    print(f"Connection closed with code {msg}")
+    os.execl(sys.executable, sys.executable, *sys.argv)
+
+
 async def main():
     # Initialize the Deepgram SDK
     client = boto3.client("dynamodb", region_name="us-west-2")
@@ -210,23 +294,27 @@ async def main():
     # Create a websocket connection to Deepgram
     # In this example, punctuation is turned on, interim results are turned off, and language is set to UK English.
     try:
-        deepgramLive = await deepgram.transcription.live({
-            'smart_format': True,
-            'interim_results': False,
-            'language': 'en-US',
-            'model': 'nova-2',
-            'filler_words': True,
-            'endpointing': False
-        })
+        deepgramLive = await deepgram.transcription.live(
+            {
+                "smart_format": True,
+                "interim_results": False,
+                "language": "en-US",
+                "model": "nova-2",
+                "filler_words": True,
+                "endpointing": False,
+            }
+        )
     except Exception as e:
-        print(f'Could not open socket: {e}')
+        print(f"Could not open socket: {e}")
         return
 
     # Listen for the connection to close
-    deepgramLive.register_handler(deepgramLive.event.CLOSE, lambda c: print(f'Connection closed with code {c}.'))
+    deepgramLive.register_handler(deepgramLive.event.CLOSE, onclose)
 
     # Listen for any transcripts received from Deepgram and write them to the console
-    deepgramLive.register_handler(deepgramLive.event.TRANSCRIPT_RECEIVED, audio.extract_transcript)
+    deepgramLive.register_handler(
+        deepgramLive.event.TRANSCRIPT_RECEIVED, audio.extract_transcript
+    )
 
     # Listen for the connection to open and send streaming audio from the URL to Deepgram
     while True:
@@ -244,9 +332,9 @@ async def main():
             raw_wav.export(raw_flac, format="flac")
             data = raw_flac.read()
             deepgramLive.send(data)
-
     # Indicate that we've finished sending data by sending the customary zero-byte message to the Deepgram streaming endpoint, and wait until we get back the final summary metadata object
-    await deepgramLive.finish()
+    # await deepgramLive.finish()
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--debug", action="store_true", help="debug mode")
@@ -261,8 +349,12 @@ opt = parser.parse_args()
 
 audio = audio_input(opt.listen)
 
-threading.Thread(target=asyncio.run, args=(audio.pull_audio_segments(),), daemon=True).start()
-threading.Thread(target=asyncio.run, args=(audio.process_transcript(),), daemon=True).start()
+threading.Thread(
+    target=asyncio.run, args=(audio.pull_audio_segments(),), daemon=True
+).start()
+threading.Thread(
+    target=asyncio.run, args=(audio.process_transcript(),), daemon=True
+).start()
 threading.Thread(target=asyncio.run, args=(main(),), daemon=True).start()
 
 bot = Bot(opt.write)
