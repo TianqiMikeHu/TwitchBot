@@ -21,6 +21,7 @@ import re
 
 COOLDOWN = 120
 PAUSED = None
+RECEIPT = None
 VARIABLES_TABLE = "inabot-variables"
 writer = open("output.txt", "a")
 processing_queue = queue.Queue()
@@ -68,7 +69,8 @@ class Bot(commands.Bot):
 
     async def event_message(self, msg):
         global PAUSED
-        if msg.author is None:
+        global RECEIPT
+        if msg.echo:
             return
         if not msg.author.is_mod:
             return
@@ -89,11 +91,7 @@ class Bot(commands.Bot):
                 },
                 TableName=VARIABLES_TABLE,
                 UpdateExpression="SET var_val=:v",
-                ExpressionAttributeValues={
-                    ":v": {
-                        "BOOL": True
-                    }
-                },
+                ExpressionAttributeValues={":v": {"BOOL": True}},
             )
             await msg.channel.send(f"Speech recognition feedback paused.")
             return
@@ -114,13 +112,15 @@ class Bot(commands.Bot):
                 },
                 TableName=VARIABLES_TABLE,
                 UpdateExpression="SET var_val=:v",
-                ExpressionAttributeValues={
-                    ":v": {
-                        "BOOL": False
-                    }
-                },
+                ExpressionAttributeValues={":v": {"BOOL": False}},
             )
             await msg.channel.send(f"Speech recognition feedback resumed.")
+            return
+        if msg.content.lower() == "!receipt":
+            if not RECEIPT:
+                await msg.channel.send("no data inaboxNo")
+            else:
+                await msg.channel.send(RECEIPT)
             return
         if msg.author.name == "inabot44":
             if msg.content == "Stream is offline. Autoscaling in...":
@@ -208,6 +208,7 @@ class audio_input:
             return
 
     async def process_transcript(self):
+        global RECEIPT
         while True:
             await asyncio.sleep(0)
             try:
@@ -218,10 +219,10 @@ class audio_input:
             writer.flush()
             # outbound_queue.put(transcript)
             print(transcript, flush=True)
-            transcript = transcript.lower()
+            transcript2 = transcript.lower()
 
             for item in self.keywords:
-                if re.search(f"\\b{item['keyword']['S']}\\b", transcript):
+                if re.search(f"\\b{item['keyword']['S']}\\b", transcript2):
                     timestamp = time.time()
 
                     if PAUSED:
@@ -236,6 +237,7 @@ class audio_input:
                         )
                         continue
                     item["timestamp"]["N"] = timestamp
+                    RECEIPT = transcript
 
                     if "count" not in item:
                         print(f"{item['response']['S']}", flush=True)

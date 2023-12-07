@@ -117,9 +117,10 @@ async def parse_command(channel_read, channel_write, context, args):
                 )
         except:
             pass
-    data.ACTIVE_CHATTERS[context.author.display_name] = datetime.utcnow().replace(
-        tzinfo=pytz.utc
-    )
+    if context:
+        data.ACTIVE_CHATTERS[context.author.display_name] = datetime.utcnow().replace(
+            tzinfo=pytz.utc
+        )
 
 
 async def dynamic_handler(cmd, channel_read, channel_write, context, args):
