@@ -49,7 +49,7 @@ def get_chatters(broadcaster_id):
         headers=get_header_user(data.INABOT_ID),
     )
     chatters = r.json()["data"]
-    return random.choice(chatters)["user_name"]
+    return chatters
 
 
 def get_game(broadcaster_id):

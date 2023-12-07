@@ -67,7 +67,7 @@ CURRENT_SCHEDULE = {}
 REGEX = {
     r"[bßᵇᵦǝ][eéêëèEÉÈÊËĒₑᵉᴉq3][aààâäAÀÂÅᵃₐu][ñnNÑⁿₙɐ][iîïÎÏIᵢᶦǝ][eéêëèEÉÈÊËĒᵉₑ!q3]": "beanie",
     r"\bi'm jeevan\b": "imjeevan",
-    r"\btab(?:s|bed)?\b": "tab"
+    r"\btab(?:s|bed)?\b": "tab",
 }
 
 POST_COMMAND_REGEX = {
@@ -79,6 +79,8 @@ SQS_QUEUE = Queue()
 PERMIT = []
 
 IS_LIVE = False
+
+ACTIVE_CHATTERS = {}
 
 
 class WebContext:

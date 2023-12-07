@@ -139,7 +139,7 @@ def load_command(cmd):
 #
 # ${random.pick ["item one", "item two", "item three"]} -> Pick random item from list
 # ${random.number 1 5} -> Pick random integer from range, inclusive. This can be negative
-# ${random.chatter} -> Pick random chatter
+# ${random.chatter} -> Pick an ACTIVE random chatter
 #
 # ${count abc} -> Increment counter 'abc', return new value
 # ${getcount abc} -> Return value of counter 'abc'
@@ -194,7 +194,11 @@ def parse_variables(message, context, args):
                         )
                     )
                 case "random.chatter":
-                    evaluate_this = API.get_chatters(data.BROADCASTER_ID)
+                    chatters = list(data.ACTIVE_CHATTERS)
+                    if chatters:
+                        evaluate_this = random.choice(chatters)
+                    else:
+                        evaluate_this = "inabot44"
                 case "count":
                     evaluate_this = count(evaluate_this_list[1])
                 case "getcount":
@@ -1188,3 +1192,11 @@ async def last_word_appearance(channel_write, keyword, alias):
 
     response = f"It has been {duration_string(delta)} since anyone mentioned {alias}. {user} last mentioned it on {timestamp.strftime('%b %d %Y at %H:%M:%S UTC')} inaboxSip"
     return await channel_write.send(response)
+
+
+async def remove_inactive_chatters():
+    active_chatters = list(data.ACTIVE_CHATTERS.keys())
+    now = datetime.utcnow().replace(tzinfo=pytz.utc)
+    for user in active_chatters:
+        if (now - data.ACTIVE_CHATTERS[user]).total_seconds() > 600:
+            del data.ACTIVE_CHATTERS[user]

@@ -32,6 +32,7 @@ class Bot(commands.Bot):
             print("Stream is online")
             initialize_schedule(self.schedule)
         self.invalidate.start(stop_on_error=False)
+        self.monitor_chatters.start(stop_on_error=False)
 
     async def event_ready(self):
         print("inabot is ready")
@@ -40,6 +41,10 @@ class Bot(commands.Bot):
     async def invalidate(self):
         helper.invalidate()
         helper.new_commands_page()
+
+    @routines.routine(minutes=1, iterations=None)
+    async def monitor_chatters(self):
+        await helper.remove_inactive_chatters()
 
     @routines.routine(seconds=0.5, iterations=None)
     async def ingest_message(self):
@@ -153,6 +158,7 @@ class Bot(commands.Bot):
             await self.get_context(msg),
             args,
         )
+
 
 threading.Thread(target=helper.read_from_SQS, daemon=True).start()
 # bot = Bot(channel_read="inabox44", channel_write="inabox44")

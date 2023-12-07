@@ -2,7 +2,8 @@ import data
 import helper
 import random
 import re
-import time
+from datetime import datetime
+import pytz
 import custom_code
 import access
 
@@ -85,7 +86,9 @@ async def parse_command(channel_read, channel_write, context, args):
         if not skip:
             if cmd_data["command_type"]["S"] != "DYNAMIC":
                 await channel_write.send(
-                    helper.parse_variables(cmd_data["command_response"]["S"], context, args)
+                    helper.parse_variables(
+                        cmd_data["command_response"]["S"], context, args
+                    )
                 )
             else:
                 # DYNAMIC
@@ -114,6 +117,9 @@ async def parse_command(channel_read, channel_write, context, args):
                 )
         except:
             pass
+    data.ACTIVE_CHATTERS[context.author.display_name] = datetime.utcnow().replace(
+        tzinfo=pytz.utc
+    )
 
 
 async def dynamic_handler(cmd, channel_read, channel_write, context, args):
