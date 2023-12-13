@@ -381,11 +381,14 @@ async def joinqueue(channel_read, channel_write, context, args):
 async def modban(channel_read, channel_write, context, args):
     mods = helper.get_mods()
     mod = None
-    if args[1].lower() in list(mods.keys()):
-        mod = mods[args[1].lower()]
+    arg = args[1].lower()
+    if arg[0] == "@":
+        arg = arg[1:]
+    if arg in list(mods.keys()):
+        mod = mods[arg]
     if mod is None:
         for alias in list(mods.values()):
-            if args[1].lower() == alias.lower():
+            if arg == alias.lower():
                 mod = alias
                 break
     if mod is None:
