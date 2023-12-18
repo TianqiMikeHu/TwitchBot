@@ -6,7 +6,10 @@
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
 	<link href="https://fonts.googleapis.com" rel="preconnect" />
 	<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-	<link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+	<link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/Kalam/kalam.css" type="text/css"
+		charset="utf-8" />
+	<link rel="preload" href="https://apoorlywrittenbot.cc/css/Kalam/kalam.woff2" as="font"
+		type="font/woff2" crossorigin>
 	<link rel="stylesheet" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist.css" type="text/css"
 		charset="utf-8" />
 	<link rel="preload" href="https://apoorlywrittenbot.cc/css/FoxyMist/foxymist-regular-webfont.woff2" as="font"
@@ -96,8 +99,8 @@
 
 		function resizeAfterImgLoad(img) {
 			let id = img.parentNode.parentNode.parentNode.id; // img->box-child->box->boxWrapper
-			resizeBox(img.parentNode.parentNode, img.offsetWidth * elements_json.coordinates[id]["x-scaling"] + 4,
-				img.offsetHeight * elements_json.coordinates[id]["y-scaling"] + 4,
+			resizeBox(img.parentNode.parentNode, img.parentNode.offsetWidth * elements_json.coordinates[id]["x-scaling"] + 4,
+				img.parentNode.offsetHeight * elements_json.coordinates[id]["y-scaling"] + 4,
 				elements_json.coordinates[id]["x-scaling"], elements_json.coordinates[id]["y-scaling"]);
 		}
 
@@ -105,7 +108,7 @@
 			if (emotes[emoteName]) {
 				return new Promise((res, rej) => {
 					res(`<img src="https://static-cdn.jtvnw.net/emoticons/v2/${emotes[emoteName]}/dark/3.0" 
-                                style="pointer-events: none; height: ${(1080 / font_scale) * 2}px;">`);
+                                style="pointer-events: none; height: ${(1080 / font_scale) * 2}px;" onload="resizeAfterImgLoad(this);">`);
 				});
 			}
 			else {

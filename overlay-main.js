@@ -526,6 +526,7 @@ async function clearAll(e) {
         return;
     }
     mapping = {};
+    imagesDictionary = {};
     document.getElementById("canvas").textContent = '';
     for (const interval of intervalList) {
         clearInterval(interval);
