@@ -281,61 +281,64 @@ def onclose(msg):
 
 
 async def main():
-    # Initialize the Deepgram SDK
-    client = boto3.client("dynamodb", region_name="us-west-2")
-    response = client.get_item(
-        Key={
-            "CookieHash": {
-                "S": "DEEPGRAM_API_KEY",
-            }
-        },
-        TableName="CF-Cookies",
-    )
-    deepgram = Deepgram(response["Item"]["AccessToken"]["S"])
-
-    # Create a websocket connection to Deepgram
-    # In this example, punctuation is turned on, interim results are turned off, and language is set to UK English.
     try:
-        deepgramLive = await deepgram.transcription.live(
-            {
-                "smart_format": True,
-                "interim_results": False,
-                "language": "en-US",
-                "model": "nova-2",
-                "filler_words": True,
-                "endpointing": False,
-            }
+        # Initialize the Deepgram SDK
+        client = boto3.client("dynamodb", region_name="us-west-2")
+        response = client.get_item(
+            Key={
+                "CookieHash": {
+                    "S": "DEEPGRAM_API_KEY",
+                }
+            },
+            TableName="CF-Cookies",
         )
-    except Exception as e:
-        print(f"Could not open socket: {e}")
-        return
+        deepgram = Deepgram(response["Item"]["AccessToken"]["S"])
 
-    # Listen for the connection to close
-    deepgramLive.register_handler(deepgramLive.event.CLOSE, onclose)
+        # Create a websocket connection to Deepgram
+        # In this example, punctuation is turned on, interim results are turned off, and language is set to UK English.
+        try:
+            deepgramLive = await deepgram.transcription.live(
+                {
+                    "smart_format": True,
+                    "interim_results": False,
+                    "language": "en-US",
+                    "model": "nova-2",
+                    "filler_words": True,
+                    "endpointing": False,
+                }
+            )
+        except Exception as e:
+            print(f"Could not open socket: {e}")
+            return
 
-    # Listen for any transcripts received from Deepgram and write them to the console
-    deepgramLive.register_handler(
-        deepgramLive.event.TRANSCRIPT_RECEIVED, audio.extract_transcript
-    )
+        # Listen for the connection to close
+        deepgramLive.register_handler(deepgramLive.event.CLOSE, onclose)
 
-    # Listen for the connection to open and send streaming audio from the URL to Deepgram
-    while True:
-        await asyncio.sleep(0)
-        if new_deque:
-            raw = BytesIO(new_deque.popleft())
-            try:
-                raw_wav = AudioSegment.from_raw(
-                    raw, sample_width=2, frame_rate=16000, channels=1
-                )
-            except CouldntEncodeError:
-                print("could not decode", flush=True)
-                continue
-            raw_flac = BytesIO()
-            raw_wav.export(raw_flac, format="flac")
-            data = raw_flac.read()
-            deepgramLive.send(data)
-    # Indicate that we've finished sending data by sending the customary zero-byte message to the Deepgram streaming endpoint, and wait until we get back the final summary metadata object
-    # await deepgramLive.finish()
+        # Listen for any transcripts received from Deepgram and write them to the console
+        deepgramLive.register_handler(
+            deepgramLive.event.TRANSCRIPT_RECEIVED, audio.extract_transcript
+        )
+
+        # Listen for the connection to open and send streaming audio from the URL to Deepgram
+        while True:
+            await asyncio.sleep(0)
+            if new_deque:
+                raw = BytesIO(new_deque.popleft())
+                try:
+                    raw_wav = AudioSegment.from_raw(
+                        raw, sample_width=2, frame_rate=16000, channels=1
+                    )
+                except CouldntEncodeError:
+                    print("could not decode", flush=True)
+                    continue
+                raw_flac = BytesIO()
+                raw_wav.export(raw_flac, format="flac")
+                data = raw_flac.read()
+                deepgramLive.send(data)
+        # Indicate that we've finished sending data by sending the customary zero-byte message to the Deepgram streaming endpoint, and wait until we get back the final summary metadata object
+        # await deepgramLive.finish()
+    except:
+        onclose(-1)
 
 
 parser = argparse.ArgumentParser()
