@@ -89,6 +89,7 @@ class Bot(commands.Bot):
                     DesiredCapacity=0,
                     HonorCooldown=False,
                 )
+                print(response)
         return
 
     @routines.routine(seconds=0.1, iterations=None)
