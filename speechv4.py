@@ -17,6 +17,7 @@ import asyncio
 import os
 import sys
 import re
+import requests
 
 
 COOLDOWN = 120
@@ -27,6 +28,29 @@ writer = open("output.txt", "a")
 processing_queue = queue.Queue()
 outbound_queue = queue.Queue()
 new_deque = deque(maxlen=3)
+
+
+def shutdown(channel):
+    autoscaling = boto3.client("autoscaling", region_name="us-west-2")
+    response = autoscaling.set_desired_capacity(
+        AutoScalingGroupName=f"AutoScaling-{channel}",
+        DesiredCapacity=0,
+        HonorCooldown=False,
+    )
+    print(response)
+
+
+def online(access_token, channel):
+    header = {
+        "Client-ID": "6yz6w1tnl13svb5ligch31aa5hf4ty",
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    r = requests.get(
+        url=f"https://api.twitch.tv/helix/streams?user_login={channel}",
+        headers=header,
+    )
+    return r.json()["data"]
 
 
 class Bot(commands.Bot):
@@ -41,6 +65,9 @@ class Bot(commands.Bot):
             TableName="CF-Cookies",
         )
         user_access_token = response["Item"]["AccessToken"]["S"]
+        if not online(user_access_token, channel):
+            shutdown(channel)
+            sys.exit()
         super().__init__(
             token=f"oauth:{user_access_token}", prefix="!", initial_channels=[channel]
         )
@@ -127,13 +154,7 @@ class Bot(commands.Bot):
                 response, key = self.save_to_s3()
                 if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
                     await msg.channel.send(f"Transcript Key: {key}")
-                autoscaling = boto3.client("autoscaling", region_name="us-west-2")
-                response = autoscaling.set_desired_capacity(
-                    AutoScalingGroupName=f"AutoScaling-{self.channel}",
-                    DesiredCapacity=0,
-                    HonorCooldown=False,
-                )
-                print(response)
+                shutdown(self.channel)
         return
 
     @routines.routine(seconds=0.1, iterations=None)
