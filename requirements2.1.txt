@@ -3,4 +3,3 @@ twitchrealtimehandler
 pydub
 boto3
 deepgram-sdk
-requests
