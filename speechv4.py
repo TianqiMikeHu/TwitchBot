@@ -30,52 +30,46 @@ outbound_queue = queue.Queue()
 new_deque = deque(maxlen=3)
 
 
-def shutdown(channel):
-    autoscaling = boto3.client("autoscaling", region_name="us-west-2")
-    response = autoscaling.set_desired_capacity(
-        AutoScalingGroupName=f"AutoScaling-{channel}",
-        DesiredCapacity=0,
-        HonorCooldown=False,
-    )
-    print(response)
-
-
-def online(access_token, channel):
+def online():
     header = {
         "Client-ID": "6yz6w1tnl13svb5ligch31aa5hf4ty",
-        "Authorization": f"Bearer {access_token}",
+        "Authorization": f"Bearer {get_acess_token()}",
         "Content-Type": "application/json",
     }
     r = requests.get(
-        url=f"https://api.twitch.tv/helix/streams?user_login={channel}",
+        url=f"https://api.twitch.tv/helix/streams?user_login=inabox44",
         headers=header,
     )
     return r.json()["data"]
 
 
+def get_acess_token():
+    client = boto3.client("dynamodb", region_name="us-west-2")
+    response = client.get_item(
+        Key={
+            "CookieHash": {
+                "S": "687759326",
+            }
+        },
+        TableName="CF-Cookies",
+    )
+    return response["Item"]["AccessToken"]["S"]
+
+
 class Bot(commands.Bot):
     def __init__(self, channel):
-        client = boto3.client("dynamodb", region_name="us-west-2")
-        response = client.get_item(
-            Key={
-                "CookieHash": {
-                    "S": "687759326",
-                }
-            },
-            TableName="CF-Cookies",
-        )
-        user_access_token = response["Item"]["AccessToken"]["S"]
-        if not online(user_access_token, channel):
-            shutdown(channel)
-            sys.exit()
         super().__init__(
-            token=f"oauth:{user_access_token}", prefix="!", initial_channels=[channel]
+            token=f"oauth:{get_acess_token()}", prefix="!", initial_channels=[channel]
         )
         self.channel = channel
 
     async def event_ready(self):
         print("CONNECTED TO TWITCH IRC", flush=True)
-        # await self.connected_channels[0].send("bot is online")
+
+        if not online():
+            await self.shutdown()
+            sys.exit()
+
         self.poll.start(stop_on_error=False)
         print("POLL STARTED", flush=True)
 
@@ -93,6 +87,18 @@ class Bot(commands.Bot):
             Key=f"transcribe-new/{self.channel}/{title}.txt",
         )
         return response, f"{self.channel}/{title}"
+
+    async def shutdown(self):
+        response, key = self.save_to_s3()
+        if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
+            await self.connected_channels[0].send(f"Transcript Key: {key}")
+        autoscaling = boto3.client("autoscaling", region_name="us-west-2")
+        response = autoscaling.set_desired_capacity(
+            AutoScalingGroupName=f"AutoScaling-{self.channel}",
+            DesiredCapacity=0,
+            HonorCooldown=False,
+        )
+        print(response)
 
     async def event_message(self, msg):
         global PAUSED
@@ -151,10 +157,7 @@ class Bot(commands.Bot):
             return
         if msg.author.name == "inabot44":
             if msg.content == "Stream is offline. Autoscaling in...":
-                response, key = self.save_to_s3()
-                if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
-                    await msg.channel.send(f"Transcript Key: {key}")
-                shutdown(self.channel)
+                await self.shutdown()
         return
 
     @routines.routine(seconds=0.1, iterations=None)
