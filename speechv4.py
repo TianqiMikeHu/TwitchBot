@@ -185,7 +185,7 @@ class Bot(commands.Bot):
             timestamp = time.time()
             if timestamp > float(EXPIRATION["expiration"]["N"]):
                 print("Removing banned word...")
-                summary = f"The banned word {EXPIRATION['keyword']['S']} has expired. Total count: {KEYWORDS[EXPIRATION['index']]['count']['N']}"
+                summary = f"The banned word \"{EXPIRATION['keyword']['S']}\" has expired. Total count: {KEYWORDS[EXPIRATION['index']]['count']['N']}"
                 await self.remove_word(EXPIRATION['keyword']['S'])
                 EXPIRATION = None
                 await self.connected_channels[0].send(summary)
