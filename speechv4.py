@@ -24,20 +24,22 @@ COOLDOWN = 120
 PAUSED = None
 RECEIPT = None
 VARIABLES_TABLE = "inabot-variables"
+KEYWORDS = []
+EXPIRATION = None
 writer = open("output.txt", "a")
 processing_queue = queue.Queue()
 outbound_queue = queue.Queue()
 new_deque = deque(maxlen=3)
 
 
-def online():
+def online(channel):
     header = {
         "Client-ID": "6yz6w1tnl13svb5ligch31aa5hf4ty",
         "Authorization": f"Bearer {get_acess_token()}",
         "Content-Type": "application/json",
     }
     r = requests.get(
-        url=f"https://api.twitch.tv/helix/streams?user_login=inabox44",
+        url=f"https://api.twitch.tv/helix/streams?user_login={channel}",
         headers=header,
     )
     return r.json()["data"]
@@ -66,11 +68,12 @@ class Bot(commands.Bot):
     async def event_ready(self):
         print("CONNECTED TO TWITCH IRC", flush=True)
 
-        if not online():
+        if not online(self.channel):
             await self.shutdown()
             sys.exit()
 
         self.poll.start(stop_on_error=False)
+        self.scan.start(stop_on_error=False)
         print("POLL STARTED", flush=True)
 
     def save_to_s3(self):
@@ -99,6 +102,31 @@ class Bot(commands.Bot):
             HonorCooldown=False,
         )
         print(response)
+    
+    async def pause_feedback(self, pause):
+        ddb = boto3.client("dynamodb", region_name="us-west-2")
+        response = ddb.update_item(
+            Key={
+                "var_name": {
+                    "S": "pause",
+                },
+                "var_type": {"S": "CUSTOM"},
+            },
+            TableName=VARIABLES_TABLE,
+            UpdateExpression="SET var_val=:v",
+            ExpressionAttributeValues={":v": {"BOOL": pause}},
+        )
+
+    async def remove_word(self, keyword):
+        ddb = boto3.client("dynamodb", region_name="us-west-2")
+        response = ddb.delete_item(
+            Key={
+                "keyword": {
+                    "S": keyword,
+                }
+            },
+            TableName=f"Speech-{self.channel}",
+        )
 
     async def event_message(self, msg):
         global PAUSED
@@ -107,49 +135,28 @@ class Bot(commands.Bot):
             return
         if not msg.author.is_mod:
             return
-        if msg.content.lower() == "!pause":
+        cmd = msg.content.lower().split()[0]
+        if cmd == "!pause":
             if PAUSED:
                 await msg.channel.send(
                     f"Speech recognition feedback is already paused."
                 )
                 return
             PAUSED = True
-            ddb = boto3.client("dynamodb", region_name="us-west-2")
-            response = ddb.update_item(
-                Key={
-                    "var_name": {
-                        "S": "pause",
-                    },
-                    "var_type": {"S": "CUSTOM"},
-                },
-                TableName=VARIABLES_TABLE,
-                UpdateExpression="SET var_val=:v",
-                ExpressionAttributeValues={":v": {"BOOL": True}},
-            )
+            await self.pause_feedback(PAUSED)
             await msg.channel.send(f"Speech recognition feedback paused.")
             return
-        if msg.content.lower() == "!resume":
+        if cmd == "!resume":
             if not PAUSED:
                 await msg.channel.send(
                     f"Speech recognition feedback is already running."
                 )
                 return
             PAUSED = False
-            ddb = boto3.client("dynamodb", region_name="us-west-2")
-            response = ddb.update_item(
-                Key={
-                    "var_name": {
-                        "S": "pause",
-                    },
-                    "var_type": {"S": "CUSTOM"},
-                },
-                TableName=VARIABLES_TABLE,
-                UpdateExpression="SET var_val=:v",
-                ExpressionAttributeValues={":v": {"BOOL": False}},
-            )
+            await self.pause_feedback(PAUSED)
             await msg.channel.send(f"Speech recognition feedback resumed.")
             return
-        if msg.content.lower() == "!receipt":
+        if cmd == "!receipt":
             if not RECEIPT:
                 await msg.channel.send("no data inaboxNo")
             else:
@@ -158,6 +165,9 @@ class Bot(commands.Bot):
         if msg.author.name == "inabot44":
             if msg.content == "Stream is offline. Autoscaling in...":
                 await self.shutdown()
+            if re.search(r"Adding banned word \".+\"\.\.\.", msg.content):
+                print(f"Reloading for banned word")
+                os.execl(sys.executable, sys.executable, *sys.argv)
         return
 
     @routines.routine(seconds=0.1, iterations=None)
@@ -168,6 +178,20 @@ class Bot(commands.Bot):
         except:
             pass
 
+    @routines.routine(seconds=10, iterations=None)
+    async def scan(self):
+        global EXPIRATION
+        if EXPIRATION:
+            timestamp = time.time()
+            if timestamp > float(EXPIRATION["expiration"]["N"]):
+                print("Removing banned word...")
+                summary = f"The banned word {EXPIRATION['keyword']['S']} has expired. Total count: {KEYWORDS[EXPIRATION['index']]['count']['N']}"
+                await self.remove_word(EXPIRATION['keyword']['S'])
+                EXPIRATION = None
+                await self.connected_channels[0].send(summary)
+                print(f"Reloading after banned word")
+                os.execl(sys.executable, sys.executable, *sys.argv)
+
 
 class audio_input:
     def __init__(self, channel):
@@ -176,7 +200,6 @@ class audio_input:
         self.audio_grabber = None
 
         self.exit_event = threading.Event()
-        self.keywords = []
 
         self.load_audio_keywords()
         self.start_listening()
@@ -196,6 +219,8 @@ class audio_input:
     def load_audio_keywords(self):
         ddb = boto3.client("dynamodb", region_name="us-west-2")
         global PAUSED
+        global KEYWORDS
+        global EXPIRATION
         try:
             response = ddb.get_item(
                 Key={
@@ -208,12 +233,16 @@ class audio_input:
             )
             PAUSED = response["Item"]["var_val"]["BOOL"]
             print(f"Current status: {PAUSED}", flush=True)
-            response = ddb.scan(TableName=f"Speech-{self.channel.lower()}")
+            response = ddb.scan(TableName=f"Speech-{self.channel}")
             # keyword, response, count
-            self.keywords = response["Items"]
-            for item in self.keywords:
-                item["timestamp"] = {}
-                item["timestamp"]["N"] = 0
+            KEYWORDS = response["Items"]
+            for i in range(len(KEYWORDS)):
+                KEYWORDS[i]["timestamp"] = {}
+                KEYWORDS[i]["timestamp"]["N"] = 0
+                if KEYWORDS[i].get('expiration'):
+                    EXPIRATION = KEYWORDS[i]
+                    EXPIRATION["index"] = i
+                    print(EXPIRATION)
         except:
             return
 
@@ -246,7 +275,7 @@ class audio_input:
             print(transcript, flush=True)
             transcript2 = transcript.lower()
 
-            for item in self.keywords:
+            for item in KEYWORDS:
                 if re.search(f"\\b{item['keyword']['S']}\\b", transcript2):
                     timestamp = time.time()
 
@@ -255,7 +284,11 @@ class audio_input:
                             f"\nKeyword \"{item['keyword']['S']}\" was throttled: PAUSED"
                         )
                         continue
-                    if timestamp - item["timestamp"]["N"] < COOLDOWN:
+                    if item.get('expiration'):
+                        cooldown = 0
+                    else:
+                        cooldown = COOLDOWN
+                    if timestamp - item["timestamp"]["N"] < cooldown:
                         print(
                             f"\nKeyword \"{item['keyword']['S']}\" was throttled: delta={timestamp-item['timestamp']['N']}\n",
                             flush=True,
