@@ -70,7 +70,6 @@ class Bot(commands.Bot):
 
         if not online(self.channel):
             await self.shutdown()
-            sys.exit()
 
         self.poll.start(stop_on_error=False)
         self.scan.start(stop_on_error=False)
@@ -102,6 +101,7 @@ class Bot(commands.Bot):
             HonorCooldown=False,
         )
         print(response)
+        sys.exit()
     
     async def pause_feedback(self, pause):
         ddb = boto3.client("dynamodb", region_name="us-west-2")
