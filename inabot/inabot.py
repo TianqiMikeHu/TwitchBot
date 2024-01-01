@@ -37,7 +37,7 @@ class Bot(commands.Bot):
     async def event_ready(self):
         print("inabot is ready")
 
-    @routines.routine(minutes=60, iterations=None)
+    @routines.routine(minutes=30, iterations=None)
     async def invalidate(self):
         helper.invalidate()
         helper.new_commands_page()

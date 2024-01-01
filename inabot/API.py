@@ -27,6 +27,9 @@ def get_header_user(user_id):
     }
     return header
 
+def reset_tokens(user_id):
+    data.ACCESS_TOKENS = {}
+    get_header_user(user_id)
 
 def get_bot_token():
     client = boto3.client("dynamodb", region_name="us-west-2")
@@ -118,6 +121,7 @@ def broadcaster_ID(name):
     )
     if r.status_code != 200:
         print(r.json())
+        reset_tokens(data.INABOT_ID)
         return None
     output = r.json()
     if len(output["data"]) == 0:
@@ -135,6 +139,7 @@ def announcement(message):
     )
     if r.status_code != 204:
         print(r.json())
+        reset_tokens(data.INABOT_ID)
     return None
 
 
@@ -146,6 +151,7 @@ def shoutout(to_broadcaster_id):
 
     if r.status_code != 204 and r.status_code != 429:
         print(r.json())
+        reset_tokens(data.INABOT_ID)
     return None
 
 
