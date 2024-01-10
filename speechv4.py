@@ -91,10 +91,10 @@ class Bot(commands.Bot):
         return response, f"{self.channel}/{title}"
 
     async def shutdown(self):
+        autoscaling = boto3.client("autoscaling", region_name="us-west-2")
         response, key = self.save_to_s3()
         if response["ResponseMetadata"]["HTTPStatusCode"] == 200:
             await self.connected_channels[0].send(f"Transcript Key: {key}")
-        autoscaling = boto3.client("autoscaling", region_name="us-west-2")
         response = autoscaling.set_desired_capacity(
             AutoScalingGroupName=f"AutoScaling-{self.channel}",
             DesiredCapacity=0,
