@@ -164,7 +164,7 @@ class Bot(commands.Bot):
             return
         if msg.author.name == "inabot44":
             if msg.content == "Stream is offline. Autoscaling in...":
-                await self.shutdown()
+                os.execl(sys.executable, sys.executable, *sys.argv)
             if re.search(r"Adding banned word \".+\"\.\.\.", msg.content):
                 print(f"Reloading for banned word")
                 os.execl(sys.executable, sys.executable, *sys.argv)
