@@ -26,4 +26,9 @@ Web UI for inabot (Pretty much all the JS files here and the /restricted folder)
 - Allows command management outside of Twitch chat
 - Authentication done through Twitch (i.e. Users log in via Twitch credentials)
 
+Speech recognition bots:
+- speechv4.py is for inabox44 specifically and uses the Deepgram API (because I needed higher quality for specific purposes). speechv3.py is used for everyone else and uses the free Google speech recognition API (Not Google Cloud speech-to-text)
+- Pulls audio segments from Twitch with this library: https://pypi.org/project/twitchrealtimehandler/
+- To save costs, this feature is controlled by stream online/offline events registered with Twitch EventSub, and the corresponding resource only stays up when the stream is live and immediately destroyed afterwards. A copy of the transcript is saved to S3.
+
 The /Lambda folder has copies of important Lambda functions I have that server as critical components of the web UI backend.
