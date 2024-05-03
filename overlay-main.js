@@ -20,11 +20,14 @@ document.onkeydown = function (evt) {
     if (editing) {
         return;
     }
-    evt = evt || window.event;
     var isEscape = false;
     var isDelete = false;
-    isEscape = (evt.keyCode === 27);
-    isDelete = (evt.keyCode === 46);
+    var isUp = false;
+    var isDown = false;
+    isEscape = (evt.key === 'Escape');
+    isDelete = (evt.key === 'Delete');
+    isUp = (evt.key === 'ArrowUp');
+    isDown = (evt.key === 'ArrowDown');
     if (isEscape && !commandsView) {
         elementUnfocused();
     }
@@ -45,6 +48,14 @@ document.onkeydown = function (evt) {
         lastClickedElement.parentNode.remove();
         lastClickedElement = null;
         elementUnfocused();
+    }
+    else if ((isUp || isDown) && lastClickedElement != null && !commandsView){
+        if (isUp){
+            moveLayer(true);
+        }
+        else{
+            moveLayer(false);
+        }
     }
 };
 

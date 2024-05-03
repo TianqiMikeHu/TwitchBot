@@ -1075,7 +1075,7 @@ async function saveListItem(event) {
             }
             break;
         case "COUNTER":
-            if (cmdResponse.classList.contains("is-invalid") || isNaN(parseInt(cmdResponse.value.trim()))) {
+            if (cmdResponse.classList.contains("is-invalid") || !parseInt(cmdResponse.value.trim())) {
                 alert("Counter value invalid. Operation cancelled.", "warning");
                 break;
             }
@@ -1237,4 +1237,33 @@ async function loadVariables() {
             commandsViewVariables['FIERCE'].push(`!fierce ${i}`);
         }
     }
+}
+
+function moveLayer(bringForward=true){
+    // Swap DOM nodes
+    let parentIndex = lastClickedElement.parentNode.id;
+    let parentSiblingNode = null;
+    if (!bringForward){ // ArrowDown should move node to "front" of the elements, thus being moved back
+        parentSiblingNode = lastClickedElement.parentNode.previousElementSibling;
+    }
+    else{
+        parentSiblingNode = lastClickedElement.parentNode.nextElementSibling;
+    }
+    if (!parentSiblingNode){
+        return;
+    }
+    let parentSiblingNodeIndex = parentSiblingNode.id;
+    if (!bringForward){
+        parentSiblingNode.before(lastClickedElement.parentNode);
+    }
+    else{
+        parentSiblingNode.after(lastClickedElement.parentNode);
+    }
+    lastClickedElement.parentNode.id = parentSiblingNodeIndex;
+    parentSiblingNode.id = parentIndex;
+
+    // Swap mapping
+    let temporaryJson = mapping[parentIndex];
+    mapping[parentIndex] = mapping[parentSiblingNodeIndex];
+    mapping[parentSiblingNodeIndex] = temporaryJson;
 }

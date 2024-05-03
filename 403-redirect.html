@@ -1,0 +1,45 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <title>403 Forbidden</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Kalam&amp;display=swap" rel="stylesheet" />
+</head>
+
+<body>
+    <script>
+        function login() {
+            window.location.href = `https://apoorlywrittenbot.cc/login.html`;
+        }
+
+        window.onload = async function () {
+            if (window.location.href == "https://apoorlywrittenbot.cc/restricted/search.html") {
+                let response = await fetch(`https://apoorlywrittenbot.cc/public/reset-cookie`);
+                login();
+            }
+            else {
+                setTimeout(() => {
+                    login();
+                }, 3000);
+            }
+        }
+    </script>
+    <div class="container-fluid p-5 aligns-items-center"
+        style="height: 100vh; display: block; align-items: center; justify-content: center;">
+        <div class="display-2 text-center m-5" style="font-family: 'Kalam', cursive;">Something's Wrong</div>
+        <div class="display-7 text-center" style="font-family: 'Kalam', cursive;">This page will redirect in 3
+            seconds...<br>If your browser does not redirect you, click the yellow button at the bottom.</div>
+    </div>
+    <div class="d-grid gap-2">
+        <button type="button" class="btn btn-warning rounded-0" onclick="login();"
+            style="font-family: 'Kalam', cursive;font-size: 30px; position:fixed; bottom: 0px;right: 0px; width: 100%;">
+            Login Page</button>
+    </div>
+
+</body>
+
+</html>
