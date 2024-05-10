@@ -5,6 +5,7 @@ import random
 import json
 import time
 import tools
+import re
 
 def mike_poll_begin(event):
     title = event['title']
@@ -21,12 +22,14 @@ def mike_poll_begin(event):
         tools.send_twitchio(message)
         
 def anna_poll_begin(event):
-    title = event['title']
-    broadcaster_user_login = event['broadcaster_user_login']
-    choices = event['choices']
-    if title is not None and choices is not None:
-        message = "There is a new poll agtappDisco"
-        tools.send_twitchio(message, "AnnaAgtapp")
+    message = "There is a new poll agtappDisco"
+    tools.send_twitchio(message, "AnnaAgtapp")
+        
+def kim_poll_begin(event):
+    tools.announcement(f"New poll is running!", '57184879', '687759326')
+    
+def britt_poll_begin(event):
+    tools.announcement_primary(f"There is a new poll buritt1Dab", '67584205', '681131749')
         
 def mike_online(event):
     username = event['broadcaster_user_name']
@@ -37,7 +40,7 @@ def britt_online(event):
     response = "!funfact"
     tools.send_twitchio(response, username)
     tools.autoscale(username.lower(), 1)
-    tools.pushover("ONLINE EVENT", "Britt is online", True)
+    # tools.pushover("ONLINE EVENT", "Britt is online", True)
     
 def mikki_online(event):
     username = event['broadcaster_user_name']
@@ -46,6 +49,13 @@ def mikki_online(event):
 def anna_online(event):
     username = event['broadcaster_user_name']
     tools.autoscale(username.lower(), 1)
+    
+def kim_online(event):
+    tools.SQS_send('{"action":"online"}')
+    username = event['broadcaster_user_name']
+    tools.autoscale(username.lower(), 1)
+    # tools.reset_count("Speech-inabox44", "um")
+    # tools.reset_count("Speech-inabox44", "uh")
     
 def mike_offline(event):
     username = event['broadcaster_user_name']
@@ -70,12 +80,18 @@ def anna_offline(event):
     offline_msg = "Stream is offline. Autoscaling in..."
     tools.pushover("AUTOSCALING", f"AutoScaling-{username.lower()} capacity set to 0")
     tools.send_twitchio(offline_msg, username)
+    
+def kim_offline(event):
+    tools.SQS_send('{"action":"offline"}')
+    username = event['broadcaster_user_name']
+    offline_msg = "Stream is offline. Autoscaling in..."
+    tools.pushover("AUTOSCALING", f"AutoScaling-{username.lower()} capacity set to 0")
+    tools.send_twitchio(offline_msg, username, id='687759326')
 
 def mike_follow(event):
     target = event['user_name']
-    if target is not None:
-        message = f"{target}, thank you so much for the follow! Welcome to the stream!"
-        tools.send_twitchio(message)
+    message = f"{target}, thank you so much for the follow! Welcome to the stream!"
+    tools.send_twitchio(message)
         
 def mike_prediction_begin(event):
     title = event['title']
@@ -85,6 +101,12 @@ def mike_prediction_begin(event):
         outcome_1 = outcomes[1]['title']
         message = f"Prediction: \"{title}\" Waste your points between *{outcome_0}* and *{outcome_1}*, chat!"
         tools.send_twitchio(message)
+        
+def kim_prediction_begin(event):
+    tools.announcement(f"New prediction is open!", '57184879', '687759326')
+    
+def britt_prediction_begin(event):
+    tools.announcement_primary(f"Waste your burritos on this new prediction! buritt1Tea", '67584205', '681131749')
         
 def mike_subscribe(event):
     user_name = event['user_name']
@@ -113,22 +135,38 @@ def mike_subscription_message(event):
         
 def mike_cheer(event):
     is_anonymous = event['is_anonymous']
+    bits = event['bits']
+    bits = str(bits)
     if not is_anonymous:
         user_name = event['user_name']
-        bits = event['bits']
-        if user_name is not None and bits is not None:
-            try:
-                bits = str(bits)
-                message = f"PogChamp {user_name} just cheered for {bits} bits! I really appreaciate it :D"
-                tools.send_twitchio(message)
-            except:
-                pass
+        message = f"PogChamp {user_name} just cheered for {bits} bits! I really appreaciate it :D"
+        tools.send_twitchio(message)
+    else:
+        message = f"An Anonymous Cheerer just cheered for {bits} bits! I really appreaciate it :D"
+        tools.send_twitchio(message)
+            
+def kim_cheer(event):
+    is_anonymous = event['is_anonymous']
+    bits = event['bits']
+    bits = str(bits)
+    if not is_anonymous:
+        user_name = event['user_name']
+        message = f"{user_name} just filled the box with {bits} bits inaboxHype Thank you!"
+        tools.send_twitchio(message, "inabox44", "687759326")
+    else:
+        message = f"An Anonymous Cheerer just filled the box with {bits} bits inaboxHype Thank you!"
+        tools.send_twitchio(message, "inabox44", "687759326")
             
 def mike_raid(event):
     from_broadcaster_user_name = event['from_broadcaster_user_name']
-    if from_broadcaster_user_name is not None:
-        message = f"Welcome, raiders from {from_broadcaster_user_name}\'s channel!"
-        tools.send_twitchio(message)
+    message = f"Welcome, raiders from {from_broadcaster_user_name}\'s channel!"
+    tools.send_twitchio(message)    
+        
+def kim_raid(event):
+    from_broadcaster_user_name = event['from_broadcaster_user_name']
+    viewers = event['viewers']
+    message = f"{from_broadcaster_user_name} just raided The Box with their {str(viewers)} viewers inaboxPog Thanks for joining us, friends!"
+    tools.send_twitchio(message, "inabox44", "687759326")
         
 def anna_clips(event):
     secret = os.getenv('SECRET')
@@ -146,34 +184,33 @@ def anna_clips(event):
     elif index1==-1:
         id = link[:index2]
     else:
-        tools.send_twitchio("[ERROR]: Could not interpret URL.", broadcaster_user_login)
-    src = ''
-    duration = 0
+        tools.send_twitchio("[ERROR]: Could not interpret URL.")
+        return
+    id = id.strip()
     
     r = requests.get(url=f"https://api.twitch.tv/helix/clips?id={id}", headers=tools.get_header_user('160025583'))
     if r.status_code!=200:
-        tools.send_twitchio(f'[ERROR]: status code is {str(r.status_code)}', broadcaster_user_login)
+        tools.send_twitchio(f'[ERROR]: status code is {str(r.status_code)}')
         return
     
     data = r.json()
     if len(data['data'])==0:
-        tools.send_twitchio("[ERROR]: Could not find this clip.", broadcaster_user_login)
+        tools.send_twitchio("[ERROR]: Could not find this clip.")
         return
     else:
-        src = f"https://clips.twitch.tv/embed?clip={id}&parent=apoorlywrittenbot.cc&autoplay=true&controls=false"
-        duration = data['data'][0]['duration']*1000+300
+        thumbnail_url = data['data'][0]['thumbnail_url']
+        video_url = f"{thumbnail_url.split('-preview')[0]}.mp4"
         broadcaster_name = data['data'][0]['broadcaster_name']
         
-    if broadcaster_name != "AnnaAgtapp":
+    if broadcaster_name != "AnnaAgtapp" and broadcaster_name != "inabox44":
         tools.send_twitchio("[ERROR]: Only Anna's clips are allowed.", broadcaster_user_login)
         return
-    
+
     payload = {
         "route": "sendmessage",
         "action": "newclip",
         "channel": f"{broadcaster_user_login}-clip",
-        "src": src,
-        "duration": int(duration),
+        "src": video_url,
         "timestamp": str(time.time())
     }
     
@@ -239,8 +276,7 @@ def mike_clips(event):
     else:
         tools.send_twitchio("[ERROR]: Could not interpret URL.")
         return
-    src = ''
-    duration = 0
+    id = id.strip()
     
     r = requests.get(url=f"https://api.twitch.tv/helix/clips?id={id}", headers=tools.get_header_user('160025583'))
     if r.status_code!=200:
@@ -252,16 +288,15 @@ def mike_clips(event):
         tools.send_twitchio("[ERROR]: Could not find this clip.")
         return
     else:
-        src = f"https://clips.twitch.tv/embed?clip={id}&parent=apoorlywrittenbot.cc&autoplay=true&controls=false"
-        duration = data['data'][0]['duration']*1000+300
+        thumbnail_url = data['data'][0]['thumbnail_url']
+        video_url = f"{thumbnail_url.split('-preview')[0]}.mp4"
         broadcaster_name = data['data'][0]['broadcaster_name']
 
     payload = {
         "route": "sendmessage",
         "action": "newclip",
         "channel": f"{broadcaster_user_login}-clip",
-        "src": src,
-        "duration": int(duration),
+        "src": video_url,
         "timestamp": str(time.time())
     }
     
@@ -273,6 +308,20 @@ def mike_clips(event):
     )
     message = "Request processed successfully."
     tools.send_twitchio(message)
+    
+def kim_banned_word(event):
+    user_input = event['user_input']
+    if not tools.online("inabox44"):
+        message = "[ERROR] The stream is not online."
+    elif re.match(r"^[a-zA-Z0-9\s]+$", user_input):
+        success = tools.add_banned_word(user_input.lower())
+        if success:
+            message = f"Adding banned word \"{user_input}\"..."
+        else:
+            message = f"[ERROR] Key word \"{user_input}\" cannot be overridden."
+    else:
+        message = "[ERROR] The banned word is not alphanumeric."
+    tools.send_twitchio(message, "inabox44", "687759326")
     
 def mike_announcement(event):
     user_input = event['user_input']

@@ -13,16 +13,30 @@ NICK = 'a_poorly_written_bot'
 
 cold_start = True
 
-def send_twitchio(message, chan="mike_hu_0_0"):
+def get_bot_token(id):
+    client = boto3.client("dynamodb", region_name="us-west-2")
+    response = client.get_item(
+        Key={
+            "CookieHash": {
+                "S": id,
+            }
+        },
+        TableName='CF-Cookies',
+    )
+    user_access_token = response["Item"]["AccessToken"]["S"]
+    return user_access_token
+
+
+def send_twitchio(message, chan="mike_hu_0_0", id="681131749"):
     global cold_start
     if not cold_start:
-        send_socket(message, chan)
+        send_socket(message, chan, id)
         return
     
     class Bot(commands.Bot):
         def __init__(self):
             channel = chan
-            super().__init__(token=os.getenv('TWITCH_OAUTH_TOKEN'), prefix='!', initial_channels=[channel])
+            super().__init__(token=f"oauth:{get_bot_token(id)}", prefix='!', initial_channels=[channel])
             self.channel = channel
     
         async def event_ready(self):
@@ -44,8 +58,8 @@ def send_twitchio(message, chan="mike_hu_0_0"):
     except:
         pass
     
-def send_socket(message, chan="mike_hu_0_0"):
-    password = os.getenv('TWITCH_OAUTH_TOKEN')
+def send_socket(message, chan="mike_hu_0_0", id="681131749"):
+    password = f"oauth:{get_bot_token(id)}"
     # print(password)
     channel =  chan
     try:
@@ -135,6 +149,16 @@ def autoscale(name, capacity):
     pushover("AUTOSCALING", f"AutoScaling-{name} capacity set to {capacity}")
     return
 
+def SQS_send(msg):
+    client = boto3.client('sqs')
+    
+    response = client.send_message(
+        QueueUrl="https://sqs.us-west-2.amazonaws.com/414556232085/inabot-queue",
+        MessageBody=msg,
+    )
+    
+    return
+
 def register_event(event_id, event_type, user_id):
     client = boto3.client('dynamodb')
     response = client.put_item(
@@ -170,7 +194,66 @@ def get_event(event_id):
 def announcement(message, broadcaster_id, moderator_id):
     colors = ["blue", "green", "orange", "purple", "primary"]
     body = {"message": message,"color": random.choice(colors)}
-    r = requests.post(url=f"https://api.twitch.tv/helix/chat/announcements?broadcaster_id={broadcaster_id}&moderator_id={moderator_id}", headers=get_header_user('681131749'), json=body)
+    r = requests.post(url=f"https://api.twitch.tv/helix/chat/announcements?broadcaster_id={broadcaster_id}&moderator_id={moderator_id}", headers=get_header_user(moderator_id), json=body)
     if r.status_code!=204:
-        send_twitchio(f'[ERROR]: status code is {str(r.status_code)}', broadcaster_id)
+        print(r.json())
     return ""
+    
+def announcement_primary(message, broadcaster_id, moderator_id):
+    body = {"message": message,"color": "primary"}
+    r = requests.post(url=f"https://api.twitch.tv/helix/chat/announcements?broadcaster_id={broadcaster_id}&moderator_id={moderator_id}", headers=get_header_user(moderator_id), json=body)
+    if r.status_code!=204:
+        print(r.json())
+    return ""
+    
+def online(channel):
+    r = requests.get(
+        url=f"https://api.twitch.tv/helix/streams?user_login={channel}",
+        headers=get_header_user("160025583"),
+    )
+    return r.json()["data"]
+    
+def reset_count(table, keyword):
+    client = boto3.client('dynamodb')
+    response = client.update_item(
+        TableName=table,
+        ExpressionAttributeNames={
+            "#C": "count",
+        },
+        ExpressionAttributeValues={
+            ":c": {
+                "N": '0',
+            }
+        },
+        Key={
+            "keyword": {
+                "S": keyword,
+            }
+        },
+        UpdateExpression="SET #C = :c",
+    )
+    
+def add_banned_word(keyword):
+    client = boto3.client("dynamodb")
+    try:
+        response = client.put_item(
+            Item={
+                'keyword': {
+                    'S': keyword,
+                },
+                'response': {
+                    'S': keyword.capitalize(),
+                },
+                'count': {
+                    'N': '0',
+                },
+                'expiration': {
+                    'N': str(time.time()+600),
+                }
+            },
+            TableName="Speech-inabox44",
+            ConditionExpression="attribute_not_exists(keyword)"
+        )
+        return True
+    except :
+        return False
