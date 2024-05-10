@@ -7,7 +7,7 @@ import hashlib
 def lambda_handler(event, context):
     payload = event
     
-    ws = create_connection("wss://2bd6aqqafb.execute-api.us-west-2.amazonaws.com/dev")
+    ws = create_connection("wss://aajvwrwp3m.execute-api.us-west-2.amazonaws.com/prod")
     payload_string = json.dumps(payload, separators=(',', ':'), ensure_ascii=False)
 
     secret = os.getenv('SECRET')
