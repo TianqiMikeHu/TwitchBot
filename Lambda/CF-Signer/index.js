@@ -10,7 +10,9 @@ const loadParameter = async (key, WithDecryption = false) => {
     return Parameter.Value;
 };
 
-const policyString = JSON.stringify({
+function getSignedCookie(publicKey, privateKey) {
+    const cloudFront = new AWS.CloudFront.Signer(publicKey, privateKey);
+    const policyString = JSON.stringify({
     'Statement': [{
         'Resource': `https://apoorlywrittenbot.cc/restricted/*`,
         'Condition': {
@@ -18,9 +20,6 @@ const policyString = JSON.stringify({
         }
     }]
 });
-
-function getSignedCookie(publicKey, privateKey) {
-    const cloudFront = new AWS.CloudFront.Signer(publicKey, privateKey);
     const options = { policy: policyString };
     return cloudFront.getSignedCookie(options);
 }
@@ -80,39 +79,46 @@ function getEmotesLambda (params) {
     });
 }
 
-function forbidden() {
+function back_to_login() {
     return {
         isBase64Encoded: false,
-        statusCode: '403',
+        statusCode: '302',
+        headers: {
+            "Location": "https://apoorlywrittenbot.cc/login.html",
+            "Cache-Control": "no-cache, no-store, must-revalidate"
+        },
         body: ''
     };
 }
 
 exports.handler = async (event, context) => {
     if (event.httpMethod != "GET"){
-        return forbidden();
+        return back_to_login();
     }
     if (event.headers == null) {
-        return forbidden();
+        return back_to_login();
     }
     if (event.headers["cf-env"] != process.env.CF_ENV) {
-        return forbidden();
+        return back_to_login();
     }
     if (event.queryStringParameters["code"] == null) {
-        return forbidden();
+        return back_to_login();
     }
 
     let token_request = `https://id.twitch.tv/oauth2/token?client_id=6yz6w1tnl13svb5ligch31aa5hf4ty&client_secret=${process.env.CLIENT_SECRET}&grant_type=authorization_code&code=${event.queryStringParameters["code"]}&redirect_uri=https://apoorlywrittenbot.cc`;
     let access_token, refresh_token, login, user_id;
+    console.log(token_request);
 
     await axios.post(token_request)
         .then(function (response) {
+            console.log(response);
             access_token = response.data.access_token;
             refresh_token = response.data.refresh_token;
         })
         .catch(function (error) {
-            return forbidden();
+            console.log(error);
         });
+    if (!access_token){return back_to_login();}
     await axios.get("https://id.twitch.tv/oauth2/validate", {
         headers: {
             Authorization: 'Bearer ' + access_token
@@ -123,8 +129,9 @@ exports.handler = async (event, context) => {
             user_id = response.data.user_id;
         })
         .catch(function (error) {
-            return forbidden();
+            console.log(error);
         });
+    if (!login){return back_to_login();}
 
 
     let display_name = await getDisplayName(login);
@@ -159,7 +166,8 @@ exports.handler = async (event, context) => {
                     AccessToken: access_token,
                     RefreshToken: refresh_token,
                     TTL: getExpiryTime(),
-                    DisplayName: display_name
+                    DisplayName: display_name,
+                    UserID: user_id
                 },
             })
             .promise();
@@ -169,13 +177,13 @@ exports.handler = async (event, context) => {
         };
     }
     
-    let payload = {'access_token': access_token, 'user_id': user_id};
-    var params = {
-      FunctionName: 'GetEmotes',
-      InvocationType: 'Event',
-      Payload: JSON.stringify(payload),
-    };
-    await getEmotesLambda(params);
+    // let payload = {'access_token': access_token, 'user_id': user_id};
+    // var params = {
+    //   FunctionName: 'GetEmotes',
+    //   InvocationType: 'Event',
+    //   Payload: JSON.stringify(payload),
+    // };
+    // await getEmotesLambda(params);
 
     return {
         isBase64Encoded: false,
