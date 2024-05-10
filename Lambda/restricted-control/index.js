@@ -4,7 +4,7 @@ require('helper.js')();
 exports.handler = async (event) => {
     console.log(event);
 
-    let display_name, access_token, user_id, chan;
+    let display_name, access_token, user_id, chan, variable;
     let validation_result = await validation(event);
     if (validation_result.statusCode != 200) {return validation_result;}
     
@@ -14,6 +14,7 @@ exports.handler = async (event) => {
     
     if (event.queryStringParameters != null) {
         chan = event.queryStringParameters.channel;
+        variable = event.queryStringParameters.var;
     }
 
     if (event.httpMethod == "GET") {
@@ -44,6 +45,53 @@ exports.handler = async (event) => {
                 return forbidden();
             }
         }
+        else if (event.path == "/restricted/inabot/variables"){
+            if (variable == null) {return forbidden();}
+            let mods = require("./modList.js");
+            if (mods.modList['inabox44'].includes(display_name.toLowerCase())){
+                return await getVariable(variable);
+            }
+            return forbidden();
+        }
+        else if (event.path == "/restricted/inabot/commands"){
+            if (variable == null) {return forbidden();}
+            let mods = require("./modList.js");
+            if (mods.modList['inabox44'].includes(display_name.toLowerCase())){
+                return await getCommand(decodeURIComponent(variable));
+            }
+            return forbidden();
+        }
+        else if (event.path == "/restricted/inabot/counters"){
+            if (variable == null) {return forbidden();}
+            let mods = require("./modList.js");
+            if (mods.modList['inabox44'].includes(display_name.toLowerCase())){
+                return await getCounter(decodeURIComponent(variable));
+            }
+            return forbidden();
+        }
+        else if (event.path == "/restricted/inabot/kimexplains"){
+            if (variable == null) {return forbidden();}
+            let mods = require("./modList.js");
+            if (mods.modList['inabox44'].includes(display_name.toLowerCase())){
+                return await getKimexplain(decodeURIComponent(variable));
+            }
+            return forbidden();
+        }
+        else if (event.path == "/restricted/inabot/fierce"){
+            if (variable == null) {return forbidden();}
+            let mods = require("./modList.js");
+            if (mods.modList['inabox44'].includes(display_name.toLowerCase())){
+                return await getFierce(decodeURIComponent(variable));
+            }
+            return forbidden();
+        }
+        else if (event.path == "/restricted/inabot/scheduler"){
+            let mods = require("./modList.js");
+            if (mods.modList['inabox44'].includes(display_name.toLowerCase())){
+                return await federateLogin('Discord-Scheduler-Role', display_name);
+            }
+            return forbidden();
+        }
         else {
             return forbidden();
         }
@@ -55,6 +103,11 @@ exports.handler = async (event) => {
 
         if (event.path == "/restricted/json") {
             body = await jsonPost(chan, display_name, body);
+        }
+        else if (event.path == "/restricted/inabot-web") {
+            let sqs_result = await cmdPost(chan, display_name, body);
+            console.log(sqs_result);
+            return sqs_result;
         }
         else {
             return forbidden();

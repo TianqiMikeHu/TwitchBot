@@ -3,8 +3,10 @@ const AWS = require('aws-sdk');
 const ddb = new AWS.DynamoDB.DocumentClient();
 const s3 = new AWS.S3();
 const parameterStore = new AWS.SSM();
-const axios = require('axios');
 const { createHash } = require('crypto');
+const axios = require('axios');
+const sqs = new AWS.SQS();
+const sts = new AWS.STS();
 
 module.exports = function(){
     this.forbidden = function() {
@@ -20,6 +22,117 @@ module.exports = function(){
             statusCode: '200',
             body: bodyText
         };
+    };
+    this.timeout = function() {
+        return {
+            isBase64Encoded: false,
+            statusCode: '504',
+            body: ''
+        };
+    };
+    this.getItem = function(params) {
+      return new Promise((res, rej) => {
+        ddb.get(params, (err, data) => {
+            if (err) {
+              return rej(err);
+            }
+            return res(data);
+        });
+      });
+    };
+    this.getVariable = async function(query) {
+        let variable;
+        switch (query) {
+            case 'commands':
+                variable = '_commands_json';
+                break;
+            case 'counters':
+                variable = '_counters_json';
+                break;
+            case 'fierce':
+                variable = 'quotes_!fierce';
+                break;
+            case 'kimexplains':
+                variable = 'quotes_!kimexplains';
+                break;
+            default:
+                return this.forbidden();
+        }
+        let params = {
+          TableName : 'inabot-variables',
+          Key: {
+            var_name: variable,
+            var_type: 'CUSTOM'
+          }
+        };
+        const data = await this.getItem(params);
+        if (Object.keys(data).length){
+            return this.success(JSON.stringify({'value': data.Item.var_val}));
+        } 
+        else {return this.forbidden();}
+    };
+    this.getCommand = async function(query) {
+        let params = {
+          TableName : 'inabot-commands',
+          Key: {
+            command_name: query
+          }
+        };
+        const data = await this.getItem(params);
+        if (Object.keys(data).length){
+            return this.success(JSON.stringify(data.Item));
+        } 
+        else {return this.forbidden();}
+    };
+    this.getCounter = async function(query) {
+        let params = {
+          TableName : 'inabot-variables',
+          Key: {
+            var_name: query,
+            var_type: 'COUNTER'
+          }
+        };
+        const data = await this.getItem(params);
+        if (Object.keys(data).length){
+            return this.success(JSON.stringify(data.Item));
+        } 
+        else {return this.forbidden();}
+    };
+    this.getKimexplain = async function(query) {
+        let index = parseInt(query);
+        if (!index){
+            return this.forbidden();
+        }
+        let params = {
+          TableName : 'inabot-quotes',
+          Key: {
+            quotes_name: '!kimexplains',
+            quotes_index: index
+          }
+        };
+        const data = await this.getItem(params);
+        if (Object.keys(data).length){
+            return this.success(JSON.stringify(data.Item));
+        } 
+        else {return this.forbidden();}
+    };
+    this.getFierce = async function(query) {
+        let index = parseInt(query);
+        if (!index){
+            return this.forbidden();
+        }
+        let params = {
+          TableName : 'inabot-quotes',
+          Key: {
+            quotes_name: '!fierce',
+            quotes_index: index
+          }
+        };
+        const data = await this.getItem(params);
+        if (Object.keys(data).length){
+            return this.success(JSON.stringify(data.Item));
+        } 
+        else {return this.forbidden();}
     };
     this.getS3File = async function(bucket, key) {
         let s3Params = {
@@ -108,7 +221,7 @@ module.exports = function(){
             TableName: process.env.table
         };
     
-        let access_token, refresh_token, display_name;
+        let access_token, display_name, user_id;
         try {
             let result = await ddb.get(ddbParams).promise();
             if (result["Item"] == null) {
@@ -117,7 +230,7 @@ module.exports = function(){
             else {
                 access_token = result["Item"]["AccessToken"];
                 display_name = result["Item"]["DisplayName"];
-                refresh_token = result["Item"]["RefreshToken"];
+                user_id = result["Item"]["UserID"];
             }
         } catch (e) {
             console.log(e);
@@ -132,85 +245,15 @@ module.exports = function(){
             return this.forbidden();
         }
     
-        let user_id = await this.TwitchValidation(access_token, refresh_token, CookieHash);
-        if (user_id) {
-            return {
-                isBase64Encoded: false,
-                statusCode: '200',
-                body: {
-                    'display_name': display_name,
-                    'access_token': access_token,
-                    'user_id': user_id
-                }
-            };
-        }
-        else {
-            return this.forbidden();
-        }
-    };
-    this.TwitchValidation = async function(access_token, refresh_token, CookieHash){
-        let user_id;
-        await axios.get("https://id.twitch.tv/oauth2/validate", {
-            headers: {
-                Authorization: 'Bearer ' + access_token
+        return {
+            isBase64Encoded: false,
+            statusCode: '200',
+            body: {
+                'display_name': display_name,
+                'access_token': access_token,
+                'user_id': user_id
             }
-        })
-            .then(function (response) {
-                user_id = response.data.user_id;
-            })
-            .catch(function (error) {
-            });
-        if (user_id){
-            return user_id;
-        }
-        // Else try token refresh
-        console.log("Attempting Token Refresh");
-        let result;
-        await axios.post(`https://id.twitch.tv/oauth2/token?grant_type=refresh_token&refresh_token=${refresh_token}&client_id=${process.env.CLIENT_ID}&client_secret=${process.env.CLIENT_SECRET}`,
-            {},
-            {
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded"
-                }
-            })
-            .then(function (response) {
-                result = true;
-                access_token = response.data.access_token;
-                refresh_token = response.data.refresh_token;
-            })
-            .catch(function (error) {
-                result = false;
-            });
-        if (result){
-            let params = {
-              TableName : process.env.table,
-              Key: {
-                "CookieHash": CookieHash
-              },
-              UpdateExpression: 'set AccessToken = :a, RefreshToken = :r',
-              ExpressionAttributeValues: {
-                ':a' : access_token,
-                ':r' : refresh_token
-              }
-            };
-            await this.updateItem(params);
-        }
-        else{
-            console.log("Refresh Failed");
-            return user_id;
-        }
-        // Validate Again
-        await axios.get("https://id.twitch.tv/oauth2/validate", {
-            headers: {
-                Authorization: 'Bearer ' + access_token
-            }
-        })
-            .then(function (response) {
-                user_id = response.data.user_id;
-            })
-            .catch(function (error) {
-            });
-        return user_id;
+        };
     };
     this.jsonPost = async function(chan, display_name, body){
         let mods = require("./modList.js");
@@ -238,6 +281,50 @@ module.exports = function(){
         await this.updateItem(params);
         return body;
     };
+    this.cmdPost = async function(chan, display_name, command){
+        let mods = require("./modList.js");
+        if (mods.modList["inabox44"].includes(display_name.toLowerCase())==false){
+            return this.forbidden();
+        }
+        command['display_name'] = display_name;
+        console.log(JSON.stringify(command));
+        await this.sqs_send('https://sqs.us-west-2.amazonaws.com/414556232085/inabot-queue', JSON.stringify(command));
+        return await this.sqs_receive('https://sqs.us-west-2.amazonaws.com/414556232085/inabot-API-response', display_name);
+    };
+    this.sqs_send = async function (url, message){
+        let params = {
+            QueueUrl: url,
+            MessageBody: message,
+          };
+        await sqs.sendMessage(params).promise();
+    };
+    this.sqs_receive = async function (url, display_name){
+        const maxRetries = 3;
+        let params = {
+            QueueUrl: url,
+            WaitTimeSeconds: 1,
+            VisibilityTimeout: 0,
+        };
+        for (let i=0; i<maxRetries; i++){
+            let response = await sqs.receiveMessage(params).promise();
+            if (response.Messages) {
+                for (var m of response.Messages){
+                    let msg = JSON.parse(m.Body);
+                    if (msg['display_name'] == display_name){   // Check if msg if intended for the right recipient
+                        try {
+                            let deleteParams = {
+                              QueueUrl: url,
+                              ReceiptHandle: m.ReceiptHandle
+                            };
+                            await sqs.deleteMessage(deleteParams).promise();
+                        } catch (e) {}
+                        return this.success(JSON.stringify(msg['feedbacks']));
+                    }
+                }
+            }
+        }
+        return this.timeout();
+    };
     this.wssLambda = async function (params) {
         const lambda = new AWS.Lambda();
         return new Promise((res, rej) => {
@@ -256,5 +343,37 @@ module.exports = function(){
           Payload: JSON.stringify(payload),
         };
         await this.wssLambda(params);
+    };
+    this.federateLogin = async function (roleName, display_name){
+        let params = {
+            RoleArn: `arn:aws:iam::414556232085:role/${roleName}`,
+            RoleSessionName: display_name
+        };
+        let data = await sts.assumeRole(params).promise();
+        let credentialsJson = `{"sessionId":"${data.Credentials.AccessKeyId}","sessionKey":"${data.Credentials.SecretAccessKey}","sessionToken":"${data.Credentials.SessionToken}"}`;
+        let federationEndpoint = `https://ca-central-1.signin.aws.amazon.com/federation?Action=getSigninToken&Session=${encodeURIComponent(credentialsJson)}`;
+        let response = await axios.get(federationEndpoint);
+        let signinEngpoint = `https://ca-central-1.signin.aws.amazon.com/federation?Action=login&Issuer=https%3A%2F%2Fapoorlywrittenbot.cc%2Flogin.html&Destination=https%3A%2F%2Fca-central-1.console.aws.amazon.com%2Fscheduler%2Fhome%3Fregion%3Dca-central-1%23schedules&SigninToken=${response.data.SigninToken}`;
+        console.log(response);
+        
+        let pushover = {
+            'token': process.env.PUSHOVER_APP_TOKEN,
+            'user': process.env.PUSHOVER_USER_TOKEN,
+            'device': 'mike-iphone',
+            'title': 'AWS_CONSOLE_LOGIN',
+            'message': `${display_name}`
+        };
+        await axios.post('https://api.pushover.net/1/messages.json', pushover);
+    
+    
+        return {
+            isBase64Encoded: false,
+            statusCode: '302',
+            headers: {
+                "Location": signinEngpoint,
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            },
+            body: ''
+        };
     };
 };
