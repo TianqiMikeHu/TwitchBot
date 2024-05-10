@@ -2,17 +2,16 @@ import requests
 import boto3
 import os
 
-def get_user_tokens(user_id):
+def delete_token(key):
     client = boto3.client('dynamodb', region_name='us-west-2')
-    response = client.get_item(
+    response = client.delete_item(
         Key={
             'CookieHash': {
-                'S': user_id,
+                'S': key,
             }
         },
         TableName='CF-Cookies',
     )
-    return response["Item"]
 
 
 def validate(token):
@@ -23,10 +22,17 @@ def validate(token):
         return r.json().get('expires_in')
 
 
-def refresh(user_id, refresh_token):
+def refresh(key, refresh_token):
     refresh_token = requests.utils.quote(refresh_token, safe='')
     token_request = f"https://id.twitch.tv/oauth2/token?client_id={os.getenv('CLIENTID')}&client_secret={os.getenv('CLIENTSECRET')}&grant_type=refresh_token&refresh_token={refresh_token}"
     r = requests.post(url=token_request, headers={"Content-Type":"application/x-www-form-urlencoded"})
+    
+    if r.status_code != 200:
+        if len(key)==64:
+            delete_token(key)
+        print(f"Failure refreshing {key}")
+        return False
+        
     access_token = r.json().get('access_token')
     refresh_token = r.json().get('refresh_token')
     client = boto3.client('dynamodb', region_name='us-west-2')
@@ -41,24 +47,33 @@ def refresh(user_id, refresh_token):
         },
         Key={
             'CookieHash': {
-                'S': user_id,
+                'S': key,
             }
         },
         TableName='CF-Cookies',
         UpdateExpression='SET AccessToken = :a, RefreshToken = :r',
     )
-
+    return True
 
 def lambda_handler(event, context):
     
-    users_list = ['160025583', '681131749', '598261113']
+    # users_list = ['160025583', '681131749', '598261113', '687759326', '57184879']
+    client = boto3.client('dynamodb', region_name='us-west-2')
+    users_list = client.scan(TableName="CF-Cookies")
     
-    for user_id in users_list:
-        ddb_record = get_user_tokens(user_id)
-        if validate(ddb_record['AccessToken']['S'])<3600:
-            print(f"Refreshing tokens for {user_id}...")
-            refresh(user_id, ddb_record['RefreshToken']['S'])
-        
+    alarm = False
+    
+    for user in users_list["Items"]:
+        if user.get('RefreshToken'):
+            if validate(user['AccessToken']['S'])<3600:
+                print(f"Refreshing tokens for {user['CookieHash']['S']}...")
+                success = refresh(user['CookieHash']['S'], user['RefreshToken']['S'])
+                if not success:
+                    alarm = True
+                    print(user['CookieHash']['S'])
+    
+    if alarm:
+        raise Exception("This should trigger CloudWatch alarm.")    
     
     return {
         'statusCode': 200,
