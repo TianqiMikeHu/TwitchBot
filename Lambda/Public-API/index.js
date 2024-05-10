@@ -15,6 +15,23 @@ async function publicHandler(event){
         let name = event.queryStringParameters.name;
         return await getEmote(name);
     }
+    else if (event.path == "/public/reset-cookie"){
+        return {
+            isBase64Encoded: false,
+            statusCode: '200',
+            headers: {
+                "Cache-Control": "no-cache, no-store, must-revalidate"
+            },
+            multiValueHeaders: {
+                "Set-Cookie": [
+                    `CloudFront-Policy=a;Domain=apoorlywrittenbot.cc;Path=/;Expires=Thu, 01 Jan 1970 00:00:01 GMT`,
+                    `CloudFront-Key-Pair-Id=b;Domain=apoorlywrittenbot.cc;Path=/;Expires=Thu, 01 Jan 1970 00:00:01 GMT`,
+                    `CloudFront-Signature=c;Domain=apoorlywrittenbot.cc;Path=/;Expires=Thu, 01 Jan 1970 00:00:01 GMT`
+                ]
+            },
+            body: ''
+        };
+    }
     else{
         return forbidden();
     }
